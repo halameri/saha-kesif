@@ -133,6 +133,10 @@ details.tip{font-size:.88rem}details.tip summary{cursor:pointer;color:var(--mute
 details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8px 10px;line-height:1.5}
 .assess{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:.95rem}.assess ul{margin:0;padding-left:18px}
 .guide h2{font-size:1.2rem}.guide ul,.guide ol{margin:0;padding-left:20px;display:grid;gap:6px}.guide dl{margin:0;display:grid;gap:2px}.guide dt{font-weight:700;margin-top:6px}.guide dd{margin:0;color:var(--muted)}
+details.qn summary{cursor:pointer;font-size:.88rem;font-weight:600;color:var(--muted);list-style:none;padding:2px 0}details.qn summary::before{content:"✎ "}
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.qchip{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:7px 12px;font-size:.88rem;text-align:left;line-height:1.3}
+.qchip.used{background:var(--accent-soft);border-color:var(--accent)}
 .linkbtn{background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;font:inherit}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -202,6 +206,31 @@ const OPTS={grid:"Şebeke bağlantısı",gen:"Jeneratör",pv:"Güneş paneli (GE
 const OPTS_EN={grid:"Grid connection",gen:"Generator",pv:"Solar (PV)",hyb:"Generator + solar hybrid"};
 const DEFAULT_SITES=[...Array(10)].map((_,i)=>({id:"ila"+i,name:"ILA "+i,gov:i===1?"Basra (AlFaw)":"",gps:"",contact:""}));
 
+/* ---------- ready-made notes (tr | en) ---------- */
+const QN={
+ "sebeke.direk":[["Direk sahanın hemen yanında","Pole right next to the site"],["Direk yolun karşı tarafında","Pole across the road"],["Direk eski / bakımsız görünüyor","Pole looks old / poorly maintained"],["Tellerde kaçak bağlantılar var","Illegal taps on the wires"],["Direk görülmedi, yerel kişi yakında olduğunu söyledi","Pole not seen; local contact says one is nearby"]],
+ "sebeke.trafo":[["Trafo etiketi okunamadı","Transformer label unreadable"],["Trafo çok sayıda bağlantıyla yüklü görünüyor","Transformer appears heavily loaded"],["Trafo yerde, kilitli kabinde","Ground-mounted transformer in locked cabinet"],["Trafonun yeri yerel kişi tarafından da bilinmiyor","Transformer location unknown to local contact too"]],
+ "sebeke.engel":[["Arada özel tarla / bahçe var","Private farmland / garden in between"],["Arada asfalt yol var","Paved road in between"],["Arada kanal / dere var","Canal / stream in between"],["Arada evler var","Houses in between"]],
+ "sebeke.saat":[["Yerel kişiye göre yazın kesinti artıyor","Per local contact, outages increase in summer"],["Mahallede ortak jeneratör kullanılıyor","Neighbourhood uses a shared generator"],["Elektrik dönüşümlü / programlı veriliyor","Supply is rotating / scheduled"],["Kesinti hakkında bilgi alınamadı","No information on outages"]],
+ "alan.olcu":[["Ölçüler adımlanarak alındı (yaklaşık)","Measured by pacing (approximate)"],["Saha sınırı belli değil, duvar yok","Site boundary not marked, no wall"],["Mevcut bir duvar var","Existing wall in place"],["Kroki çizildi, fotoğrafı eklendi","Hand sketch drawn, photo attached"]],
+ "alan.jen":[["Duvar içinde yer var","Space inside the wall"],["Sadece duvar dışında yer var","Space only outside the wall"],["Yer dar, yerleşim planı gerekir","Tight space, layout needed"]],
+ "alan.yakit":[["Yol dar, sadece küçük araç girebilir","Narrow road, small vehicles only"],["Yağmurda yol çamur oluyor","Road gets muddy when it rains"],["Kamyon sahaya kadar değil, yakınına kadar gelebilir","Truck can get close but not to the site"]],
+ "alan.ev":[["En yakın ev duvarın hemen yanında","Nearest house right next to the wall"],["Etrafta yerleşim yok","No houses around"],["Yakında okul / cami var","School / mosque nearby"]],
+ "alan.su":[["Zemin çevresinden alçakta","Ground lower than surroundings"],["Kurumuş çamur izleri var","Dried mud marks visible"],["Yerel kişiye göre yağmurda su basıyor","Per local contact, it floods when it rains"],["Zemin yüksek, su birikmez görünüyor","Ground is raised, no pooling expected"]],
+ "alan.zemin":[["Dolgu zemin, sıkıştırılmamış görünüyor","Fill ground, looks uncompacted"],["Yüzeyde tuz izleri var","Salt traces on the surface"],["Zemin ıslak / bataklık","Ground is wet / marshy"]],
+ "ges.alan":[["Alan duvar içinde","Area inside the wall"],["Alan duvar dışında, ek arazi gerekir","Area outside the wall, extra land needed"],["Konteyner çatısı da kullanılabilir","Container roof could also be used"]],
+ "ges.golge":[["Kulenin gölgesi öğleden sonra alana düşüyor","Tower shadow falls on the area in the afternoon"],["Yakında yüksek bina var","Tall building nearby"],["Hurma ağaçları gölge yapıyor","Palm trees cast shade"],["Gölge yok, alan tamamen açık","No shade, area fully open"]],
+ "ges.guney":[["Güney tarafında bina var","Building on the south side"],["Güney tarafı tamamen açık","South side fully open"]],
+ "ges.guvenli":[["Duvar alçak, kolay aşılır","Wall is low, easy to climb"],["Bekçi var","Guard present"],["Bölgede panel hırsızlığı duyulmuş","Panel theft reported in the area"]],
+ "cevre.yol":[["Son kısım toprak yol","Last section is a dirt road"],["Yol dar","Road is narrow"]],
+ "cevre.vinc":[["Girişte alçak teller var","Low wires at the entrance"],["Yolda dar dönemeç var","Tight turn on the road"],["Giriş kapısı dar","Narrow gate"]],
+ "cevre.tuz":[["Şattülarap / deniz kıyısına yakın","Close to Shatt al-Arab / sea"],["Bölgede tuzla var","Salt flats in the area"],["Metal yüzeylerde pas görülüyor","Rust visible on metal surfaces"]],
+ "cevre.guvenlik":[["Yerel kişiye göre yakıt hırsızlığı oluyor","Per local contact, fuel theft occurs"],["Kablo hırsızlığı duyulmuş","Cable theft reported"],["Bölge sakin, risk bildirilmedi","Area quiet, no risk reported"],["Bekçi / koruma var","Guard / security present"]]
+};
+const QN_UNK=[["Sahada görülemedi","Could not be seen on site"],["Yerel kişi bilmiyor","Local contact does not know"],["Erişim olmadığı için bakılamadı","Could not be checked (no access)"]];
+const QN_GEN=[["Yerel irtibat kişisi sahadaydı","Local contact was on site"],["Yerel irtibat kişisine ulaşılamadı","Local contact could not be reached"],["Sahada kısa süre kalınabildi","Only a short time on site"],["Arazi sahibiyle görüşülmedi","Landowner not met"],["Sahaya girilemedi, dışarıdan bakıldı","Could not enter site, observed from outside"],["Fotoğraf çekimine izin verilmedi","Photography not permitted"],["Hava koşulları nedeniyle tam bakılamadı","Weather limited the inspection"]];
+const QMAP=[...Object.values(QN).flat(),...QN_UNK,...QN_GEN].sort((a,b)=>b[0].length-a[0].length);
+function tNote(n,lang){if(lang!=="en"||!n)return n||"";let o=n;for(const [tr,en] of QMAP)o=o.split(tr).join(en);return o}
 let surveys={},sites=[],prefs={},daily={},openId=null,cur=null,saveT=null,view="list";
 const app=document.getElementById("app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -230,8 +259,8 @@ function status(it,e){
 }
 function stats(s){let done=0,bad=0,unk=0;for(const {it,key} of ITEMS){const st=status(it,E(s,key));if(st)done++;if(st==="bad")bad++;if(st==="unk")unk++}return{done,bad,unk}}
 function secStats(s,sec){let done=0,bad=0;for(const it of sec.items){const st=status(it,E(s,sec.id+"."+it.id));if(st)done++;if(st==="bad")bad++}return{done,bad}}
-function issues(s,lang){const en=lang==="en";return ITEMS.filter(({it,key})=>status(it,E(s,key))==="bad").map(({it,key})=>({t:en?it.be:it.bt,n:E(s,key).n||""}))}
-function unknowns(s,lang){const en=lang==="en";return ITEMS.filter(({it,key})=>status(it,E(s,key))==="unk").map(({it})=>en?it.se:it.s)}
+function issues(s,lang){const en=lang==="en";return ITEMS.filter(({it,key})=>status(it,E(s,key))==="bad").map(({it,key})=>({t:en?it.be:it.bt,n:tNote(E(s,key).n,lang)}))}
+function unknowns(s,lang){const en=lang==="en";return ITEMS.filter(({it,key})=>status(it,E(s,key))==="unk").map(({it,key})=>{const n=tNote(E(s,key).n,lang);return (en?it.se:it.s)+(n?` (${n})`:"")})}
 function optLabel(key,k,val,lang){if(lang!=="en"||!val)return val;const x=ITEMS.find(i=>i.key===key);const f=x?.it.f?.find(f=>f.k===k);if(!f?.oe)return val;const i=f.o.indexOf(val);return i>=0?f.oe[i]:val}
 function possible(s){
   /* which options look possible from the entered facts (information only) */
@@ -327,7 +356,7 @@ function renderGuide(){
     <li>Sahayı adımla, kâğıda kroki çiz (saha, direk, yol, kuzey oku). Krokinin fotoğrafını çek.</li>
     <li>Jeneratör ve güneş paneli için yer var mı bak. Pusula ile güneyi bul.</li>
     <li><b>Yerel kişiye sor:</b> Günde kaç saat elektrik var? Yağmurda su basar mı? Hırsızlık olur mu? Yakıt kamyonu gelebilir mi?</li>
-    <li>Emin olmadığın her şeye <b>Bilmiyorum</b> de. Raporda “teyit edilecek” olarak çıkar. Bu tamamen normal, uzmanlar sonra bakar.</li>
+    <li>Emin olmadığın her şeye <b>Bilmiyorum</b> de. Raporda “sahada tespit edilemedi” olarak çıkar. Bu tamamen normal; neden bilinmediğini hazır notlardan seçebilirsin (ör. “Yerel kişi bilmiyor”).</li>
     <li>En alttaki Özet'e bak; eksik kalan önemli bir şey var mı kontrol et. Değerlendirme yapman gerekmiyor, sen bilgiyi aktarıyorsun.</li>
    </ol>
    <p class="hint">Akşam: <b>Günlük rapor</b> › Metni kopyala › WhatsApp'tan müdüre gönder. Sonra <b>Yedek al</b> › Dosyalara Kaydet › iCloud Drive.</p>
@@ -414,9 +443,12 @@ function itemHtml(sec,it){
    ${it.f?`<div class="fields" ${showF?"":"hidden"}>${it.f.map(f=>fieldHtml(key,f,v[f.k]??"")).join("")}</div>`:""}
    ${it.area?`<div class="calc num" id="calc-${key.replace(".","-")}">${calcText(it,v)}</div>`:""}
    ${it.tip?`<details class="tip"><summary>Nasıl bakılır?</summary><p>${esc(it.tip)}</p></details>`:""}
-   ${t==="p"?"":e.n?`<textarea id="n-${key.replace(".","-")}" data-note="${key}" placeholder="Not">${esc(e.n)}</textarea>`:`<button type="button" class="note-toggle" data-addnote="${key}">+ Not ekle</button>`}
+   ${t==="p"?"":e.n?`<textarea id="n-${key.replace(".","-")}" data-note="${key}" placeholder="Not">${esc(e.n)}</textarea>`:`<button type="button" class="note-toggle" data-addnote="${key}">+ Kendi notunu yaz</button>`}
+   ${t==="p"?"":qnHtml(key,[...(QN[key]||[]),...(t==="q"?QN_UNK:[])],st==="bad"||st==="unk",e.n)}
   </div>`;
 }
+function qnHtml(key,list,open,note){if(!list.length)return "";return `<details class="qn" ${open?"open":""}><summary>Hazır notlar <span class="hint">(dokun, nota eklensin)</span></summary><div class="qchips">${list.map(([tr])=>`<button type="button" class="qchip${(note||"").includes(tr)?" used":""}" data-qn="${key}" data-txt="${esc(tr)}">${esc(tr)}</button>`).join("")}</div></details>`}
+function appendNote(old,t){old=(old||"").trim();if(old.includes(t))return old;return old?old.replace(/[.\s]*$/,"")+". "+t:t}
 function renderEditor(){
   view="editor";const s=cur;
   app.innerHTML=`
@@ -451,7 +483,8 @@ function renderEditor(){
    <div><div class="f" style="margin-bottom:6px">Olası enerji seçenekleri (isteğe bağlı)</div>
     <div class="hint" style="margin-bottom:6px">Karar müdüre ait; sahada gördüğüne göre mümkün görünenleri işaretleyebilirsin. Hiçbirini seçmezsen raporda bu satır çıkmaz.</div>
     <div class="checks" id="optBox"></div></div>
-   <label class="f" for="m-general">Ek bilgi / not (isteğe bağlı)<textarea id="m-general" data-m="general" placeholder="ör. Yerel kişiye göre yazın kesinti artıyor.">${esc(s.general)}</textarea></label>
+   <label class="f" for="m-general">Ek bilgi / not (isteğe bağlı)<textarea id="m-general" data-m="general" placeholder="Saha ziyaretiyle ilgili genel bilgi">${esc(s.general)}</textarea></label>
+   ${qnHtml("__gen",QN_GEN,true,s.general)}
    <div class="row"><button class="btn" id="copy">Bu sahanın detaylı raporu</button><button class="btn" id="dlh">Fotoğraflı rapor (.html)</button></div>
    <pre class="report" id="report" hidden></pre>
    <div id="delZone" style="margin-top:8px"><button class="btn ghost danger" id="del">Bu keşfi sil</button></div>
@@ -500,8 +533,14 @@ function onClick(e){
     e2.a=e2.a===b.dataset.ans?"":b.dataset.ans;
     item.outerHTML=itemHtml(sec,it);
     const ni=app.querySelector(`.item[data-key="${key}"]`);
-    if(status(it,e2)==="bad"&&!e2.n){ni.querySelector("[data-addnote]")?.click()}
     updateProgress();updateAssess();renderOpts();dirty();return}
+  if(b.dataset.qn){const key=b.dataset.qn,t=b.dataset.txt;
+    if(key==="__gen"){cur.general=appendNote(cur.general,t);app.querySelector("#m-general").value=cur.general}
+    else{const e2=cur.items[key]||(cur.items[key]={});e2.n=appendNote(e2.n,t);
+      let ta=app.querySelector(`.item[data-key="${key}"] textarea[data-note]`);
+      if(!ta){ta=document.createElement("textarea");ta.id="n-"+key.replace(".","-");ta.dataset.note=key;ta.placeholder="Not";app.querySelector(`.item[data-key="${key}"] [data-addnote]`)?.replaceWith(ta)}
+      ta.value=e2.n;updateAssess()}
+    b.classList.add("used");dirty();toast("Not eklendi");return}
   if(b.dataset.addnote){const key=b.dataset.addnote,ta=document.createElement("textarea");ta.id="n-"+key.replace(".","-");ta.dataset.note=key;ta.placeholder="Kısa not (ne gördün?)";b.replaceWith(ta);ta.focus();return}
   if(b.dataset.rmph){const arr=cur.photos[b.dataset.rmph];const [gone]=arr.splice(+b.dataset.i,1);if(gone)idbDel(gone.id);app.querySelector("#ph-"+b.dataset.rmph).innerHTML=photosHtml(b.dataset.rmph);hydrate();dirty()}
 }
@@ -515,7 +554,7 @@ function updateAssess(){
   box.innerHTML=`<div class="hint" style="margin-bottom:4px">Girdiğin bilgilerden otomatik özet (raporda böyle görünür)</div>
    ${lines.length?`<ul>${lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul>`:`<p class="muted" style="margin:0">Sorulara cevap verdikçe burada özet oluşur.</p>`}
    ${pr.length?`<p style="margin:6px 0 0"><b>Dikkat çeken noktalar:</b> ${esc(pr.map(p=>p.t).join("; "))}</p>`:""}
-   ${un.length?`<p style="margin:6px 0 0"><b>Teyit edilecek:</b> ${esc(un.join(", "))}</p>`:""}`;
+   ${un.length?`<p style="margin:6px 0 0"><b>Sahada tespit edilemedi:</b> ${esc(un.join(", "))}</p>`:""}`;
 }
 async function uploadPhotos(secId,files){
   for(const f of files){
@@ -560,9 +599,9 @@ function reportText(s,lang){
   L.push("");energyLines(s,lang).forEach(x=>L.push("• "+x));
   const op=optText(s,lang);if(op)L.push("• "+op);
   const pr=issues(s,lang);if(pr.length){L.push("",en?"Points of attention:":"Dikkat çeken noktalar:");pr.forEach(p=>L.push(`– ${p.t}${p.n?`: ${p.n}`:""}`))}
-  const un=unknowns(s,lang);if(un.length)L.push("",(en?"To be verified: ":"Teyit edilecek: ")+un.join(", "));
-  if(s.general)L.push("",(en?"Note: ":"Not: ")+s.general);
-  const notes=ITEMS.filter(({it,key})=>status(it,E(s,key))!=="bad"&&E(s,key).n).map(({it,key})=>`– ${en?it.se:it.s}: ${E(s,key).n}`);
+  const un=unknowns(s,lang);if(un.length)L.push("",(en?"Not determined on site: ":"Sahada tespit edilemedi: ")+un.join(", "));
+  if(s.general)L.push("",(en?"Note: ":"Not: ")+tNote(s.general,lang));
+  const notes=ITEMS.filter(({it,key})=>!["bad","unk"].includes(status(it,E(s,key)))&&E(s,key).n).map(({it,key})=>`– ${en?it.se:it.s}: ${tNote(E(s,key).n,lang)}`);
   if(notes.length){L.push("",en?"Other notes:":"Diğer notlar:");L.push(...notes)}
   L.push("",`${st.done}/${TOTAL} ${en?"items checked":"madde kontrol edildi"}`);
   return L.join("\n");
@@ -621,8 +660,10 @@ function siteBlock(s,lang){
   energyLines(s,lang).filter(x=>!/^(Saha|Site): /.test(x)).forEach(x=>L.push("• "+x));
   const op=optText(s,lang);if(op)L.push("• "+op);
   const pr=issues(s,lang);if(pr.length)L.push(`• ${en?"Attention":"Dikkat"}: ${pr.map(p=>p.t+(p.n?` (${p.n})`:"")).join("; ")}`);
-  const un=unknowns(s,lang);if(un.length)L.push(`• ${en?"To verify":"Teyit edilecek"}: ${un.join(", ")}`);
-  if(s.general)L.push(`• ${en?"Note":"Not"}: ${s.general}`);
+  const un=unknowns(s,lang);if(un.length)L.push(`• ${en?"Not determined on site":"Sahada tespit edilemedi"}: ${un.join(", ")}`);
+  const on=ITEMS.filter(({it,key})=>!["bad","unk"].includes(status(it,E(s,key)))&&(it.type||"q")!=="p"&&E(s,key).n).map(({it,key})=>`${en?it.se:it.s}: ${tNote(E(s,key).n,lang)}`);
+  if(on.length)L.push(`• ${en?"Observations":"Gözlemler"}: ${on.join("; ")}`);
+  if(s.general)L.push(`• ${en?"Note":"Not"}: ${tNote(s.general,lang)}`);
   return L;
 }
 function dailyText(){
@@ -647,8 +688,9 @@ async function dailyHtml(){
      <ul>${energyLines(s,lang).map(x=>{const i=x.indexOf(": ");return `<li><b>${esc(x.slice(0,i))}:</b> ${esc(x.slice(i+2))}</li>`}).join("")}
      ${optText(s,lang)?(()=>{const t=optText(s,lang),i=t.indexOf(": ");return `<li><b>${esc(t.slice(0,i))}:</b> ${esc(t.slice(i+2))}</li>`})():""}</ul>
      ${pr.length?`<p class="att"><b>${en?"Attention":"Dikkat"}:</b> ${esc(pr.map(p=>p.t+(p.n?` (${p.n})`:"")).join("; "))}</p>`:""}
-     ${un.length?`<p class="unk"><b>${en?"To verify":"Teyit edilecek"}:</b> ${esc(un.join(", "))}</p>`:""}
-     ${s.general?`<p><b>${en?"Note":"Not"}:</b> ${esc(s.general)}</p>`:""}
+     ${un.length?`<p class="unk"><b>${en?"Not determined on site":"Sahada tespit edilemedi"}:</b> ${esc(un.join(", "))}</p>`:""}
+     ${(()=>{const on=ITEMS.filter(({it,key})=>!["bad","unk"].includes(status(it,E(s,key)))&&(it.type||"q")!=="p"&&E(s,key).n).map(({it,key})=>`${en?it.se:it.s}: ${tNote(E(s,key).n,lang)}`);return on.length?`<p><b>${en?"Observations":"Gözlemler"}:</b> ${esc(on.join("; "))}</p>`:""})()}
+     ${s.general?`<p><b>${en?"Note":"Not"}:</b> ${esc(tNote(s.general,lang))}</p>`:""}
      ${c?`<p class="m"><a href="https://maps.google.com/?q=${c[0]},${c[1]}">GPS ${c[0]}, ${c[1]}</a>${s.contact?` · ${esc(s.contact)}`:""}</p>`:""}
      ${ph?`<div class="g">${ph}</div>`:""}</section>`}
   const notes=(daily[dState.date]||"").trim(),left=sites.filter(x=>siteStatus(x).k==="none").map(x=>x.name);
