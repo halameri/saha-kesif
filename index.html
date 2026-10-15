@@ -113,148 +113,225 @@ pre.report{background:var(--sunk);border:1px solid var(--line);border-radius:6px
 .confirm{background:var(--bad-soft);border-radius:8px;padding:10px;display:grid;gap:8px}
 .sheet{position:fixed;inset:auto 0 0 0;z-index:30;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.18);padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .sheet-in{max-width:720px;margin:0 auto;display:grid;gap:10px}
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px}
+.chip{display:grid;gap:1px;text-align:left;border:1px solid var(--line);border-left:5px solid var(--na);background:var(--sunk);border-radius:8px;padding:8px 10px;min-height:44px}
+.chip b{font-family:var(--display);font-size:1.05rem}.chip span{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chip i{font-style:normal;font-size:.72rem;font-weight:600;color:var(--muted)}
+.chip.k-prog{border-left-color:var(--accent)}.chip.k-sartli{border-left-color:var(--accent);background:var(--accent-soft)}.chip.k-uygun{border-left-color:var(--ok);background:var(--ok-soft)}.chip.k-degil{border-left-color:var(--bad);background:var(--bad-soft)}
+.chip.k-uygun i{color:var(--ok)}.chip.k-degil i{color:var(--bad)}
+.langseg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.langseg button{border:0;background:var(--sunk);padding:8px 12px;min-height:38px;font-weight:600;font-size:.9rem}
+.langseg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.checks{display:grid;gap:6px}
+.chk{display:flex;gap:10px;align-items:flex-start;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer}
+.chk input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+.chk span{display:grid;gap:2px;min-width:0}.chk small{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head><body>
-
-<div class="wrap" id="app">
-  <div class="masthead"><div><small>Enerji birimi</small><h1>Saha Keşfi</h1></div></div>
-  <p class="muted">Yükleniyor…</p>
-</div>
+<div class="wrap" id="app"><p class="muted">Yükleniyor…</p></div>
 <div class="toast" id="toast" hidden></div>
 <div class="sheet" id="sheet" hidden><div class="sheet-in"><b id="shName"></b><span class="hint">Açılan menüden “Dosyalara Kaydet”, WhatsApp veya Mail seçebilirsiniz.</span><div class="row"><button class="btn primary" id="shGo">Paylaş / Kaydet</button><button class="btn" id="shX">Kapat</button></div></div></div>
+<div class="sheet" id="upd" hidden><div class="sheet-in"><b>Uygulamanın yeni sürümü hazır</b><div class="row"><button class="btn primary" id="updGo">Yenile</button><button class="btn" id="updX">Sonra</button></div></div></div>
 
 <script>
+/* ---------- checklist definition (tr + en for reports) ---------- */
 const SECTIONS=[
- {id:"sebeke",t:"Şebeke enerjisi",items:[
-  {id:"direk",q:"En yakın elektrik direği",f:[{k:"tip",l:"Tip",type:"sel",o:["AG","OG"]},{k:"mesafe",l:"Mesafe",u:"m"}]},
-  {id:"trafo",q:"Yakında trafo",f:[{k:"guc",l:"Gücü",u:"kVA"},{k:"mesafe",l:"Mesafe",u:"m"}]},
-  {id:"baglanti",q:"Bağlantı tipi belirlendi",f:[{k:"tip",l:"Tip",type:"sel",o:["AG monofaze","AG trifaze","OG + yeni trafo"]}]},
-  {id:"guzergah",q:"Hat güzergâhı uygun (özel arazi / orman / yol geçişi sorunu yok)"},
-  {id:"aradirek",q:"Ara direk ihtiyacı",f:[{k:"adet",l:"Adet"}]},
-  {id:"kesinti",q:"Bölgede kesinti sıklığı makul",hint:"Yerel halka ve yakındaki tesislere sorun"},
-  {id:"sayac",q:"Sayaç ve ana pano yeri belirlendi"},
-  {id:"dagitim",q:"Dağıtım şirketi",f:[{k:"ad",l:"Şirket",type:"text"}]}]},
- {id:"konteyner",t:"Konteyner / kabinet alanı",items:[
-  {id:"olcu",q:"Konteyner alanı ölçüsü",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1},
-  {id:"duz",q:"Zemin düz veya az eğimli"},
-  {id:"zemin",q:"Zemin tipi",f:[{k:"tip",l:"Tip",type:"sel",o:["Kaya","Toprak","Dolgu","Karışık"]}]},
-  {id:"drenaj",q:"Su birikmesi / sel riski yok"},
-  {id:"kapi",q:"Kapı önünde bakım boşluğu var"}]},
- {id:"jenerator",t:"Jeneratör",items:[
-  {id:"alan",q:"Jeneratör + kaide alanı (bakım boşluğu dahil)",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1},
-  {id:"tank",q:"Yakıt tankı için alan var"},
-  {id:"egzoz",q:"Egzoz yönü uygun (konteynere / klimaya / yerleşime bakmıyor)"},
-  {id:"yerlesim",q:"Yerleşim yerine mesafe yeterli",f:[{k:"mesafe",l:"Mesafe",u:"m"}]},
-  {id:"ikmal",q:"Yakıt ikmal aracı yanaşabiliyor (kışın da)"}]},
- {id:"ges",t:"GES uygunluğu",items:[
-  {id:"golge",q:"Gölgeleme yok (dağ, tepe, ağaç, bina)"},
-  {id:"kulegolge",q:"Kulenin gölgesi panel alanına düşmüyor"},
-  {id:"guney",q:"Güney yönü açık"},
-  {id:"alan",q:"Kullanılabilir GES alanı",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1,kwp:1},
-  {id:"zemin",q:"Zemin konstrüksiyona uygun"},
-  {id:"iklim",q:"Kar / rüzgâr / toz yükü kabul edilebilir"},
-  {id:"guvenlik",q:"Paneller duvar içinde, hırsızlık riski düşük"},
-  {id:"cati",q:"Konteyner çatısı alternatif olarak kullanılabilir"}]},
- {id:"duvar",t:"Çevre duvarı / çit",items:[
-  {id:"sinir",q:"Duvar sınırı ölçüsü",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1},
-  {id:"sigiyor",q:"Kule + konteyner + jeneratör + tank (+ GES) içeri sığıyor"},
-  {id:"bosluk",q:"Ekipman ile duvar arası boşluk yeterli"},
-  {id:"kapi",q:"Giriş kapısı vinç / kamyon için yeterli",f:[{k:"genislik",l:"Genişlik",u:"m"}]},
-  {id:"parsel",q:"Parsel sınırı uyumlu, komşu sorunu yok"},
-  {id:"yedek",q:"Gelecek genişleme için yedek alan var"}]},
- {id:"topraklama",t:"Topraklama ve yıldırım",items:[
-  {id:"zemin",q:"Zemin topraklamaya uygun",f:[{k:"tip",l:"Tip",type:"sel",o:["Toprak","Kaya","Kum","Karışık"]}]},
-  {id:"ozdirenc",q:"Toprak özdirenç ölçümü",f:[{k:"deger",l:"Değer",u:"Ω·m"}]},
-  {id:"ag",q:"Topraklama ağı için alan var"},
-  {id:"yildirim",q:"Yıldırım riski düşük (tepe noktası değil)"}]},
- {id:"batarya",t:"Batarya ve iklimlendirme",items:[
-  {id:"yedek",q:"Hedef yedekleme süresi belirlendi",f:[{k:"saat",l:"Süre",u:"saat"}]},
-  {id:"sicaklik",q:"Bölge sıcaklık aralığı",f:[{k:"min",l:"Min",u:"°C"},{k:"max",l:"Maks",u:"°C"}]},
-  {id:"klima",q:"Klima / ısıtıcı ihtiyacı değerlendirildi"},
-  {id:"gunes",q:"Konteyner doğrudan güneşe maruz değil"}]},
- {id:"erisim",t:"Erişim ve çevresel riskler",items:[
-  {id:"yol",q:"Yol durumu",f:[{k:"tip",l:"Yol",type:"sel",o:["Asfalt","Stabilize","Toprak","Yol yok"]}]},
-  {id:"kis",q:"Yol kışın açık kalıyor"},
-  {id:"vinc",q:"Vinç / ağır araç erişimi var"},
-  {id:"risk",q:"Heyelan / çığ / sel riski yok"},
-  {id:"kar",q:"Kar yüksekliği kabul edilebilir",f:[{k:"cm",l:"Yükseklik",u:"cm"}]},
-  {id:"kisi",q:"Görüşülen kişiler (muhtar, arazi sahibi…)",f:[{k:"ad",l:"Kişiler",type:"text"}]}]}
+ {id:"sebeke",t:"Şebeke enerjisi",en:"Grid power",items:[
+  {id:"direk",q:"En yakın elektrik direği",en:"Nearest power pole",f:[{k:"tip",l:"Tip",le:"Type",type:"sel",o:["AG","OG"],oe:["LV","MV"]},{k:"mesafe",l:"Mesafe",le:"Distance",u:"m"}]},
+  {id:"trafo",q:"Yakında trafo",en:"Nearby transformer",f:[{k:"guc",l:"Gücü",le:"Rating",u:"kVA"},{k:"mesafe",l:"Mesafe",le:"Distance",u:"m"}]},
+  {id:"baglanti",q:"Bağlantı tipi belirlendi",en:"Connection type defined",f:[{k:"tip",l:"Tip",le:"Type",type:"sel",o:["AG monofaze","AG trifaze","OG + yeni trafo"],oe:["LV single-phase","LV three-phase","MV + new transformer"]}]},
+  {id:"guzergah",q:"Hat güzergâhı uygun (özel arazi / yol geçişi sorunu yok)",en:"Line route clear (no private land / road crossing issues)"},
+  {id:"aradirek",q:"Ara direk ihtiyacı",en:"Intermediate poles required",f:[{k:"adet",l:"Adet",le:"Qty"}]},
+  {id:"kesinti",q:"Bölgede kesinti sıklığı makul",en:"Grid outage frequency acceptable",hint:"Yerel halka ve yakındaki tesislere sorun"},
+  {id:"sayac",q:"Sayaç ve ana pano yeri belirlendi",en:"Meter and main panel location defined"},
+  {id:"dagitim",q:"Elektrik dağıtım kurumu",en:"Electricity distribution authority",f:[{k:"ad",l:"Kurum",le:"Authority",type:"text"}]}]},
+ {id:"konteyner",t:"Konteyner / kabinet alanı",en:"Container / cabinet area",items:[
+  {id:"olcu",q:"Konteyner alanı ölçüsü",en:"Container area",f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],area:1},
+  {id:"duz",q:"Zemin düz veya az eğimli",en:"Ground level or slight slope"},
+  {id:"zemin",q:"Zemin tipi",en:"Ground type",f:[{k:"tip",l:"Tip",le:"Type",type:"sel",o:["Kaya","Toprak","Kum","Dolgu","Karışık"],oe:["Rock","Soil","Sand","Fill","Mixed"]}]},
+  {id:"drenaj",q:"Su birikmesi / sel riski yok",en:"No water pooling / flood risk"},
+  {id:"kapi",q:"Kapı önünde bakım boşluğu var",en:"Maintenance clearance in front of door"}]},
+ {id:"jenerator",t:"Jeneratör",en:"Generator",items:[
+  {id:"alan",q:"Jeneratör + kaide alanı (bakım boşluğu dahil)",en:"Generator + plinth area (incl. clearance)",f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],area:1},
+  {id:"tank",q:"Yakıt tankı için alan var",en:"Space for fuel tank"},
+  {id:"egzoz",q:"Egzoz yönü uygun (konteynere / klimaya / yerleşime bakmıyor)",en:"Exhaust direction acceptable"},
+  {id:"yerlesim",q:"Yerleşim yerine mesafe yeterli",en:"Sufficient distance to houses",f:[{k:"mesafe",l:"Mesafe",le:"Distance",u:"m"}]},
+  {id:"ikmal",q:"Yakıt ikmal aracı yanaşabiliyor (her mevsim)",en:"Fuel truck access (all seasons)"}]},
+ {id:"ges",t:"GES uygunluğu",en:"Solar (PV) suitability",items:[
+  {id:"golge",q:"Gölgeleme yok (tepe, ağaç, bina)",en:"No shading (hills, trees, buildings)"},
+  {id:"kulegolge",q:"Kulenin gölgesi panel alanına düşmüyor",en:"Tower shadow does not fall on PV area"},
+  {id:"guney",q:"Güney yönü açık",en:"South side open"},
+  {id:"alan",q:"Kullanılabilir GES alanı",en:"Usable PV area",f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],area:1,kwp:1},
+  {id:"zemin",q:"Zemin konstrüksiyona uygun",en:"Ground suitable for PV structure"},
+  {id:"iklim",q:"Toz / rüzgâr yükü kabul edilebilir (panel temizliği)",en:"Dust / wind load acceptable (panel cleaning)"},
+  {id:"guvenlik",q:"Paneller duvar içinde, hırsızlık riski düşük",en:"Panels inside wall, low theft risk"},
+  {id:"cati",q:"Konteyner çatısı alternatif olarak kullanılabilir",en:"Container roof usable as alternative"}]},
+ {id:"duvar",t:"Çevre duvarı / çit",en:"Boundary wall / fence",items:[
+  {id:"sinir",q:"Duvar sınırı ölçüsü",en:"Compound (wall) dimensions",f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],area:1},
+  {id:"sigiyor",q:"Kule + konteyner + jeneratör + tank (+ GES) içeri sığıyor",en:"Tower + container + generator + tank (+ PV) fit inside"},
+  {id:"bosluk",q:"Ekipman ile duvar arası boşluk yeterli",en:"Clearance between equipment and wall"},
+  {id:"kapi",q:"Giriş kapısı vinç / kamyon için yeterli",en:"Gate wide enough for crane / truck",f:[{k:"genislik",l:"Genişlik",le:"Width",u:"m"}]},
+  {id:"parsel",q:"Parsel sınırı uyumlu, komşu sorunu yok",en:"Plot boundary OK, no neighbour issues"},
+  {id:"yedek",q:"Gelecek genişleme için yedek alan var",en:"Spare space for future expansion"}]},
+ {id:"topraklama",t:"Topraklama ve yıldırım",en:"Earthing and lightning",items:[
+  {id:"zemin",q:"Zemin topraklamaya uygun",en:"Ground suitable for earthing",f:[{k:"tip",l:"Tip",le:"Type",type:"sel",o:["Toprak","Kaya","Kum","Karışık"],oe:["Soil","Rock","Sand","Mixed"]}]},
+  {id:"ozdirenc",q:"Toprak özdirenç ölçümü",en:"Soil resistivity measurement",f:[{k:"deger",l:"Değer",le:"Value",u:"Ω·m"}]},
+  {id:"ag",q:"Topraklama ağı için alan var",en:"Space for earthing grid"},
+  {id:"yildirim",q:"Yıldırım riski düşük",en:"Low lightning risk"}]},
+ {id:"batarya",t:"Batarya ve iklimlendirme",en:"Batteries and cooling",items:[
+  {id:"yedek",q:"Hedef yedekleme süresi belirlendi",en:"Target backup time defined",f:[{k:"saat",l:"Süre",le:"Duration",u:"saat",ue:"h"}]},
+  {id:"sicaklik",q:"Bölge sıcaklık aralığı",en:"Site temperature range",f:[{k:"min",l:"Min",le:"Min",u:"°C"},{k:"max",l:"Maks",le:"Max",u:"°C"}]},
+  {id:"klima",q:"Klima ihtiyacı değerlendirildi",en:"Cooling (AC) need assessed"},
+  {id:"gunes",q:"Konteyner doğrudan güneşe maruz değil",en:"Container not in direct sun"}]},
+ {id:"erisim",t:"Erişim ve çevresel riskler",en:"Access and environmental risks",items:[
+  {id:"yol",q:"Yol durumu",en:"Road condition",f:[{k:"tip",l:"Yol",le:"Road",type:"sel",o:["Asfalt","Stabilize","Toprak","Yol yok"],oe:["Asphalt","Gravel","Dirt","No road"]}]},
+  {id:"kis",q:"Yol tüm yıl açık (yağmur / çamur)",en:"Road open all year (rain / mud)"},
+  {id:"vinc",q:"Vinç / ağır araç erişimi var",en:"Crane / heavy vehicle access"},
+  {id:"risk",q:"Sel / kum fırtınası / heyelan riski yok",en:"No flood / sandstorm / landslide risk"},
+  {id:"tuz",q:"Tuzlu hava / korozyon riski değerlendirildi",en:"Salt air / corrosion risk assessed",hint:"Deniz veya tuzla yakınındaki sahalarda önemli"},
+  {id:"kisi",q:"Görüşülen kişiler",en:"People met on site",f:[{k:"ad",l:"Kişiler",le:"People",type:"text"}]}]}
 ];
 const TOTAL=SECTIONS.reduce((a,s)=>a+s.items.length,0);
 const VERDICTS={"":"Değerlendirilmedi",uygun:"Uygun",sartli:"Şartlı uygun",degil:"Uygun değil"};
+const VERDICTS_EN={"":"Not assessed",uygun:"Suitable",sartli:"Conditionally suitable",degil:"Not suitable"};
 const ST={ok:"✓ Uygun",bad:"✕ Sorunlu",na:"– Yok / N/A"};
+const DEFAULT_SITES=[...Array(10)].map((_,i)=>({id:"ila"+i,name:"ILA "+i,gov:i===1?"Basra (AlFaw)":"",gps:"",purpose:"",contact:""}));
 
-let db=null,col=null,assets=null,downloads=null,mode="local";
-let surveys={},openId=null,cur=null,saveT=null,unsub=null;
+let surveys={},sites=[],prefs={},daily={},openId=null,cur=null,saveT=null,view="list";
 const app=document.getElementById("app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
-
-function lsLoad(){try{return JSON.parse(localStorage.getItem("saha-kesif")||"{}")}catch(e){return {}}}
-function lsSave(){try{localStorage.setItem("saha-kesif",JSON.stringify(surveys))}catch(e){}}
+const norm=s=>String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2400)}
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast("Telefon hafızası dolu olabilir")}}
+const lsSave=()=>lsSet("saha-kesif",surveys);
+const saveSites=()=>lsSet("saha-sites",sites);
+const savePrefs=()=>lsSet("saha-prefs",prefs);
+const saveDaily=()=>lsSet("saha-daily",daily);
 
 function stats(s){let ok=0,bad=0,na=0;for(const sec of SECTIONS)for(const it of sec.items){const v=s.items?.[sec.id+"."+it.id]?.s;if(v==="ok")ok++;else if(v==="bad")bad++;else if(v==="na")na++}return{ok,bad,na,done:ok+bad+na}}
 function secStats(s,sec){let ok=0,bad=0,done=0;for(const it of sec.items){const v=s.items?.[sec.id+"."+it.id]?.s;if(v)done++;if(v==="ok")ok++;if(v==="bad")bad++}return{ok,bad,done}}
-function areaOf(e){const a=parseFloat(String(e?.en||"").replace(",",".")),b=parseFloat(String(e?.boy||"").replace(",","."));return a>0&&b>0?a*b:null}
-function fmt(n,d=1){return n.toLocaleString("tr-TR",{maximumFractionDigits:d})}
+const num=x=>parseFloat(String(x||"").replace(",","."));
+function areaOf(e){const a=num(e?.en),b=num(e?.boy);return a>0&&b>0?a*b:null}
+function fmt(n,d=1,lang="tr"){return n.toLocaleString(lang==="en"?"en-GB":"tr-TR",{maximumFractionDigits:d})}
 function parseCoord(c){const m=String(c||"").match(/(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)/);if(!m)return null;const la=parseFloat(m[1].replace(",",".")),lo=parseFloat(m[2].replace(",","."));return Math.abs(la)<=90&&Math.abs(lo)<=180?[la,lo]:null}
 function verdictPill(v){const c={uygun:"p-ok",sartli:"p-mid",degil:"p-bad"}[v]||"p-none";return `<span class="pill ${c}">${VERDICTS[v||""]}</span>`}
+function fmtDate(d,lang){if(!d)return "-";const [y,m,dd]=d.split("-");return lang==="en"?new Date(d+"T12:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):`${dd}.${m}.${y}`}
+const siteOf=s=>sites.find(x=>norm(x.name)===norm(s.name));
+const govOf=s=>s.gov||s.place||siteOf(s)?.gov||"";
+function surveysFor(site){return Object.values(surveys).filter(s=>norm(s.name)===norm(site.name)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))}
+function siteStatus(site){const l=surveysFor(site);if(!l.length)return{k:"none",t:"Gidilmedi",s:null};const s=l[0];if(s.verdict)return{k:s.verdict,t:VERDICTS[s.verdict],s};return{k:"prog",t:"Devam ediyor",s}}
 
 /* ---------- list ---------- */
 function renderList(){
-  openId=null;cur=null;
-  const arr=Object.values(surveys).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
-  const note=(matchMedia("(display-mode: standalone)").matches||navigator.standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. ")+"İnternet gerekmez. Kayıtlar ve fotoğraflar yalnızca bu telefonun tarayıcısında saklanır; tarayıcı verilerini silersen kayıtlar da gider, ara ara yedek al.";
+  view="list";openId=null;cur=null;
+  const arr=Object.values(surveys).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.updatedAt||0)-(a.updatedAt||0));
+  const done=sites.filter(x=>siteStatus(x).k!=="none").length;
+  const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
   app.innerHTML=`
   <div class="masthead"><div><small>Enerji birimi · altyapı projesi</small><h1>Saha Keşfi</h1></div>
    <button class="btn primary" id="new">+ Yeni keşif</button></div>
-  <p class="store-note">${note}</p>
-  <div class="row" style="margin-bottom:14px"><button class="btn" id="bk">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  ${arr.length?`<div class="cards">${arr.map(s=>{const st=stats(s);return `
+  <section class="panel" aria-label="Sahalar">
+   <div class="row" style="justify-content:space-between"><h2 style="font-size:1.2rem">Sahalar <span class="num muted" style="font-size:.95rem;font-weight:500">${done}/${sites.length} keşif yapıldı</span></h2><button class="btn ghost" id="sitesBtn" style="min-height:36px;padding:6px 8px">Düzenle</button></div>
+   <div class="chips">${sites.map(x=>{const st=siteStatus(x);return `<button class="chip k-${st.k}" data-site="${esc(x.id)}"><b>${esc(x.name)}</b><span>${esc(x.gov||"")}</span><i>${st.t}</i></button>`}).join("")||`<span class="muted">Saha listesi boş. Düzenle'den ekleyin.</span>`}</div>
+   <div class="hint">Bir sahaya dokunun: keşfi varsa açılır, yoksa saha bilgileriyle yeni keşif başlar.</div>
+  </section>
+  <div class="row" style="margin-bottom:12px"><button class="btn primary" id="dailyBtn">📝 Günlük rapor</button><button class="btn" id="bk">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
+  <p class="store-note">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar yalnızca bu telefonda saklanır; ara ara yedek alın.</p>
+  ${arr.length?`<h2 style="font-size:1.2rem;margin:4px 0 8px">Keşif kayıtları</h2><div class="cards">${arr.map(s=>{const st=stats(s);return `
    <button class="card" data-id="${esc(s.id)}">
     <h3>${esc(s.name||"Adsız saha")}${s.example?' <span class="pill p-none">Örnek</span>':""}</h3>
-    <div class="meta">${esc([s.code,s.place,s.date].filter(Boolean).join(" · "))}</div>
+    <div class="meta">${esc([govOf(s),fmtDate(s.date)].filter(Boolean).join(" · "))}</div>
     <div class="side">${verdictPill(s.verdict)}<span class="num muted" style="font-size:.85rem">${st.done}/${TOTAL}</span>${st.bad?`<span class="pill p-bad">${st.bad} sorun</span>`:""}</div>
     <div class="bar"><i style="width:${Math.round(st.done/TOTAL*100)}%"></i></div>
    </button>`}).join("")}</div>`
-  :`<div class="empty"><h2 style="font-size:1.4rem">Henüz keşif kaydı yok</h2>
-    <p class="muted" style="margin:0;max-width:40ch">Sahaya gittiğinizde yeni keşif açın; ${TOTAL} kontrol maddesini işaretleyin, ölçüleri girin, fotoğraf ekleyin ve raporu alın.</p>
-    <div class="row" style="justify-content:center"><button class="btn primary" id="new2">+ Yeni keşif</button><button class="btn" id="ex">Örnek keşfi göster</button></div></div>`}`;
-  app.querySelector("#new").onclick=newSurvey;
+  :`<div class="empty"><h2 style="font-size:1.3rem">Henüz keşif kaydı yok</h2>
+    <p class="muted" style="margin:0;max-width:40ch">Sahaya vardığınızda yukarıdan sahayı seçin; ${TOTAL} kontrol maddesini işaretleyin, ölçüleri ve fotoğrafları ekleyin. Gün sonunda Günlük rapor ile müdüre özet gönderin.</p>
+    <button class="btn" id="ex">Örnek keşfi göster</button></div>`}`;
+  app.querySelector("#new").onclick=()=>newSurvey();
+  app.querySelector("#sitesBtn").onclick=renderSites;
+  app.querySelector("#dailyBtn").onclick=()=>renderDaily();
   app.querySelector("#bk").onclick=backup;
   app.querySelector("#rs").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)restore(f)};
-  app.querySelector("#new2")?.addEventListener("click",newSurvey);
   app.querySelector("#ex")?.addEventListener("click",addExample);
   app.querySelectorAll(".card").forEach(b=>b.onclick=()=>openSurvey(b.dataset.id));
+  app.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{const site=sites.find(x=>x.id===b.dataset.site);const l=surveysFor(site);if(l.length)openSurvey(l[0].id);else newSurvey(site)});
 }
-function newSurvey(){const s={id:uid(),name:"",date:today(),items:{},secNotes:{},photos:{},createdAt:Date.now(),updatedAt:Date.now()};surveys[s.id]=s;persist(s,true);openSurvey(s.id)}
+function newSurvey(site){
+  const s={id:uid(),name:site?.name||"",gov:site?.gov||"",coord:site?.gps||"",purpose:site?.purpose||"",contact:site?.contact||"",team:prefs.team||"",date:today(),items:{},secNotes:{},photos:{},createdAt:Date.now(),updatedAt:Date.now()};
+  surveys[s.id]=s;persist(s,true);openSurvey(s.id)}
 function addExample(){
-  const s={id:uid(),example:true,name:"Örnek: Tepe köy baz istasyonu",code:"ORNEK-001",place:"Örnek ilçe",date:today(),team:"Enerji, inşaat, radyo",coord:"39.9050, 41.2650",
+  const s={id:uid(),example:true,name:"Örnek saha",gov:"Örnek il",date:today(),team:"Enerji, inşaat, radyo",coord:"30.0, 48.4",purpose:"Yeni baz istasyonu yeri",
    verdict:"sartli",general:"Şebeke uzak; jeneratör + GES hibrit önerilir. Duvar sınırı GES için genişletilmeli.",
    items:{"sebeke.direk":{s:"bad",v:{tip:"AG",mesafe:"650"},n:"Arada özel tarla var"},"sebeke.trafo":{s:"ok",v:{guc:"100",mesafe:"900"}},"sebeke.guzergah":{s:"bad",n:"İrtifak gerekebilir"},
-    "konteyner.olcu":{s:"ok",v:{en:"4",boy:"6"}},"konteyner.zemin":{s:"ok",v:{tip:"Kaya"}},"jenerator.alan":{s:"ok",v:{en:"3",boy:"4"}},"jenerator.ikmal":{s:"bad",n:"Kışın yol kapanıyor"},
+    "konteyner.olcu":{s:"ok",v:{en:"4",boy:"6"}},"konteyner.zemin":{s:"ok",v:{tip:"Kum"}},"jenerator.alan":{s:"ok",v:{en:"3",boy:"4"}},"jenerator.ikmal":{s:"bad",n:"Yağmurda yol çamur oluyor"},
     "ges.golge":{s:"ok"},"ges.guney":{s:"ok"},"ges.alan":{s:"ok",v:{en:"8",boy:"12"}},"ges.kulegolge":{s:"bad",n:"Öğleden sonra kule gölgesi kuzey-doğu köşeye düşüyor"},
-    "duvar.sinir":{s:"ok",v:{en:"15",boy:"20"}},"erisim.yol":{s:"ok",v:{tip:"Stabilize"}},"erisim.kar":{s:"ok",v:{cm:"80"}}},
+    "duvar.sinir":{s:"ok",v:{en:"15",boy:"20"}},"erisim.yol":{s:"ok",v:{tip:"Stabilize"}},"erisim.tuz":{s:"ok"}},
    secNotes:{},photos:{},createdAt:Date.now(),updatedAt:Date.now()};
   surveys[s.id]=s;persist(s,true);renderList();
+}
+
+/* ---------- sites registry ---------- */
+function renderSites(){
+  view="sites";openId=null;cur=null;
+  app.innerHTML=`
+  <div class="topbar"><button class="btn ghost" id="back" aria-label="Geri">←</button><div class="title"><b>Saha listesi</b><span>${sites.length} saha</span></div></div>
+  <section class="panel">
+   <h2 style="font-size:1.15rem">Tablodan yapıştır</h2>
+   <p class="hint" style="margin:0">Size verilen tablodaki satırları (Excel / Word) kopyalayıp buraya yapıştırın. Sütun sırası: Site name, Governorate, GPS coordinates, Purpose of inspection, Local contact. Baştaki sıra numarası ve başlık satırı atlanır; aynı isimli saha varsa güncellenir.</p>
+   <textarea id="paste" placeholder="ILA 1	Basra (AlFaw)	30.0, 48.4	…"></textarea>
+   <div class="row"><button class="btn primary" id="imp">Sahaları ekle / güncelle</button></div>
+  </section>
+  <div id="siteRows" style="display:grid;gap:10px">${sites.map(siteRow).join("")}</div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="addSite">+ Saha ekle</button></div>`;
+  app.querySelector("#back").onclick=renderList;
+  app.querySelector("#addSite").onclick=()=>{const n=nextIla();sites.push({id:uid(),name:n,gov:"",gps:"",purpose:"",contact:""});saveSites();renderSites();const r=app.querySelector("#siteRows").lastElementChild;r?.scrollIntoView({block:"center"});r?.querySelector("input")?.focus()};
+  app.querySelector("#imp").onclick=()=>{const n=importSites(app.querySelector("#paste").value);toast(n?`${n} saha eklendi / güncellendi`:"Satır bulunamadı; sütunları sekme ile ayrılmış yapıştırın");if(n)renderSites()};
+}
+function nextIla(){let m=-1;for(const s of sites){const x=String(s.name).match(/^ILA\s*(\d+)$/i);if(x)m=Math.max(m,+x[1])}return "ILA "+(m+1)}
+function siteRow(x){const st=siteStatus(x);return `<div class="panel" data-sid="${esc(x.id)}" style="margin:0">
+  <div class="row" style="justify-content:space-between"><span class="pill ${({none:"p-none",prog:"p-mid",uygun:"p-ok",sartli:"p-mid",degil:"p-bad"})[st.k]}">${st.t}</span><button class="btn ghost danger" data-delsite="${esc(x.id)}" style="min-height:36px">Sil</button></div>
+  <div class="grid2">
+   <label class="f" for="sn-${x.id}">Site name<input id="sn-${x.id}" data-sf="name" value="${esc(x.name)}"></label>
+   <label class="f" for="sg-${x.id}">Governorate<input id="sg-${x.id}" data-sf="gov" value="${esc(x.gov)}"></label>
+  </div>
+  <label class="f" for="sp-${x.id}">GPS coordinates<input id="sp-${x.id}" data-sf="gps" class="num" value="${esc(x.gps)}"></label>
+  <label class="f" for="su-${x.id}">Purpose of inspection<input id="su-${x.id}" data-sf="purpose" value="${esc(x.purpose)}"></label>
+  <label class="f" for="sc-${x.id}">Local contact (name, title, mobile)<input id="sc-${x.id}" data-sf="contact" value="${esc(x.contact)}"></label>
+ </div>`}
+function importSites(text){
+  let n=0;
+  for(const raw of String(text).split(/\r?\n/)){
+    if(!raw.trim())continue;
+    let c=raw.includes("\t")?raw.split("\t"):raw.includes(";")?raw.split(";"):raw.split(/\s{2,}/);
+    c=c.map(x=>x.trim());
+    if(/^\d+\.?$/.test(c[0]))c.shift();
+    while(c.length&&!c[0])c.shift();
+    if(!c[0]||/^site\s*name/i.test(c[0]))continue;
+    const [name,gov="",gps="",purpose="",...rest]=c;const contact=rest.filter(Boolean).join(", ");
+    let s=sites.find(x=>norm(x.name)===norm(name));
+    if(!s){s={id:uid(),name,gov:"",gps:"",purpose:"",contact:""};sites.push(s)}
+    if(gov)s.gov=gov;if(gps)s.gps=gps;if(purpose)s.purpose=purpose;if(contact)s.contact=contact;n++;
+  }
+  sites.sort((a,b)=>String(a.name).localeCompare(String(b.name),"tr",{numeric:true}));saveSites();return n;
 }
 
 /* ---------- editor ---------- */
 function fieldHtml(key,f,val){
   const id=`f-${key.replace(".","-")}-${f.k}`;
   if(f.type==="sel")return `<label class="f" for="${id}">${f.l}<select id="${id}" data-k="${key}" data-f="${f.k}"><option value="">Seçin</option>${f.o.map(o=>`<option${val===o?" selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
-  const num=f.type!=="text";
-  return `<label class="f" for="${id}">${f.l}${f.u?` (${f.u})`:""}<input id="${id}" data-k="${key}" data-f="${f.k}" ${num?'inputmode="decimal" class="num"':''} value="${esc(val)}" autocomplete="off"></label>`;
+  const isNum=f.type!=="text";
+  return `<label class="f" for="${id}">${f.l}${f.u?` (${f.u})`:""}<input id="${id}" data-k="${key}" data-f="${f.k}" ${isNum?'inputmode="decimal" class="num"':''} value="${esc(val)}" autocomplete="off"></label>`;
 }
-function calcText(it,v){
+function calcText(it,v,lang="tr"){
   if(!it.area)return "";const a=areaOf(v);if(!a)return "";
-  let t=`= ${fmt(a)} m²`;if(it.kwp)t+=` · yerden montajda yaklaşık ${fmt(a/7)} kWp (≈7 m²/kWp)`;return t;
+  let t=`= ${fmt(a,1,lang)} m²`;if(it.kwp)t+=lang==="en"?` · approx. ${fmt(a/7,1,lang)} kWp ground-mounted`:` · yerden montajda yaklaşık ${fmt(a/7)} kWp (≈7 m²/kWp)`;return t;
 }
 function renderEditor(){
-  const s=cur;const coord=parseCoord(s.coord);
+  view="editor";const s=cur;const coord=parseCoord(s.coord);
+  if(!s.gov&&s.place)s.gov=s.place;
   app.innerHTML=`
   <div class="topbar">
    <button class="btn ghost" id="back" aria-label="Listeye dön">←</button>
@@ -263,31 +340,37 @@ function renderEditor(){
   </div>
   <section class="panel" aria-label="Saha bilgileri">
    <div class="grid2">
-    <label class="f" for="m-name">Saha adı<input id="m-name" data-m="name" value="${esc(s.name)}" placeholder="ör. Tepeköy BS"></label>
-    <label class="f" for="m-code">Saha kodu<input id="m-code" data-m="code" value="${esc(s.code)}"></label>
-    <label class="f" for="m-place">İl / ilçe / köy<input id="m-place" data-m="place" value="${esc(s.place)}"></label>
-    <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
+    <label class="f" for="m-name">Saha adı (Site name)<input id="m-name" data-m="name" list="siteNames" value="${esc(s.name)}" placeholder="ILA 1" autocomplete="off"></label>
+    <label class="f" for="m-gov">Governorate<input id="m-gov" data-m="gov" value="${esc(s.gov)}" placeholder="Basra (AlFaw)"></label>
    </div>
-   <label class="f" for="m-team">Keşif ekibi<input id="m-team" data-m="team" value="${esc(s.team)}" placeholder="Enerji, inşaat, radyo…"></label>
+   <datalist id="siteNames">${sites.map(x=>`<option value="${esc(x.name)}">${esc(x.gov||"")}</option>`).join("")}</datalist>
+   <label class="f" for="m-purpose">Keşif amacı (Purpose of inspection)<input id="m-purpose" data-m="purpose" value="${esc(s.purpose)}"></label>
+   <label class="f" for="m-contact">Yerel irtibat (ad, unvan, telefon)<input id="m-contact" data-m="contact" value="${esc(s.contact)}"></label>
    <div class="grid2">
-    <label class="f" for="m-coord">Koordinat (enlem, boylam)<input id="m-coord" data-m="coord" class="num" inputmode="decimal" value="${esc(s.coord)}" placeholder="39.9050, 41.2650"></label>
+    <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
+    <label class="f" for="m-team">Keşif ekibi<input id="m-team" data-m="team" value="${esc(s.team)}" placeholder="Enerji, inşaat, radyo…"></label>
+   </div>
+   <div class="grid2">
+    <label class="f" for="m-coord">GPS (enlem, boylam)<input id="m-coord" data-m="coord" class="num" inputmode="decimal" value="${esc(s.coord)}" placeholder="30.0, 48.4"></label>
     <label class="f" for="m-alt">Rakım (m)<input id="m-alt" data-m="alt" class="num" inputmode="decimal" value="${esc(s.alt)}"></label>
    </div>
    <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><span class="hint" id="coordHint">${coordHint(coord)}</span></div>
   </section>
   ${SECTIONS.map((sec,i)=>secHtml(sec,i)).join("")}
   <section class="panel" aria-label="Sonuç">
-   <h2 style="font-size:1.5rem;text-transform:uppercase">Sonuç ve rapor</h2>
+   <h2 style="font-size:1.4rem;text-transform:uppercase">Sonuç</h2>
    <label class="f" for="m-verdict">Genel değerlendirme<select id="m-verdict" data-m="verdict">${Object.entries(VERDICTS).map(([k,v])=>`<option value="${k}"${(s.verdict||"")===k?" selected":""}>${v}</option>`).join("")}</select></label>
-   <label class="f" for="m-general">Genel not / öneri<textarea id="m-general" data-m="general">${esc(s.general)}</textarea></label>
+   <label class="f" for="m-general">Öneri / genel not (müdür raporunda görünür)<textarea id="m-general" data-m="general">${esc(s.general)}</textarea></label>
    <div><div class="hint" style="margin-bottom:6px">Sorunlu işaretlenen maddeler</div><ul class="problems" id="problems"></ul></div>
-   <div class="row"><button class="btn primary" id="copy">Raporu kopyala</button><button class="btn" id="dl">Metin rapor (.txt)</button><button class="btn" id="dlh">Fotoğraflı rapor (.html)</button><button class="btn" id="showRep">Raporu göster</button></div>
+   <div class="row"><span class="hint">Rapor dili:</span>${langSeg()}</div>
+   <div class="row"><button class="btn primary" id="copy">Saha raporunu kopyala</button><button class="btn" id="dlh">Fotoğraflı rapor (.html)</button><button class="btn" id="showRep">Raporu göster</button></div>
    <pre class="report" id="report" hidden></pre>
    <div id="delZone"><button class="btn danger" id="del">Bu keşfi sil</button></div>
   </section>`;
   bindEditor();updateProgress();updateProblems();hydrate();
 }
-function coordHint(c){return c?`<a href="https://www.google.com/maps?q=${c[0]},${c[1]}" target="_blank" rel="noopener">Haritada aç</a> · ${fmt(c[0],5)}, ${fmt(c[1],5)}`:"Konumumu al ile GPS'ten alın (internet gerekmez) ya da koordinatı elle yazın."}
+function langSeg(){const l=prefs.lang||"tr";return `<span class="langseg" role="group" aria-label="Rapor dili"><button type="button" data-lang="tr" aria-pressed="${l==="tr"}">Türkçe</button><button type="button" data-lang="en" aria-pressed="${l==="en"}">English</button></span>`}
+function coordHint(c){return c?`<a href="https://www.google.com/maps?q=${c[0]},${c[1]}" target="_blank" rel="noopener">Haritada aç</a> · ${fmt(c[0],5)}, ${fmt(c[1],5)}`:"GPS'ten alın (internet gerekmez) ya da elle yazın."}
 function secHtml(sec,i){
   const s=cur;
   return `<details class="sec" data-sec="${sec.id}" ${i===0?"open":""}>
@@ -304,27 +387,33 @@ function secHtml(sec,i){
    <div class="secfoot">
     <label class="f" for="sn-${sec.id}">Bölüm notu<textarea id="sn-${sec.id}" data-secnote="${sec.id}" placeholder="Bu bölümle ilgili genel gözlem">${esc(s.secNotes?.[sec.id])}</textarea></label>
     <div class="photos" id="ph-${sec.id}">${photosHtml(sec.id)}</div>
-    ${assets?`<label class="btn upload" for="up-${sec.id}">📷 Fotoğraf çek / ekle<input type="file" id="up-${sec.id}" accept="image/*" multiple data-up="${sec.id}"></label>`
-      :`<div class="hint">Fotoğraf yükleme bu görünümde kullanılamıyor; fotoğrafları telefonda çekip bölüm notuna dosya adını yazabilirsiniz.</div>`}
+    <label class="btn upload" for="up-${sec.id}">📷 Fotoğraf çek / ekle<input type="file" id="up-${sec.id}" accept="image/*" multiple data-up="${sec.id}"></label>
    </div></details>`;
 }
 function photosHtml(secId){return (cur.photos?.[secId]||[]).map((p,i)=>`<figure><img data-pid="${esc(p.id)}" src="${urlCache[p.id]||""}" alt="Saha fotoğrafı ${i+1}" loading="lazy"><button type="button" aria-label="Fotoğrafı kaldır" data-rmph="${secId}" data-i="${i}">×</button></figure>`).join("")}
 
 function bindEditor(){
   app.querySelector("#back").onclick=()=>{flush();renderList()};
-  app.querySelector("#copy").onclick=async()=>{const t=reportText();try{await navigator.clipboard.writeText(t);toast("Rapor kopyalandı")}catch(e){const r=app.querySelector("#report");r.textContent=t;r.hidden=false;const sel=getSelection(),rg=document.createRange();rg.selectNodeContents(r);sel.removeAllRanges();sel.addRange(rg);toast("Metni seçtim, kopyalayın")}};
-  app.querySelector("#showRep").onclick=()=>{const r=app.querySelector("#report");r.textContent=reportText();r.hidden=!r.hidden};
-  app.querySelector("#dl").onclick=async()=>{try{const n=(cur.code||cur.name||"saha").replace(/[^\wğüşıöçĞÜŞİÖÇ-]+/g,"_");await downloads.save({filename:`kesif_${n}_${cur.date||today()}.txt`,data:reportText()});toast("Rapor hazır")}catch(e){toast("Dosya kaydedilemedi")}};
+  app.querySelector("#copy").onclick=()=>copyText(reportText(cur,prefs.lang||"tr"),app.querySelector("#report"));
+  app.querySelector("#showRep").onclick=()=>{const r=app.querySelector("#report");r.textContent=reportText(cur,prefs.lang||"tr");r.hidden=!r.hidden};
   app.querySelector("#del").onclick=askDelete;
   app.querySelector("#dlh").onclick=htmlReport;
   app.querySelector("#gps").onclick=getGps;
 }
+async function copyText(t,pre){try{await navigator.clipboard.writeText(t);toast("Kopyalandı · WhatsApp veya maile yapıştırın")}catch(e){pre.textContent=t;pre.hidden=false;const sel=getSelection(),rg=document.createRange();rg.selectNodeContents(pre);sel.removeAllRanges();sel.addRange(rg);toast("Metni seçtim, Kopyala'ya basın")}}
 function askDelete(){const z=app.querySelector("#delZone");z.innerHTML=`<div class="confirm"><b>Bu keşif kalıcı olarak silinsin mi?</b><div class="row"><button class="btn danger" id="delY">Evet, sil</button><button class="btn" id="delN">Vazgeç</button></div></div>`;
   z.querySelector("#delN").onclick=()=>{z.innerHTML=`<button class="btn danger" id="del">Bu keşfi sil</button>`;z.querySelector("#del").onclick=askDelete};
-  z.querySelector("#delY").onclick=async()=>{const id=cur.id;clearTimeout(saveT);saveT=null;for(const arr of Object.values(cur.photos||{}))for(const p of arr)idbDel(p.id);delete surveys[id];openId=null;if(mode==="db"){try{await col.doc(id).delete()}catch(e){}}else lsSave();toast("Keşif silindi");renderList()}}
+  z.querySelector("#delY").onclick=()=>{const id=cur.id;clearTimeout(saveT);saveT=null;for(const arr of Object.values(cur.photos||{}))for(const p of arr)idbDel(p.id);delete surveys[id];openId=null;lsSave();toast("Keşif silindi");renderList()}}
 function onInput(e){
-  if(!cur)return;const el=e.target;
-  if(el.dataset.m){cur[el.dataset.m]=el.value;if(el.dataset.m==="name")app.querySelector("#tName").textContent=el.value||"Adsız saha";if(el.dataset.m==="coord")app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(el.value));dirty();return}
+  const el=e.target;
+  if(view==="sites"&&el.dataset.sf){const row=el.closest("[data-sid]"),x=sites.find(s=>s.id===row.dataset.sid);if(x){x[el.dataset.sf]=el.value;saveSites()}return}
+  if(view==="daily"){dailyInput(e);return}
+  if(!cur)return;
+  if(el.dataset.m){cur[el.dataset.m]=el.value;const m=el.dataset.m;
+    if(m==="name"){app.querySelector("#tName").textContent=el.value||"Adsız saha";const site=siteOf(cur);if(site&&e.type==="change")fillFromSite(site)}
+    if(m==="coord")app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(el.value));
+    if(m==="team"){prefs.team=el.value;savePrefs()}
+    dirty();return}
   if(el.dataset.k){const key=el.dataset.k,e2=cur.items[key]||(cur.items[key]={});e2.v=e2.v||{};e2.v[el.dataset.f]=el.value;
     const [sid,iid]=key.split("."),it=SECTIONS.find(s=>s.id===sid).items.find(i=>i.id===iid);
     if(it.area){app.querySelector("#calc-"+key.replace(".","-")).textContent=calcText(it,e2.v)}dirty();return}
@@ -332,63 +421,195 @@ function onInput(e){
   if(el.dataset.secnote){cur.secNotes=cur.secNotes||{};cur.secNotes[el.dataset.secnote]=el.value;dirty();return}
   if(el.dataset.up&&e.type==="change"){uploadPhotos(el.dataset.up,[...el.files]);el.value=""}
 }
+function fillFromSite(site){
+  const map={gov:"gov",coord:"gps",purpose:"purpose",contact:"contact"};let n=0;
+  for(const [k,sk] of Object.entries(map)){if(!cur[k]&&site[sk]){cur[k]=site[sk];const inp=app.querySelector("#m-"+k);if(inp)inp.value=site[sk];n++}}
+  if(n){app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(cur.coord));toast("Saha bilgileri listeden dolduruldu")}
+}
 function onClick(e){
-  if(!cur)return;const b=e.target.closest("button");if(!b)return;
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.lang){prefs.lang=b.dataset.lang;savePrefs();b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.lang===prefs.lang));
+    if(view==="daily")updateDailyPreview();else{const r=app.querySelector("#report");if(r&&!r.hidden)r.textContent=reportText(cur,prefs.lang)}return}
+  if(view==="sites"&&b.dataset.delsite){if(b.dataset.armed){sites=sites.filter(x=>x.id!==b.dataset.delsite);saveSites();renderSites();toast("Saha listeden silindi (keşif kayıtları duruyor)")}else{b.dataset.armed="1";b.textContent="Silinsin mi? Tekrar dokun";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Sil"}},3000)}return}
+  if(!cur)return;
   if(b.dataset.st){const item=b.closest(".item"),key=item.dataset.key,e2=cur.items[key]||(cur.items[key]={});
     e2.s=e2.s===b.dataset.st?"":b.dataset.st;item.dataset.s=e2.s;
     item.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.st===e2.s));
     if(e2.s==="bad"&&!e2.n){const t=item.querySelector("[data-addnote]");if(t)t.click()}
     updateProgress();updateProblems();dirty();return}
   if(b.dataset.addnote){const key=b.dataset.addnote,ta=document.createElement("textarea");ta.id="n-"+key.replace(".","-");ta.dataset.note=key;ta.placeholder="Not (sorunu kısaca yazın)";b.replaceWith(ta);ta.focus();return}
-  if(b.dataset.rmph){const arr=cur.photos[b.dataset.rmph];const [gone]=arr.splice(+b.dataset.i,1);if(gone)idbDel(gone.id);app.querySelector("#ph-"+b.dataset.rmph).innerHTML=photosHtml(b.dataset.rmph);dirty()}
+  if(b.dataset.rmph){const arr=cur.photos[b.dataset.rmph];const [gone]=arr.splice(+b.dataset.i,1);if(gone)idbDel(gone.id);app.querySelector("#ph-"+b.dataset.rmph).innerHTML=photosHtml(b.dataset.rmph);hydrate();dirty()}
 }
 function updateProgress(){
   const st=stats(cur);app.querySelector("#tProg").textContent=`${st.done}/${TOTAL} madde · ${st.bad} sorun`;
   for(const sec of SECTIONS){const x=secStats(cur,sec);app.querySelector("#c-"+sec.id).innerHTML=`${x.bad?`<span class="p-bad">${x.bad}✕</span>`:""}<span class="${x.done===sec.items.length?"p-ok":"p-none"}">${x.done}/${sec.items.length}</span>`}
 }
+function issues(s,lang){const out=[];for(const sec of SECTIONS)for(const it of sec.items){const e=s.items?.[sec.id+"."+it.id];if(e?.s==="bad")out.push({sec:lang==="en"?sec.en:sec.t,q:lang==="en"?it.en:it.q,n:e.n||""})}return out}
 function updateProblems(){
-  const ul=app.querySelector("#problems");const list=[];
-  for(const sec of SECTIONS)for(const it of sec.items){const e=cur.items[sec.id+"."+it.id];if(e?.s==="bad")list.push(`<li><b>${esc(sec.t)}</b>${esc(it.q)}${e.n?` — ${esc(e.n)}`:""}</li>`)}
-  ul.innerHTML=list.join("")||`<li style="background:var(--ok-soft)">Sorunlu madde yok.</li>`;
+  const ul=app.querySelector("#problems");
+  ul.innerHTML=issues(cur,"tr").map(p=>`<li><b>${esc(p.sec)}</b>${esc(p.q)}${p.n?` — ${esc(p.n)}`:""}</li>`).join("")||`<li style="background:var(--ok-soft)">Sorunlu madde yok.</li>`;
 }
 async function uploadPhotos(secId,files){
   for(const f of files){
-    try{toast("Fotoğraf kaydediliyor…");const blob=await shrink(f);const r=await assets.upload(blob);
-      (cur.photos[secId]=cur.photos[secId]||[]).push({id:r.id});app.querySelector("#ph-"+secId).innerHTML=photosHtml(secId);dirty();hydrate();toast("Fotoğraf eklendi")}
+    try{toast("Fotoğraf kaydediliyor…");const blob=await shrink(f);const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);
+      (cur.photos[secId]=cur.photos[secId]||[]).push({id});app.querySelector("#ph-"+secId).innerHTML=photosHtml(secId);hydrate();dirty();toast("Fotoğraf eklendi")}
     catch(e){toast("Fotoğraf kaydedilemedi (telefon hafızası dolu olabilir)")}
   }
 }
-function shrink(file){return new Promise(res=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=1600,k=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>res(b||file),"image/jpeg",.82)};img.onerror=()=>res(file);img.src=u})}
+function shrink(file){return new Promise(res=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=1600,k=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>res(b||file),"image/jpeg",.8)};img.onerror=()=>res(file);img.src=u})}
 
-function reportText(){
-  const s=cur,st=stats(s),L=[];
-  L.push("SAHA KEŞİF RAPORU — ENERJİ BİRİMİ","=".repeat(38));
-  L.push(`Saha     : ${s.name||"-"}${s.code?` (${s.code})`:""}`,`Konum    : ${s.place||"-"}`,`Tarih    : ${s.date||"-"}`,`Ekip     : ${s.team||"-"}`);
-  const c=parseCoord(s.coord);L.push(`Koordinat: ${c?`${c[0]}, ${c[1]}  https://www.google.com/maps?q=${c[0]},${c[1]}`:"-"}${s.alt?`  Rakım: ${s.alt} m`:""}`);
-  L.push(`Durum    : ${st.done}/${TOTAL} madde kontrol edildi, ${st.bad} sorunlu`,`Sonuç    : ${VERDICTS[s.verdict||""]}`);
-  if(s.general)L.push("","Genel not: "+s.general);
-  SECTIONS.forEach((sec,i)=>{L.push("",`${i+1}. ${sec.t.toLocaleUpperCase("tr")}`,"-".repeat(30));
-    for(const it of sec.items){const e=s.items[sec.id+"."+it.id]||{};const mark={ok:"[✓]",bad:"[✕]",na:"[–]"}[e.s]||"[ ]";
-      const vals=(it.f||[]).map(f=>e.v?.[f.k]?`${f.l}: ${e.v[f.k]}${f.u?" "+f.u:""}`:"").filter(Boolean);
-      if(it.area){const a=areaOf(e.v);if(a)vals.push(`Alan: ${fmt(a)} m²${it.kwp?` (≈${fmt(a/7)} kWp)`:""}`)}
-      L.push(`${mark} ${it.q}${vals.length?" — "+vals.join(", "):""}${e.n?`\n     Not: ${e.n}`:""}`)}
-    if(s.secNotes?.[sec.id])L.push("  Bölüm notu: "+s.secNotes[sec.id]);
-    const ph=s.photos?.[sec.id]?.length;if(ph)L.push(`  Fotoğraf: ${ph} adet`)});
-  const probs=[];for(const sec of SECTIONS)for(const it of sec.items){const e=s.items[sec.id+"."+it.id];if(e?.s==="bad")probs.push(`- [${sec.t}] ${it.q}${e.n?": "+e.n:""}`)}
-  L.push("","SORUNLU MADDELER","-".repeat(30),...(probs.length?probs:["Yok"]));
+/* ---------- report text ---------- */
+const V=(s,key,k)=>String(s.items?.[key]?.v?.[k]||"").trim();
+const S=(s,key)=>s.items?.[key]?.s||"";
+function optLabel(key,k,val,lang){if(lang!=="en"||!val)return val;const [a,b]=key.split(".");const f=SECTIONS.find(x=>x.id===a).items.find(x=>x.id===b).f.find(x=>x.k===k);if(!f.oe)return val;const i=f.o.indexOf(val);return i>=0?f.oe[i]:val}
+function energyLines(s,lang){
+  const en=lang==="en",out=[],F=n=>fmt(n,1,lang);
+  const g=[];const dT=optLabel("sebeke.direk","tip",V(s,"sebeke.direk","tip"),lang),dM=V(s,"sebeke.direk","mesafe");
+  if(S(s,"sebeke.direk")==="na")g.push(en?"no power pole nearby":"yakında direk yok");
+  else if(dT||dM)g.push(en?`${dT?dT+" ":""}pole${dM?` at ${dM} m`:""}`:`${dT?dT+" ":""}direk${dM?` ${dM} m`:""}`);
+  const tG=V(s,"sebeke.trafo","guc"),tM=V(s,"sebeke.trafo","mesafe");
+  if(S(s,"sebeke.trafo")==="na")g.push(en?"no transformer nearby":"yakında trafo yok");
+  else if(tG||tM)g.push(en?`transformer${tG?` ${tG} kVA`:""}${tM?` at ${tM} m`:""}`:`trafo${tG?` ${tG} kVA`:""}${tM?` ${tM} m`:""}`);
+  const bT=optLabel("sebeke.baglanti","tip",V(s,"sebeke.baglanti","tip"),lang);if(bT)g.push(en?`connection: ${bT}`:`bağlantı: ${bT}`);
+  if(g.length)out.push((en?"Grid: ":"Şebeke: ")+g.join(" · "));
+  const j=[];const jA=areaOf(s.items?.["jenerator.alan"]?.v);if(jA)j.push(`${F(jA)} m²`);
+  if(S(s,"jenerator.alan")==="bad")j.push(en?"insufficient space":"alan yetersiz");else if(S(s,"jenerator.alan")==="ok"&&!jA)j.push(en?"space available":"alan var");
+  if(S(s,"jenerator.ikmal")==="bad")j.push(en?"fuel access issue":"yakıt ikmal sorunu");
+  if(j.length)out.push((en?"Generator: ":"Jeneratör: ")+j.join(" · "));
+  const p=[];const pA=areaOf(s.items?.["ges.alan"]?.v);if(pA)p.push(`${F(pA)} m² (~${F(pA/7)} kWp)`);
+  if(S(s,"ges.golge")==="bad"||S(s,"ges.kulegolge")==="bad")p.push(en?"shading issue":"gölge sorunu");
+  else if(S(s,"ges.golge")==="ok")p.push(en?"no shading":"gölge yok");
+  if(S(s,"ges.alan")==="bad")p.push(en?"area not sufficient":"alan yetersiz");
+  if(p.length)out.push((en?"Solar: ":"GES: ")+p.join(" · "));
+  const w=[];const wA=areaOf(s.items?.["duvar.sinir"]?.v);if(wA)w.push(`${F(wA)} m²`);
+  if(S(s,"duvar.sigiyor")==="bad")w.push(en?"equipment does not fit":"ekipman sığmıyor");else if(S(s,"duvar.sigiyor")==="ok")w.push(en?"all equipment fits":"ekipman sığıyor");
+  if(w.length)out.push((en?"Compound: ":"Duvar içi: ")+w.join(" · "));
+  return out;
+}
+function siteHeader(s,lang){const g=govOf(s);return `${s.name||(lang==="en"?"Unnamed site":"Adsız saha")}${g?` – ${g}`:""}`}
+function reportText(s,lang){
+  const en=lang==="en",st=stats(s),L=[];const VD=en?VERDICTS_EN:VERDICTS;
+  L.push(en?"SITE SURVEY REPORT – ENERGY":"SAHA KEŞİF RAPORU – ENERJİ","=".repeat(34));
+  const row=(a,b)=>L.push(`${a.padEnd(12)}: ${b||"-"}`);
+  row(en?"Site":"Saha",s.name);row("Governorate",govOf(s));row(en?"Date":"Tarih",fmtDate(s.date,lang));
+  row(en?"Purpose":"Amaç",s.purpose);row(en?"Contact":"İrtibat",s.contact);row(en?"Team":"Ekip",s.team);
+  const c=parseCoord(s.coord);row("GPS",c?`${c[0]}, ${c[1]}  https://maps.google.com/?q=${c[0]},${c[1]}`:"");
+  row(en?"Result":"Sonuç",`${VD[s.verdict||""].toLocaleUpperCase(en?"en":"tr")} (${st.done}/${TOTAL} ${en?"checks":"madde"}, ${st.bad} ${en?"issues":"sorun"})`);
+  const el=energyLines(s,lang);if(el.length){L.push("");el.forEach(x=>L.push("• "+x))}
+  if(s.general)L.push("",(en?"Recommendation: ":"Öneri: ")+s.general);
+  SECTIONS.forEach((sec,i)=>{L.push("",`${i+1}. ${(en?sec.en:sec.t).toLocaleUpperCase(en?"en":"tr")}`,"-".repeat(28));
+    for(const it of sec.items){const e=s.items?.[sec.id+"."+it.id]||{};const mark={ok:"[✓]",bad:"[✕]",na:"[–]"}[e.s]||"[ ]";
+      const vals=(it.f||[]).map(f=>{const raw=e.v?.[f.k];if(!raw)return "";const val=f.type==="sel"?optLabel(sec.id+"."+it.id,f.k,raw,lang):raw;return `${en?f.le:f.l}: ${val}${f.u?" "+(en&&f.ue?f.ue:f.u):""}`}).filter(Boolean);
+      if(it.area){const a=areaOf(e.v);if(a)vals.push(`${en?"Area":"Alan"}: ${fmt(a,1,lang)} m²${it.kwp?` (≈${fmt(a/7,1,lang)} kWp)`:""}`)}
+      L.push(`${mark} ${en?it.en:it.q}${vals.length?" — "+vals.join(", "):""}${e.n?`\n     ${en?"Note":"Not"}: ${e.n}`:""}`)}
+    if(s.secNotes?.[sec.id])L.push("  "+(en?"Section note: ":"Bölüm notu: ")+s.secNotes[sec.id]);
+    const ph=s.photos?.[sec.id]?.length;if(ph)L.push(`  ${en?"Photos":"Fotoğraf"}: ${ph}`)});
+  const pr=issues(s,lang);L.push("",en?"ISSUES":"SORUNLU MADDELER","-".repeat(28),...(pr.length?pr.map(p=>`• [${p.sec}] ${p.q}${p.n?": "+p.n:""}`):[en?"None":"Yok"]));
   return L.join("\n");
 }
 
-/* ---------- persistence ---------- */
-function dirty(){cur.updatedAt=Date.now();const sv=app.querySelector("#saved");if(sv)sv.textContent="Kaydediliyor…";clearTimeout(saveT);saveT=setTimeout(()=>persist(cur),700)}
-function flush(){if(saveT){clearTimeout(saveT);saveT=null;persist(cur)}}
-async function persist(s,quiet){
-  saveT=null;surveys[s.id]=s;
-  if(mode==="db"){try{await col.doc(s.id).set(JSON.parse(JSON.stringify(s)));mark("Kaydedildi")}catch(e){mark("Kaydedilemedi");if(!quiet)toast("Kaydedilemedi, bağlantıyı kontrol edin")}}
-  else{lsSave();mark("Telefona kaydedildi")}
+/* ---------- daily report ---------- */
+let dState={date:null,sel:{},photos:false};
+function renderDaily(date){
+  view="daily";openId=null;cur=null;flush();
+  const dates=[...new Set(Object.values(surveys).map(s=>s.date).filter(Boolean))].sort().reverse();
+  dState.date=date||dState.date||(dates.includes(today())?today():dates[0]||today());
+  const list=Object.values(surveys).filter(s=>s.date===dState.date).sort((a,b)=>String(a.name).localeCompare(String(b.name),"tr",{numeric:true}));
+  list.forEach(s=>{if(!(s.id in dState.sel))dState.sel[s.id]=true});
+  app.innerHTML=`
+  <div class="topbar"><button class="btn ghost" id="back" aria-label="Geri">←</button><div class="title"><b>Günlük rapor</b><span>Müdüre gönderilecek özet</span></div></div>
+  <section class="panel">
+   <div class="grid2">
+    <label class="f" for="d-date">Tarih<input id="d-date" type="date" value="${esc(dState.date)}"></label>
+    <label class="f" for="d-author">Hazırlayan<input id="d-author" value="${esc(prefs.author)}" placeholder="Ad Soyad, Enerji birimi"></label>
+   </div>
+   ${dates.length?`<div class="row">${dates.slice(0,6).map(d=>`<button type="button" class="btn ghost" data-day="${d}" style="min-height:34px;padding:4px 10px;${d===dState.date?"background:var(--accent-soft)":""}">${fmtDate(d)}</button>`).join("")}</div>`:""}
+   <div class="row"><span class="hint">Rapor dili:</span>${langSeg()}</div>
+   <div><div class="hint" style="margin-bottom:6px">Bu tarihteki keşifler</div>
+    ${list.length?`<div class="checks">${list.map(s=>{const st=stats(s);return `<label class="chk" for="ds-${s.id}"><input type="checkbox" id="ds-${s.id}" data-dsel="${s.id}" ${dState.sel[s.id]?"checked":""}><span><b>${esc(siteHeader(s,"tr"))}</b><small>${VERDICTS[s.verdict||""]} · ${st.done}/${TOTAL} · ${st.bad} sorun</small></span></label>`}).join("")}</div>`
+     :`<p class="muted" style="margin:0">Bu tarihte keşif kaydı yok. Keşiflerin tarih alanını kontrol edin.</p>`}
+   </div>
+   <label class="f" for="d-notes">Genel durum / yarınki plan / ihtiyaçlar<textarea id="d-notes" placeholder="ör. Yarın ILA 2 ve ILA 3'e gidilecek. ILA 1 için dağıtım kurumundan direk bilgisi istendi.">${esc(daily[dState.date]||"")}</textarea></label>
+   <label class="chk" for="d-ph"><input type="checkbox" id="d-ph" ${dState.photos?"checked":""}><span><b>Dosyaya fotoğrafları ekle</b><small>Dosya büyür; WhatsApp ve mail için genelde sorun olmaz</small></span></label>
+  </section>
+  <section class="panel">
+   <div class="row" style="justify-content:space-between"><h2 style="font-size:1.15rem">Önizleme</h2></div>
+   <pre class="report" id="dPrev" style="max-height:none"></pre>
+   <div class="row"><button class="btn primary" id="dCopy">Metni kopyala</button><button class="btn" id="dFile">Rapor dosyası paylaş (.html)</button></div>
+  </section>`;
+  app.querySelector("#back").onclick=renderList;
+  app.querySelector("#dCopy").onclick=()=>copyText(dailyText(),app.querySelector("#dPrev"));
+  app.querySelector("#dFile").onclick=dailyHtml;
+  app.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>renderDaily(b.dataset.day));
+  updateDailyPreview();
 }
-function mark(t){const sv=app.querySelector("#saved");if(sv&&openId)sv.textContent=t}
-function openSurvey(id){openId=id;cur=surveys[id];cur.items=cur.items||{};cur.photos=cur.photos||{};cur.secNotes=cur.secNotes||{};renderEditor();scrollTo(0,0)}
+function dailyInput(e){
+  const el=e.target;
+  if(el.id==="d-date"&&e.type==="change"&&el.value){renderDaily(el.value);return}
+  if(el.id==="d-author"){prefs.author=el.value;savePrefs()}
+  if(el.id==="d-notes"){daily[dState.date]=el.value;saveDaily()}
+  if(el.dataset.dsel)dState.sel[el.dataset.dsel]=el.checked;
+  if(el.id==="d-ph")dState.photos=el.checked;
+  updateDailyPreview();
+}
+function dailySel(){return Object.values(surveys).filter(s=>s.date===dState.date&&dState.sel[s.id]).sort((a,b)=>String(a.name).localeCompare(String(b.name),"tr",{numeric:true}))}
+function overall(){const done=sites.filter(x=>siteStatus(x).k!=="none").length;return{done,total:sites.length}}
+function dailyText(){
+  const lang=prefs.lang||"tr",en=lang==="en",VD=en?VERDICTS_EN:VERDICTS,list=dailySel(),o=overall(),L=[];
+  L.push(en?"DAILY SITE SURVEY REPORT – ENERGY":"GÜNLÜK SAHA KEŞİF RAPORU – ENERJİ");
+  L.push(`${en?"Date":"Tarih"}: ${fmtDate(dState.date,lang)}${prefs.author?`\n${en?"Prepared by":"Hazırlayan"}: ${prefs.author}`:""}`);
+  L.push("",en?`Today: ${list.length} ${list.length===1?"site":"sites"} surveyed. Overall: ${o.done} of ${o.total} sites surveyed.`:`Bugün: ${list.length} saha keşfi yapıldı. Toplam: ${o.total} sahanın ${o.done} tanesinde keşif yapıldı.`);
+  const cnt={uygun:0,sartli:0,degil:0,"":0};list.forEach(s=>cnt[s.verdict||""]++);
+  const parts=["uygun","sartli","degil",""].filter(k=>cnt[k]).map(k=>`${VD[k]}: ${cnt[k]}`);if(parts.length)L.push(parts.join(" · "));
+  list.forEach((s,i)=>{const st=stats(s);
+    L.push("",`${i+1}) ${siteHeader(s,lang)}`);
+    L.push(`   ${en?"Result":"Sonuç"}: ${VD[s.verdict||""].toLocaleUpperCase(en?"en":"tr")} (${st.done}/${TOTAL} ${en?"checks":"madde"}, ${st.bad} ${en?(st.bad===1?"issue":"issues"):"sorun"})`);
+    if(s.purpose)L.push(`   ${en?"Purpose":"Amaç"}: ${s.purpose}`);
+    energyLines(s,lang).forEach(x=>L.push("   "+x));
+    const pr=issues(s,lang);if(pr.length){L.push(`   ${en?"Issues":"Sorunlar"}:`);pr.forEach(p=>L.push(`    – ${p.q}${p.n?": "+p.n:""}`))}
+    if(s.general)L.push(`   ${en?"Recommendation":"Öneri"}: ${s.general}`);
+  });
+  if(!list.length)L.push("",en?"No site surveyed on this date.":"Bu tarihte keşif yapılmadı.");
+  const notes=(daily[dState.date]||"").trim();if(notes)L.push("",en?"NOTES / NEXT STEPS":"GENEL DURUM / SONRAKİ ADIMLAR",notes);
+  const left=sites.filter(x=>siteStatus(x).k==="none").map(x=>x.name);if(left.length)L.push("",(en?"Remaining sites: ":"Kalan sahalar: ")+left.join(", "));
+  return L.join("\n");
+}
+function updateDailyPreview(){const p=app.querySelector("#dPrev");if(p)p.textContent=dailyText()}
+async function dailyHtml(){
+  const lang=prefs.lang||"tr",en=lang==="en",VD=en?VERDICTS_EN:VERDICTS,list=dailySel(),o=overall();toast("Rapor hazırlanıyor…");
+  const cls={uygun:"ok",sartli:"mid",degil:"bad","":"none"};
+  let cards="";
+  for(const s of list){const st=stats(s),pr=issues(s,lang);let ph="";
+    if(dState.photos){for(const sec of SECTIONS)for(const p of s.photos?.[sec.id]||[]){try{const b=await idbGet(p.id);if(b)ph+=`<figure><img src="${await blobToData(b)}"><figcaption>${esc(en?sec.en:sec.t)}</figcaption></figure>`}catch(e){}}}
+    const c=parseCoord(s.coord);
+    cards+=`<section class="site"><div class="h"><h2>${esc(siteHeader(s,lang))}</h2><span class="v ${cls[s.verdict||""]}">${esc(VD[s.verdict||""])}</span></div>
+     <p class="m">${st.done}/${TOTAL} ${en?"checks":"madde"} · ${st.bad} ${en?"issues":"sorun"}${c?` · <a href="https://maps.google.com/?q=${c[0]},${c[1]}">GPS ${c[0]}, ${c[1]}</a>`:""}${s.purpose?`<br>${en?"Purpose":"Amaç"}: ${esc(s.purpose)}`:""}${s.contact?`<br>${en?"Contact":"İrtibat"}: ${esc(s.contact)}`:""}</p>
+     ${energyLines(s,lang).map(x=>{const i=x.indexOf(": ");return `<p class="e"><b>${esc(x.slice(0,i))}</b> ${esc(x.slice(i+2))}</p>`}).join("")}
+     ${pr.length?`<h3>${en?"Issues":"Sorunlar"}</h3><ul>${pr.map(p=>`<li><b>${esc(p.q)}</b>${p.n?` – ${esc(p.n)}`:""}</li>`).join("")}</ul>`:""}
+     ${s.general?`<p class="rec"><b>${en?"Recommendation":"Öneri"}:</b> ${esc(s.general)}</p>`:""}
+     ${ph?`<div class="g">${ph}</div>`:""}</section>`}
+  const rows=list.map(s=>{const st=stats(s);return `<tr><td><b>${esc(s.name)}</b></td><td>${esc(govOf(s))}</td><td><span class="v ${cls[s.verdict||""]}">${esc(VD[s.verdict||""])}</span></td><td class="n">${st.done}/${TOTAL}</td><td class="n">${st.bad}</td></tr>`}).join("");
+  const notes=(daily[dState.date]||"").trim(),left=sites.filter(x=>siteStatus(x).k==="none").map(x=>x.name);
+  const title=`${en?"Daily site survey report":"Günlük saha keşif raporu"} – ${fmtDate(dState.date,lang)}`;
+  const html=`<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
+body{font-family:-apple-system,system-ui,"Segoe UI",Arial,sans-serif;max-width:860px;margin:0 auto;padding:20px 16px 48px;color:#13202a;line-height:1.45;background:#fff}
+header{border-bottom:3px solid #13202a;padding-bottom:10px;margin-bottom:16px}header small{letter-spacing:.12em;text-transform:uppercase;color:#566673;font-size:12px}
+h1{margin:4px 0;font-size:24px}.kpi{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.kpi div{background:#f3f5f7;border-radius:8px;padding:10px 14px;min-width:120px}.kpi b{display:block;font-size:24px}.kpi span{font-size:12px;color:#566673}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:8px;border-bottom:1px solid #cfd7dd}th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#566673}.n{text-align:right;font-variant-numeric:tabular-nums}
+.v{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap}.ok{background:#dff1e6;color:#1d7f47}.mid{background:#fbf0d6;color:#7a5200}.bad{background:#f8e1dc;color:#b93a24}.none{background:#e6eaed;color:#566673}
+.site{border:1px solid #cfd7dd;border-radius:10px;padding:14px;margin:14px 0}.site .h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.site h2{margin:0;font-size:19px}.m{color:#566673;font-size:14px;margin:6px 0 10px}.e{margin:4px 0}.site h3{font-size:14px;margin:12px 0 4px;color:#b93a24;text-transform:uppercase;letter-spacing:.06em}ul{margin:0;padding-left:20px}.rec{background:#fbf0d6;padding:8px 10px;border-radius:6px}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:10px}.g img{width:100%;border-radius:6px;display:block}figure{margin:0}figcaption{font-size:12px;color:#566673}
+.notes{white-space:pre-wrap;background:#f3f5f7;border-radius:8px;padding:12px}
+</style></head><body>
+<header><small>${en?"Energy unit · infrastructure project":"Enerji birimi · altyapı projesi"}</small><h1>${esc(title)}</h1>${prefs.author?`<div>${en?"Prepared by":"Hazırlayan"}: ${esc(prefs.author)}</div>`:""}</header>
+<div class="kpi"><div><b>${list.length}</b><span>${en?"sites today":"bugün keşif"}</span></div><div><b>${o.done}/${o.total}</b><span>${en?"sites surveyed overall":"toplam ilerleme"}</span></div><div><b>${list.reduce((a,s)=>a+stats(s).bad,0)}</b><span>${en?"open issues today":"bugünkü sorun"}</span></div></div>
+${list.length?`<div class="tw"><table><thead><tr><th>${en?"Site":"Saha"}</th><th>Governorate</th><th>${en?"Result":"Sonuç"}</th><th class="n">${en?"Checks":"Madde"}</th><th class="n">${en?"Issues":"Sorun"}</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<p>${en?"No site surveyed on this date.":"Bu tarihte keşif yapılmadı."}</p>`}
+${cards}
+${notes?`<h2 style="font-size:18px">${en?"Notes / next steps":"Genel durum / sonraki adımlar"}</h2><div class="notes">${esc(notes)}</div>`:""}
+${left.length?`<p><b>${en?"Remaining sites":"Kalan sahalar"}:</b> ${esc(left.join(", "))}</p>`:""}
+</body></html>`;
+  try{await saveFile({filename:`${en?"daily-report":"gunluk-rapor"}_${dState.date}.html`,data:html,type:"text/html"})}catch(e){toast("Dosya hazırlanamadı")}
+}
 
 /* ---------- local device storage ---------- */
 let idbP=null;const urlCache={};
@@ -398,9 +619,8 @@ const idbPut=(id,b)=>idbTx("readwrite",st=>st.put(b,id));
 const idbGet=id=>idbTx("readonly",st=>st.get(id));
 const idbDel=id=>{delete urlCache[id];return idbTx("readwrite",st=>st.delete(id)).catch(()=>{})};
 async function hydrate(){for(const img of app.querySelectorAll("img[data-pid]")){const id=img.dataset.pid;if(!urlCache[id]){try{const b=await idbGet(id);if(b)urlCache[id]=URL.createObjectURL(b)}catch(e){}}if(urlCache[id]&&img.getAttribute("src")!==urlCache[id])img.src=urlCache[id]}}
-const localAssets={upload:async blob=>{const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);return{id}}};
 function anchorSave(b,filename){const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
-const localDownloads={save:async({filename,data,type})=>{
+async function saveFile({filename,data,type}){
   const mime=type||"text/plain",b=data instanceof Blob?data:new Blob([data],{type:mime+";charset=utf-8"});
   let file=null;try{file=new File([b],filename,{type:mime})}catch(e){}
   if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
@@ -408,50 +628,64 @@ const localDownloads={save:async({filename,data,type})=>{
     document.getElementById("shX").onclick=()=>sh.hidden=true;
     document.getElementById("shGo").onclick=()=>{navigator.share({files:[file],title:filename}).then(()=>{sh.hidden=true}).catch(e=>{if(e&&e.name!=="AbortError")anchorSave(b,filename)})};
     return}
-  anchorSave(b,filename)}};
+  anchorSave(b,filename);toast("Dosya hazır")}
 const blobToData=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r("");f.readAsDataURL(b)});
-const fname=s=>(s.code||s.name||"saha").replace(/[^\wğüşıöçĞÜŞİÖÇ-]+/g,"_");
+const fname=s=>(s.name||"saha").replace(/[^\wğüşıöçĞÜŞİÖÇ-]+/g,"_");
 
 function getGps(){
   if(!navigator.geolocation){toast("Bu tarayıcı konum vermiyor; koordinatı elle yazın");return}
   toast("Konum alınıyor… açık havada daha hızlı");
   navigator.geolocation.getCurrentPosition(p=>{
-    const c=p.coords;cur.coord=`${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)}`;
+    if(!cur)return;const c=p.coords;cur.coord=`${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)}`;
     app.querySelector("#m-coord").value=cur.coord;
     if(c.altitude!=null){cur.alt=String(Math.round(c.altitude));app.querySelector("#m-alt").value=cur.alt}
     app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(cur.coord))+` · ±${Math.round(c.accuracy)} m`;dirty();toast("Konum alındı")
-  },e=>toast(e.code===1?"Konum izni verilmedi; tarayıcı ayarlarından izin verin":"Konum alınamadı, tekrar deneyin"),{enableHighAccuracy:true,timeout:30000,maximumAge:0});
+  },e=>toast(e.code===1?"Konum izni verilmedi: Ayarlar › Gizlilik › Konum Servisleri › Safari Web Siteleri":"Konum alınamadı, tekrar deneyin"),{enableHighAccuracy:true,timeout:30000,maximumAge:0});
 }
 async function htmlReport(){
-  flush();const s=cur;toast("Rapor hazırlanıyor…");
+  flush();const s=cur,lang=prefs.lang||"tr",en=lang==="en";toast("Rapor hazırlanıyor…");
   let ph="";for(const sec of SECTIONS){const arr=s.photos?.[sec.id]||[];if(!arr.length)continue;let imgs="";
     for(const p of arr){try{const b=await idbGet(p.id);if(b)imgs+=`<img src="${await blobToData(b)}">`}catch(e){}}
-    ph+=`<h3>${esc(sec.t)}</h3><div class="g">${imgs}</div>`}
-  const html=`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Keşif raporu - ${esc(s.name||"saha")}</title><style>body{font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:16px;color:#13202a}pre{white-space:pre-wrap;font-size:13px;background:#f3f5f7;padding:12px;border-radius:6px}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}.g img{width:100%;border-radius:6px}h3{margin-top:24px}</style></head><body><pre>${esc(reportText())}</pre>${ph?`<h2>Fotoğraflar</h2>${ph}`:""}</body></html>`;
-  try{await localDownloads.save({filename:`kesif_${fname(s)}_${s.date||today()}.html`,data:html,type:"text/html"});toast("Rapor hazır")}catch(e){toast("Dosya kaydedilemedi")}
+    ph+=`<h3>${esc(en?sec.en:sec.t)}</h3><div class="g">${imgs}</div>`}
+  const html=`<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(siteHeader(s,lang))}</title><style>body{font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:16px;color:#13202a}pre{white-space:pre-wrap;font-size:13px;background:#f3f5f7;padding:12px;border-radius:6px}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}.g img{width:100%;border-radius:6px}h3{margin-top:24px}</style></head><body><pre>${esc(reportText(s,lang))}</pre>${ph?`<h2>${en?"Photos":"Fotoğraflar"}</h2>${ph}`:""}</body></html>`;
+  try{await saveFile({filename:`${en?"site-report":"kesif"}_${fname(s)}_${s.date||today()}.html`,data:html,type:"text/html"})}catch(e){toast("Dosya kaydedilemedi")}
 }
 async function backup(){
   toast("Yedek hazırlanıyor…");const photos={};
   for(const s of Object.values(surveys))for(const arr of Object.values(s.photos||{}))for(const p of arr){try{const b=await idbGet(p.id);if(b)photos[p.id]=await blobToData(b)}catch(e){}}
-  const data=JSON.stringify({app:"saha-kesif",v:1,at:new Date().toISOString(),surveys,photos});
-  try{await localDownloads.save({filename:`saha-kesif-yedek_${today()}.json`,data,type:"application/json"});toast("Yedek hazır")}catch(e){toast("Yedek kaydedilemedi")}
+  const data=JSON.stringify({app:"saha-kesif",v:2,at:new Date().toISOString(),surveys,sites,prefs,daily,photos});
+  try{await saveFile({filename:`saha-kesif-yedek_${today()}.json`,data,type:"application/json"})}catch(e){toast("Yedek kaydedilemedi")}
 }
 async function restore(file){
   try{const d=JSON.parse(await file.text());if(d.app!=="saha-kesif")throw 0;
     for(const [id,url] of Object.entries(d.photos||{})){const b=await (await fetch(url)).blob();await idbPut(id,b)}
     let n=0;for(const [id,s] of Object.entries(d.surveys||{})){if(!surveys[id]||(s.updatedAt||0)>(surveys[id].updatedAt||0)){surveys[id]=s;n++}}
-    lsSave();renderList();toast(`${n} keşif yüklendi`)}
+    for(const x of d.sites||[])if(!sites.some(y=>norm(y.name)===norm(x.name)))sites.push(x);
+    Object.assign(daily,d.daily||{});
+    lsSave();saveSites();saveDaily();renderList();toast(`${n} keşif yüklendi`)}
   catch(e){toast("Bu dosya bir saha keşif yedeği değil")}
 }
 
-async function init(){
+/* ---------- persistence ---------- */
+function dirty(){cur.updatedAt=Date.now();const sv=app.querySelector("#saved");if(sv)sv.textContent="Kaydediliyor…";clearTimeout(saveT);saveT=setTimeout(()=>persist(cur),500)}
+function flush(){if(saveT&&cur){clearTimeout(saveT);saveT=null;persist(cur)}}
+function persist(s){saveT=null;surveys[s.id]=s;lsSave();const sv=app.querySelector("#saved");if(sv&&openId)sv.textContent="Telefona kaydedildi"}
+function openSurvey(id){openId=id;cur=surveys[id];cur.items=cur.items||{};cur.photos=cur.photos||{};cur.secNotes=cur.secNotes||{};renderEditor();scrollTo(0,0)}
+
+function init(){
   app.addEventListener("input",onInput);app.addEventListener("change",onInput);app.addEventListener("click",onClick);
-  surveys=lsLoad();mode="local";assets=localAssets;downloads=localDownloads;
+  surveys=lsGet("saha-kesif",{});sites=lsGet("saha-sites",null)||DEFAULT_SITES.map(x=>({...x}));prefs=lsGet("saha-prefs",{});daily=lsGet("saha-daily",{});
+  if(!localStorage.getItem("saha-sites"))saveSites();
   try{navigator.storage?.persist?.()}catch(e){}
-  addEventListener("pagehide",()=>{if(cur)flush()});
-  document.addEventListener("visibilitychange",()=>{if(document.hidden&&cur)flush()});
+  addEventListener("pagehide",()=>flush());
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)flush()});
   renderList();
-  if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){
+    const had=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!had)return;const u=document.getElementById("upd");u.hidden=false;
+      document.getElementById("updGo").onclick=()=>{flush();location.reload()};document.getElementById("updX").onclick=()=>u.hidden=true});
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
 }
 init();
 </script>
