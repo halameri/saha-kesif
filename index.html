@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#13202a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Saha Keşfi">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Saha Keşfi</title>
+<style>
+/* Layout: single-column field tool, sticky site bar, collapsible sections, large tap targets for outdoor use */
+:root{
+  --bg:#e9edf0; --surface:#ffffff; --sunk:#f3f5f7; --ink:#13202a; --muted:#566673; --line:#cfd7dd;
+  --accent:#e09b12; --accent-ink:#1b1403; --accent-soft:#fbf0d6;
+  --ok:#1d7f47; --ok-soft:#dff1e6; --bad:#b93a24; --bad-soft:#f8e1dc; --na:#6c7a86; --na-soft:#e6eaed;
+  --display:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1419; --surface:#172129; --sunk:#111a20; --ink:#e4ebf0; --muted:#94a4b0; --line:#2a3842;
+  --accent:#f0b12e; --accent-ink:#1b1403; --accent-soft:#3a2d10;
+  --ok:#4cc17e; --ok-soft:#173826; --bad:#f07a62; --bad-soft:#40201a; --na:#9aa8b3; --na-soft:#26323a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1419; --surface:#172129; --sunk:#111a20; --ink:#e4ebf0; --muted:#94a4b0; --line:#2a3842;
+  --accent:#f0b12e; --accent-ink:#1b1403; --accent-soft:#3a2d10;
+  --ok:#4cc17e; --ok-soft:#173826; --bad:#f07a62; --bad-soft:#40201a; --na:#9aa8b3; --na-soft:#26323a; color-scheme:dark}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 64px}
+h1,h2,h3{font-family:var(--display);font-weight:800;letter-spacing:-.01em;text-wrap:balance;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 14px;min-height:44px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{background:transparent;border-color:transparent}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* list view */
+.masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-block:8px 16px;border-bottom:3px solid var(--ink);margin-bottom:16px;flex-wrap:wrap}
+.masthead h1{font-size:2rem;line-height:1;text-transform:uppercase}
+.masthead small{display:block;font-family:var(--display);font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.store-note{font-size:.85rem;color:var(--muted);margin:-6px 0 14px}
+.cards{display:grid;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;text-align:left;width:100%}
+.card h3{font-size:1.3rem}
+.card .meta{font-size:.9rem;color:var(--muted);grid-column:1}
+.card .side{grid-row:1/span 2;grid-column:2;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.bar{height:6px;background:var(--na-soft);border-radius:3px;overflow:hidden;grid-column:1/-1;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.pill{font-family:var(--display);font-weight:600;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-mid{background:var(--accent-soft);color:var(--ink)} .p-none{background:var(--na-soft);color:var(--na)}
+.empty{background:var(--surface);border:2px dashed var(--line);border-radius:10px;padding:28px 20px;text-align:center;display:grid;gap:12px;justify-items:center}
+
+/* editor */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.topbar .title{flex:1;min-width:0}
+.topbar .title b{display:block;font-family:var(--display);font-size:1.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar .title span{font-size:.8rem;color:var(--muted)}
+.saved{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:12px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label.f{display:grid;gap:4px;font-size:.85rem;color:var(--muted);font-weight:500}
+label.f input,label.f select,textarea{background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:10px;min-height:44px;color:var(--ink);width:100%;font-size:16px}
+textarea{min-height:64px;resize:vertical}
+.hint{font-size:.8rem;color:var(--muted)}
+details.sec{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;overflow:hidden}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px;display:flex;align-items:center;gap:10px}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary h2{flex:1;font-size:1.35rem;text-transform:uppercase}
+details.sec>summary .sn{font-family:var(--mono);font-size:.8rem;color:var(--muted);width:1.6em}
+details.sec>summary .chev{transition:transform .15s;color:var(--muted)}
+details.sec[open]>summary .chev{transform:rotate(90deg)}
+details.sec[open]>summary{border-bottom:1px solid var(--line)}
+.counts{display:flex;gap:4px}
+.counts span{font-family:var(--mono);font-size:.75rem;padding:2px 6px;border-radius:4px}
+.items{display:grid}
+.item{padding:12px 14px;border-bottom:1px solid var(--line);display:grid;gap:8px;border-left:4px solid transparent}
+.item[data-s="ok"]{border-left-color:var(--ok)} .item[data-s="bad"]{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad-soft) 45%,transparent)} .item[data-s="na"]{border-left-color:var(--na)}
+.item .q{font-weight:600}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button{border:1px solid var(--line);background:var(--sunk);border-radius:6px;min-height:42px;font-weight:600;font-size:.9rem}
+.seg button[aria-pressed="true"].s-ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.seg button[aria-pressed="true"].s-bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.seg button[aria-pressed="true"].s-na{background:var(--na);border-color:var(--na);color:var(--bg)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.calc{font-size:.9rem;background:var(--accent-soft);border-radius:6px;padding:6px 10px}
+.calc:empty{display:none}
+.note-toggle{justify-self:start;font-size:.85rem;color:var(--muted);background:none;border:none;padding:4px 0;text-decoration:underline}
+.secfoot{padding:14px;display:grid;gap:10px;background:var(--sunk)}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+.photos figure{margin:0;position:relative}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;max-width:100%}
+.photos figure button{position:absolute;top:4px;right:4px;background:var(--surface);border:1px solid var(--line);border-radius:50%;width:30px;height:30px;line-height:1;padding:0}
+.upload{display:inline-flex;align-items:center;gap:8px}
+.upload input{position:absolute;width:1px;height:1px;opacity:0}
+.problems{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.problems li{background:var(--bad-soft);border-radius:6px;padding:8px 10px;font-size:.92rem}
+.problems li b{font-family:var(--display);text-transform:uppercase;font-size:.8rem;letter-spacing:.06em;color:var(--bad);display:block}
+pre.report{background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:10px;font-family:var(--mono);font-size:.78rem;white-space:pre-wrap;max-height:300px;overflow:auto;margin:0}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:20}
+.confirm{background:var(--bad-soft);border-radius:8px;padding:10px;display:grid;gap:8px}
+.sheet{position:fixed;inset:auto 0 0 0;z-index:30;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.18);padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet-in{max-width:720px;margin:0 auto;display:grid;gap:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+
+<div class="wrap" id="app">
+  <div class="masthead"><div><small>Enerji birimi</small><h1>Saha Keşfi</h1></div></div>
+  <p class="muted">Yükleniyor…</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="sheet" id="sheet" hidden><div class="sheet-in"><b id="shName"></b><span class="hint">Açılan menüden “Dosyalara Kaydet”, WhatsApp veya Mail seçebilirsiniz.</span><div class="row"><button class="btn primary" id="shGo">Paylaş / Kaydet</button><button class="btn" id="shX">Kapat</button></div></div></div>
+
+<script>
+const SECTIONS=[
+ {id:"sebeke",t:"Şebeke enerjisi",items:[
+  {id:"direk",q:"En yakın elektrik direği",f:[{k:"tip",l:"Tip",type:"sel",o:["AG","OG"]},{k:"mesafe",l:"Mesafe",u:"m"}]},
+  {id:"trafo",q:"Yakında trafo",f:[{k:"guc",l:"Gücü",u:"kVA"},{k:"mesafe",l:"Mesafe",u:"m"}]},
+  {id:"baglanti",q:"Bağlantı tipi belirlendi",f:[{k:"tip",l:"Tip",type:"sel",o:["AG monofaze","AG trifaze","OG + yeni trafo"]}]},
+  {id:"guzergah",q:"Hat güzergâhı uygun (özel arazi / orman / yol geçişi sorunu yok)"},
+  {id:"aradirek",q:"Ara direk ihtiyacı",f:[{k:"adet",l:"Adet"}]},
+  {id:"kesinti",q:"Bölgede kesinti sıklığı makul",hint:"Yerel halka ve yakındaki tesislere sorun"},
+  {id:"sayac",q:"Sayaç ve ana pano yeri belirlendi"},
+  {id:"dagitim",q:"Dağıtım şirketi",f:[{k:"ad",l:"Şirket",type:"text"}]}]},
+ {id:"konteyner",t:"Konteyner / kabinet alanı",items:[
+  {id:"olcu",q:"Konteyner alanı ölçüsü",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1},
+  {id:"duz",q:"Zemin düz veya az eğimli"},
+  {id:"zemin",q:"Zemin tipi",f:[{k:"tip",l:"Tip",type:"sel",o:["Kaya","Toprak","Dolgu","Karışık"]}]},
+  {id:"drenaj",q:"Su birikmesi / sel riski yok"},
+  {id:"kapi",q:"Kapı önünde bakım boşluğu var"}]},
+ {id:"jenerator",t:"Jeneratör",items:[
+  {id:"alan",q:"Jeneratör + kaide alanı (bakım boşluğu dahil)",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1},
+  {id:"tank",q:"Yakıt tankı için alan var"},
+  {id:"egzoz",q:"Egzoz yönü uygun (konteynere / klimaya / yerleşime bakmıyor)"},
+  {id:"yerlesim",q:"Yerleşim yerine mesafe yeterli",f:[{k:"mesafe",l:"Mesafe",u:"m"}]},
+  {id:"ikmal",q:"Yakıt ikmal aracı yanaşabiliyor (kışın da)"}]},
+ {id:"ges",t:"GES uygunluğu",items:[
+  {id:"golge",q:"Gölgeleme yok (dağ, tepe, ağaç, bina)"},
+  {id:"kulegolge",q:"Kulenin gölgesi panel alanına düşmüyor"},
+  {id:"guney",q:"Güney yönü açık"},
+  {id:"alan",q:"Kullanılabilir GES alanı",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1,kwp:1},
+  {id:"zemin",q:"Zemin konstrüksiyona uygun"},
+  {id:"iklim",q:"Kar / rüzgâr / toz yükü kabul edilebilir"},
+  {id:"guvenlik",q:"Paneller duvar içinde, hırsızlık riski düşük"},
+  {id:"cati",q:"Konteyner çatısı alternatif olarak kullanılabilir"}]},
+ {id:"duvar",t:"Çevre duvarı / çit",items:[
+  {id:"sinir",q:"Duvar sınırı ölçüsü",f:[{k:"en",l:"En",u:"m"},{k:"boy",l:"Boy",u:"m"}],area:1},
+  {id:"sigiyor",q:"Kule + konteyner + jeneratör + tank (+ GES) içeri sığıyor"},
+  {id:"bosluk",q:"Ekipman ile duvar arası boşluk yeterli"},
+  {id:"kapi",q:"Giriş kapısı vinç / kamyon için yeterli",f:[{k:"genislik",l:"Genişlik",u:"m"}]},
+  {id:"parsel",q:"Parsel sınırı uyumlu, komşu sorunu yok"},
+  {id:"yedek",q:"Gelecek genişleme için yedek alan var"}]},
+ {id:"topraklama",t:"Topraklama ve yıldırım",items:[
+  {id:"zemin",q:"Zemin topraklamaya uygun",f:[{k:"tip",l:"Tip",type:"sel",o:["Toprak","Kaya","Kum","Karışık"]}]},
+  {id:"ozdirenc",q:"Toprak özdirenç ölçümü",f:[{k:"deger",l:"Değer",u:"Ω·m"}]},
+  {id:"ag",q:"Topraklama ağı için alan var"},
+  {id:"yildirim",q:"Yıldırım riski düşük (tepe noktası değil)"}]},
+ {id:"batarya",t:"Batarya ve iklimlendirme",items:[
+  {id:"yedek",q:"Hedef yedekleme süresi belirlendi",f:[{k:"saat",l:"Süre",u:"saat"}]},
+  {id:"sicaklik",q:"Bölge sıcaklık aralığı",f:[{k:"min",l:"Min",u:"°C"},{k:"max",l:"Maks",u:"°C"}]},
+  {id:"klima",q:"Klima / ısıtıcı ihtiyacı değerlendirildi"},
+  {id:"gunes",q:"Konteyner doğrudan güneşe maruz değil"}]},
+ {id:"erisim",t:"Erişim ve çevresel riskler",items:[
+  {id:"yol",q:"Yol durumu",f:[{k:"tip",l:"Yol",type:"sel",o:["Asfalt","Stabilize","Toprak","Yol yok"]}]},
+  {id:"kis",q:"Yol kışın açık kalıyor"},
+  {id:"vinc",q:"Vinç / ağır araç erişimi var"},
+  {id:"risk",q:"Heyelan / çığ / sel riski yok"},
+  {id:"kar",q:"Kar yüksekliği kabul edilebilir",f:[{k:"cm",l:"Yükseklik",u:"cm"}]},
+  {id:"kisi",q:"Görüşülen kişiler (muhtar, arazi sahibi…)",f:[{k:"ad",l:"Kişiler",type:"text"}]}]}
+];
+const TOTAL=SECTIONS.reduce((a,s)=>a+s.items.length,0);
+const VERDICTS={"":"Değerlendirilmedi",uygun:"Uygun",sartli:"Şartlı uygun",degil:"Uygun değil"};
+const ST={ok:"✓ Uygun",bad:"✕ Sorunlu",na:"– Yok / N/A"};
+
+let db=null,col=null,assets=null,downloads=null,mode="local";
+let surveys={},openId=null,cur=null,saveT=null,unsub=null;
+const app=document.getElementById("app");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2200)}
+
+function lsLoad(){try{return JSON.parse(localStorage.getItem("saha-kesif")||"{}")}catch(e){return {}}}
+function lsSave(){try{localStorage.setItem("saha-kesif",JSON.stringify(surveys))}catch(e){}}
+
+function stats(s){let ok=0,bad=0,na=0;for(const sec of SECTIONS)for(const it of sec.items){const v=s.items?.[sec.id+"."+it.id]?.s;if(v==="ok")ok++;else if(v==="bad")bad++;else if(v==="na")na++}return{ok,bad,na,done:ok+bad+na}}
+function secStats(s,sec){let ok=0,bad=0,done=0;for(const it of sec.items){const v=s.items?.[sec.id+"."+it.id]?.s;if(v)done++;if(v==="ok")ok++;if(v==="bad")bad++}return{ok,bad,done}}
+function areaOf(e){const a=parseFloat(String(e?.en||"").replace(",",".")),b=parseFloat(String(e?.boy||"").replace(",","."));return a>0&&b>0?a*b:null}
+function fmt(n,d=1){return n.toLocaleString("tr-TR",{maximumFractionDigits:d})}
+function parseCoord(c){const m=String(c||"").match(/(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)/);if(!m)return null;const la=parseFloat(m[1].replace(",",".")),lo=parseFloat(m[2].replace(",","."));return Math.abs(la)<=90&&Math.abs(lo)<=180?[la,lo]:null}
+function verdictPill(v){const c={uygun:"p-ok",sartli:"p-mid",degil:"p-bad"}[v]||"p-none";return `<span class="pill ${c}">${VERDICTS[v||""]}</span>`}
+
+/* ---------- list ---------- */
+function renderList(){
+  openId=null;cur=null;
+  const arr=Object.values(surveys).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const note=(matchMedia("(display-mode: standalone)").matches||navigator.standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. ")+"İnternet gerekmez. Kayıtlar ve fotoğraflar yalnızca bu telefonun tarayıcısında saklanır; tarayıcı verilerini silersen kayıtlar da gider, ara ara yedek al.";
+  app.innerHTML=`
+  <div class="masthead"><div><small>Enerji birimi · altyapı projesi</small><h1>Saha Keşfi</h1></div>
+   <button class="btn primary" id="new">+ Yeni keşif</button></div>
+  <p class="store-note">${note}</p>
+  <div class="row" style="margin-bottom:14px"><button class="btn" id="bk">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
+  ${arr.length?`<div class="cards">${arr.map(s=>{const st=stats(s);return `
+   <button class="card" data-id="${esc(s.id)}">
+    <h3>${esc(s.name||"Adsız saha")}${s.example?' <span class="pill p-none">Örnek</span>':""}</h3>
+    <div class="meta">${esc([s.code,s.place,s.date].filter(Boolean).join(" · "))}</div>
+    <div class="side">${verdictPill(s.verdict)}<span class="num muted" style="font-size:.85rem">${st.done}/${TOTAL}</span>${st.bad?`<span class="pill p-bad">${st.bad} sorun</span>`:""}</div>
+    <div class="bar"><i style="width:${Math.round(st.done/TOTAL*100)}%"></i></div>
+   </button>`}).join("")}</div>`
+  :`<div class="empty"><h2 style="font-size:1.4rem">Henüz keşif kaydı yok</h2>
+    <p class="muted" style="margin:0;max-width:40ch">Sahaya gittiğinizde yeni keşif açın; ${TOTAL} kontrol maddesini işaretleyin, ölçüleri girin, fotoğraf ekleyin ve raporu alın.</p>
+    <div class="row" style="justify-content:center"><button class="btn primary" id="new2">+ Yeni keşif</button><button class="btn" id="ex">Örnek keşfi göster</button></div></div>`}`;
+  app.querySelector("#new").onclick=newSurvey;
+  app.querySelector("#bk").onclick=backup;
+  app.querySelector("#rs").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)restore(f)};
+  app.querySelector("#new2")?.addEventListener("click",newSurvey);
+  app.querySelector("#ex")?.addEventListener("click",addExample);
+  app.querySelectorAll(".card").forEach(b=>b.onclick=()=>openSurvey(b.dataset.id));
+}
+function newSurvey(){const s={id:uid(),name:"",date:today(),items:{},secNotes:{},photos:{},createdAt:Date.now(),updatedAt:Date.now()};surveys[s.id]=s;persist(s,true);openSurvey(s.id)}
+function addExample(){
+  const s={id:uid(),example:true,name:"Örnek: Tepe köy baz istasyonu",code:"ORNEK-001",place:"Örnek ilçe",date:today(),team:"Enerji, inşaat, radyo",coord:"39.9050, 41.2650",
+   verdict:"sartli",general:"Şebeke uzak; jeneratör + GES hibrit önerilir. Duvar sınırı GES için genişletilmeli.",
+   items:{"sebeke.direk":{s:"bad",v:{tip:"AG",mesafe:"650"},n:"Arada özel tarla var"},"sebeke.trafo":{s:"ok",v:{guc:"100",mesafe:"900"}},"sebeke.guzergah":{s:"bad",n:"İrtifak gerekebilir"},
+    "konteyner.olcu":{s:"ok",v:{en:"4",boy:"6"}},"konteyner.zemin":{s:"ok",v:{tip:"Kaya"}},"jenerator.alan":{s:"ok",v:{en:"3",boy:"4"}},"jenerator.ikmal":{s:"bad",n:"Kışın yol kapanıyor"},
+    "ges.golge":{s:"ok"},"ges.guney":{s:"ok"},"ges.alan":{s:"ok",v:{en:"8",boy:"12"}},"ges.kulegolge":{s:"bad",n:"Öğleden sonra kule gölgesi kuzey-doğu köşeye düşüyor"},
+    "duvar.sinir":{s:"ok",v:{en:"15",boy:"20"}},"erisim.yol":{s:"ok",v:{tip:"Stabilize"}},"erisim.kar":{s:"ok",v:{cm:"80"}}},
+   secNotes:{},photos:{},createdAt:Date.now(),updatedAt:Date.now()};
+  surveys[s.id]=s;persist(s,true);renderList();
+}
+
+/* ---------- editor ---------- */
+function fieldHtml(key,f,val){
+  const id=`f-${key.replace(".","-")}-${f.k}`;
+  if(f.type==="sel")return `<label class="f" for="${id}">${f.l}<select id="${id}" data-k="${key}" data-f="${f.k}"><option value="">Seçin</option>${f.o.map(o=>`<option${val===o?" selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+  const num=f.type!=="text";
+  return `<label class="f" for="${id}">${f.l}${f.u?` (${f.u})`:""}<input id="${id}" data-k="${key}" data-f="${f.k}" ${num?'inputmode="decimal" class="num"':''} value="${esc(val)}" autocomplete="off"></label>`;
+}
+function calcText(it,v){
+  if(!it.area)return "";const a=areaOf(v);if(!a)return "";
+  let t=`= ${fmt(a)} m²`;if(it.kwp)t+=` · yerden montajda yaklaşık ${fmt(a/7)} kWp (≈7 m²/kWp)`;return t;
+}
+function renderEditor(){
+  const s=cur;const coord=parseCoord(s.coord);
+  app.innerHTML=`
+  <div class="topbar">
+   <button class="btn ghost" id="back" aria-label="Listeye dön">←</button>
+   <div class="title"><b id="tName">${esc(s.name||"Adsız saha")}</b><span class="num" id="tProg"></span></div>
+   <span class="saved" id="saved">Kaydedildi</span>
+  </div>
+  <section class="panel" aria-label="Saha bilgileri">
+   <div class="grid2">
+    <label class="f" for="m-name">Saha adı<input id="m-name" data-m="name" value="${esc(s.name)}" placeholder="ör. Tepeköy BS"></label>
+    <label class="f" for="m-code">Saha kodu<input id="m-code" data-m="code" value="${esc(s.code)}"></label>
+    <label class="f" for="m-place">İl / ilçe / köy<input id="m-place" data-m="place" value="${esc(s.place)}"></label>
+    <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
+   </div>
+   <label class="f" for="m-team">Keşif ekibi<input id="m-team" data-m="team" value="${esc(s.team)}" placeholder="Enerji, inşaat, radyo…"></label>
+   <div class="grid2">
+    <label class="f" for="m-coord">Koordinat (enlem, boylam)<input id="m-coord" data-m="coord" class="num" inputmode="decimal" value="${esc(s.coord)}" placeholder="39.9050, 41.2650"></label>
+    <label class="f" for="m-alt">Rakım (m)<input id="m-alt" data-m="alt" class="num" inputmode="decimal" value="${esc(s.alt)}"></label>
+   </div>
+   <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><span class="hint" id="coordHint">${coordHint(coord)}</span></div>
+  </section>
+  ${SECTIONS.map((sec,i)=>secHtml(sec,i)).join("")}
+  <section class="panel" aria-label="Sonuç">
+   <h2 style="font-size:1.5rem;text-transform:uppercase">Sonuç ve rapor</h2>
+   <label class="f" for="m-verdict">Genel değerlendirme<select id="m-verdict" data-m="verdict">${Object.entries(VERDICTS).map(([k,v])=>`<option value="${k}"${(s.verdict||"")===k?" selected":""}>${v}</option>`).join("")}</select></label>
+   <label class="f" for="m-general">Genel not / öneri<textarea id="m-general" data-m="general">${esc(s.general)}</textarea></label>
+   <div><div class="hint" style="margin-bottom:6px">Sorunlu işaretlenen maddeler</div><ul class="problems" id="problems"></ul></div>
+   <div class="row"><button class="btn primary" id="copy">Raporu kopyala</button><button class="btn" id="dl">Metin rapor (.txt)</button><button class="btn" id="dlh">Fotoğraflı rapor (.html)</button><button class="btn" id="showRep">Raporu göster</button></div>
+   <pre class="report" id="report" hidden></pre>
+   <div id="delZone"><button class="btn danger" id="del">Bu keşfi sil</button></div>
+  </section>`;
+  bindEditor();updateProgress();updateProblems();hydrate();
+}
+function coordHint(c){return c?`<a href="https://www.google.com/maps?q=${c[0]},${c[1]}" target="_blank" rel="noopener">Haritada aç</a> · ${fmt(c[0],5)}, ${fmt(c[1],5)}`:"Konumumu al ile GPS'ten alın (internet gerekmez) ya da koordinatı elle yazın."}
+function secHtml(sec,i){
+  const s=cur;
+  return `<details class="sec" data-sec="${sec.id}" ${i===0?"open":""}>
+   <summary><span class="sn">${i+1}</span><h2>${sec.t}</h2><span class="counts" id="c-${sec.id}"></span><span class="chev" aria-hidden="true">›</span></summary>
+   <div class="items">${sec.items.map(it=>{
+     const key=sec.id+"."+it.id,e=s.items[key]||{},v=e.v||{};
+     return `<div class="item" data-key="${key}" data-s="${e.s||""}">
+      <div class="q">${esc(it.q)}</div>${it.hint?`<div class="hint">${esc(it.hint)}</div>`:""}
+      <div class="seg" role="group" aria-label="Durum">${["ok","bad","na"].map(k=>`<button type="button" class="s-${k}" data-st="${k}" aria-pressed="${e.s===k}">${ST[k]}</button>`).join("")}</div>
+      ${it.f?`<div class="fields">${it.f.map(f=>fieldHtml(key,f,v[f.k]??"")).join("")}</div>`:""}
+      ${it.area?`<div class="calc num" id="calc-${key.replace(".","-")}">${calcText(it,v)}</div>`:""}
+      ${e.n?`<textarea id="n-${key.replace(".","-")}" data-note="${key}" placeholder="Not">${esc(e.n)}</textarea>`:`<button type="button" class="note-toggle" data-addnote="${key}">+ Not ekle</button>`}
+     </div>`}).join("")}</div>
+   <div class="secfoot">
+    <label class="f" for="sn-${sec.id}">Bölüm notu<textarea id="sn-${sec.id}" data-secnote="${sec.id}" placeholder="Bu bölümle ilgili genel gözlem">${esc(s.secNotes?.[sec.id])}</textarea></label>
+    <div class="photos" id="ph-${sec.id}">${photosHtml(sec.id)}</div>
+    ${assets?`<label class="btn upload" for="up-${sec.id}">📷 Fotoğraf çek / ekle<input type="file" id="up-${sec.id}" accept="image/*" multiple data-up="${sec.id}"></label>`
+      :`<div class="hint">Fotoğraf yükleme bu görünümde kullanılamıyor; fotoğrafları telefonda çekip bölüm notuna dosya adını yazabilirsiniz.</div>`}
+   </div></details>`;
+}
+function photosHtml(secId){return (cur.photos?.[secId]||[]).map((p,i)=>`<figure><img data-pid="${esc(p.id)}" src="${urlCache[p.id]||""}" alt="Saha fotoğrafı ${i+1}" loading="lazy"><button type="button" aria-label="Fotoğrafı kaldır" data-rmph="${secId}" data-i="${i}">×</button></figure>`).join("")}
+
+function bindEditor(){
+  app.querySelector("#back").onclick=()=>{flush();renderList()};
+  app.querySelector("#copy").onclick=async()=>{const t=reportText();try{await navigator.clipboard.writeText(t);toast("Rapor kopyalandı")}catch(e){const r=app.querySelector("#report");r.textContent=t;r.hidden=false;const sel=getSelection(),rg=document.createRange();rg.selectNodeContents(r);sel.removeAllRanges();sel.addRange(rg);toast("Metni seçtim, kopyalayın")}};
+  app.querySelector("#showRep").onclick=()=>{const r=app.querySelector("#report");r.textContent=reportText();r.hidden=!r.hidden};
+  app.querySelector("#dl").onclick=async()=>{try{const n=(cur.code||cur.name||"saha").replace(/[^\wğüşıöçĞÜŞİÖÇ-]+/g,"_");await downloads.save({filename:`kesif_${n}_${cur.date||today()}.txt`,data:reportText()});toast("Rapor hazır")}catch(e){toast("Dosya kaydedilemedi")}};
+  app.querySelector("#del").onclick=askDelete;
+  app.querySelector("#dlh").onclick=htmlReport;
+  app.querySelector("#gps").onclick=getGps;
+}
+function askDelete(){const z=app.querySelector("#delZone");z.innerHTML=`<div class="confirm"><b>Bu keşif kalıcı olarak silinsin mi?</b><div class="row"><button class="btn danger" id="delY">Evet, sil</button><button class="btn" id="delN">Vazgeç</button></div></div>`;
+  z.querySelector("#delN").onclick=()=>{z.innerHTML=`<button class="btn danger" id="del">Bu keşfi sil</button>`;z.querySelector("#del").onclick=askDelete};
+  z.querySelector("#delY").onclick=async()=>{const id=cur.id;clearTimeout(saveT);saveT=null;for(const arr of Object.values(cur.photos||{}))for(const p of arr)idbDel(p.id);delete surveys[id];openId=null;if(mode==="db"){try{await col.doc(id).delete()}catch(e){}}else lsSave();toast("Keşif silindi");renderList()}}
+function onInput(e){
+  if(!cur)return;const el=e.target;
+  if(el.dataset.m){cur[el.dataset.m]=el.value;if(el.dataset.m==="name")app.querySelector("#tName").textContent=el.value||"Adsız saha";if(el.dataset.m==="coord")app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(el.value));dirty();return}
+  if(el.dataset.k){const key=el.dataset.k,e2=cur.items[key]||(cur.items[key]={});e2.v=e2.v||{};e2.v[el.dataset.f]=el.value;
+    const [sid,iid]=key.split("."),it=SECTIONS.find(s=>s.id===sid).items.find(i=>i.id===iid);
+    if(it.area){app.querySelector("#calc-"+key.replace(".","-")).textContent=calcText(it,e2.v)}dirty();return}
+  if(el.dataset.note){(cur.items[el.dataset.note]||(cur.items[el.dataset.note]={})).n=el.value;dirty();if(e.type==="change")updateProblems();return}
+  if(el.dataset.secnote){cur.secNotes=cur.secNotes||{};cur.secNotes[el.dataset.secnote]=el.value;dirty();return}
+  if(el.dataset.up&&e.type==="change"){uploadPhotos(el.dataset.up,[...el.files]);el.value=""}
+}
+function onClick(e){
+  if(!cur)return;const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.st){const item=b.closest(".item"),key=item.dataset.key,e2=cur.items[key]||(cur.items[key]={});
+    e2.s=e2.s===b.dataset.st?"":b.dataset.st;item.dataset.s=e2.s;
+    item.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.st===e2.s));
+    if(e2.s==="bad"&&!e2.n){const t=item.querySelector("[data-addnote]");if(t)t.click()}
+    updateProgress();updateProblems();dirty();return}
+  if(b.dataset.addnote){const key=b.dataset.addnote,ta=document.createElement("textarea");ta.id="n-"+key.replace(".","-");ta.dataset.note=key;ta.placeholder="Not (sorunu kısaca yazın)";b.replaceWith(ta);ta.focus();return}
+  if(b.dataset.rmph){const arr=cur.photos[b.dataset.rmph];const [gone]=arr.splice(+b.dataset.i,1);if(gone)idbDel(gone.id);app.querySelector("#ph-"+b.dataset.rmph).innerHTML=photosHtml(b.dataset.rmph);dirty()}
+}
+function updateProgress(){
+  const st=stats(cur);app.querySelector("#tProg").textContent=`${st.done}/${TOTAL} madde · ${st.bad} sorun`;
+  for(const sec of SECTIONS){const x=secStats(cur,sec);app.querySelector("#c-"+sec.id).innerHTML=`${x.bad?`<span class="p-bad">${x.bad}✕</span>`:""}<span class="${x.done===sec.items.length?"p-ok":"p-none"}">${x.done}/${sec.items.length}</span>`}
+}
+function updateProblems(){
+  const ul=app.querySelector("#problems");const list=[];
+  for(const sec of SECTIONS)for(const it of sec.items){const e=cur.items[sec.id+"."+it.id];if(e?.s==="bad")list.push(`<li><b>${esc(sec.t)}</b>${esc(it.q)}${e.n?` — ${esc(e.n)}`:""}</li>`)}
+  ul.innerHTML=list.join("")||`<li style="background:var(--ok-soft)">Sorunlu madde yok.</li>`;
+}
+async function uploadPhotos(secId,files){
+  for(const f of files){
+    try{toast("Fotoğraf kaydediliyor…");const blob=await shrink(f);const r=await assets.upload(blob);
+      (cur.photos[secId]=cur.photos[secId]||[]).push({id:r.id});app.querySelector("#ph-"+secId).innerHTML=photosHtml(secId);dirty();hydrate();toast("Fotoğraf eklendi")}
+    catch(e){toast("Fotoğraf kaydedilemedi (telefon hafızası dolu olabilir)")}
+  }
+}
+function shrink(file){return new Promise(res=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=1600,k=Math.min(1,m/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>res(b||file),"image/jpeg",.82)};img.onerror=()=>res(file);img.src=u})}
+
+function reportText(){
+  const s=cur,st=stats(s),L=[];
+  L.push("SAHA KEŞİF RAPORU — ENERJİ BİRİMİ","=".repeat(38));
+  L.push(`Saha     : ${s.name||"-"}${s.code?` (${s.code})`:""}`,`Konum    : ${s.place||"-"}`,`Tarih    : ${s.date||"-"}`,`Ekip     : ${s.team||"-"}`);
+  const c=parseCoord(s.coord);L.push(`Koordinat: ${c?`${c[0]}, ${c[1]}  https://www.google.com/maps?q=${c[0]},${c[1]}`:"-"}${s.alt?`  Rakım: ${s.alt} m`:""}`);
+  L.push(`Durum    : ${st.done}/${TOTAL} madde kontrol edildi, ${st.bad} sorunlu`,`Sonuç    : ${VERDICTS[s.verdict||""]}`);
+  if(s.general)L.push("","Genel not: "+s.general);
+  SECTIONS.forEach((sec,i)=>{L.push("",`${i+1}. ${sec.t.toLocaleUpperCase("tr")}`,"-".repeat(30));
+    for(const it of sec.items){const e=s.items[sec.id+"."+it.id]||{};const mark={ok:"[✓]",bad:"[✕]",na:"[–]"}[e.s]||"[ ]";
+      const vals=(it.f||[]).map(f=>e.v?.[f.k]?`${f.l}: ${e.v[f.k]}${f.u?" "+f.u:""}`:"").filter(Boolean);
+      if(it.area){const a=areaOf(e.v);if(a)vals.push(`Alan: ${fmt(a)} m²${it.kwp?` (≈${fmt(a/7)} kWp)`:""}`)}
+      L.push(`${mark} ${it.q}${vals.length?" — "+vals.join(", "):""}${e.n?`\n     Not: ${e.n}`:""}`)}
+    if(s.secNotes?.[sec.id])L.push("  Bölüm notu: "+s.secNotes[sec.id]);
+    const ph=s.photos?.[sec.id]?.length;if(ph)L.push(`  Fotoğraf: ${ph} adet`)});
+  const probs=[];for(const sec of SECTIONS)for(const it of sec.items){const e=s.items[sec.id+"."+it.id];if(e?.s==="bad")probs.push(`- [${sec.t}] ${it.q}${e.n?": "+e.n:""}`)}
+  L.push("","SORUNLU MADDELER","-".repeat(30),...(probs.length?probs:["Yok"]));
+  return L.join("\n");
+}
+
+/* ---------- persistence ---------- */
+function dirty(){cur.updatedAt=Date.now();const sv=app.querySelector("#saved");if(sv)sv.textContent="Kaydediliyor…";clearTimeout(saveT);saveT=setTimeout(()=>persist(cur),700)}
+function flush(){if(saveT){clearTimeout(saveT);saveT=null;persist(cur)}}
+async function persist(s,quiet){
+  saveT=null;surveys[s.id]=s;
+  if(mode==="db"){try{await col.doc(s.id).set(JSON.parse(JSON.stringify(s)));mark("Kaydedildi")}catch(e){mark("Kaydedilemedi");if(!quiet)toast("Kaydedilemedi, bağlantıyı kontrol edin")}}
+  else{lsSave();mark("Telefona kaydedildi")}
+}
+function mark(t){const sv=app.querySelector("#saved");if(sv&&openId)sv.textContent=t}
+function openSurvey(id){openId=id;cur=surveys[id];cur.items=cur.items||{};cur.photos=cur.photos||{};cur.secNotes=cur.secNotes||{};renderEditor();scrollTo(0,0)}
+
+/* ---------- local device storage ---------- */
+let idbP=null;const urlCache={};
+function idb(){return idbP||(idbP=new Promise((res,rej)=>{const r=indexedDB.open("saha-kesif-foto",1);r.onupgradeneeded=()=>r.result.createObjectStore("p");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+async function idbTx(mode,fn){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction("p",mode),st=t.objectStore("p"),r=fn(st);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})}
+const idbPut=(id,b)=>idbTx("readwrite",st=>st.put(b,id));
+const idbGet=id=>idbTx("readonly",st=>st.get(id));
+const idbDel=id=>{delete urlCache[id];return idbTx("readwrite",st=>st.delete(id)).catch(()=>{})};
+async function hydrate(){for(const img of app.querySelectorAll("img[data-pid]")){const id=img.dataset.pid;if(!urlCache[id]){try{const b=await idbGet(id);if(b)urlCache[id]=URL.createObjectURL(b)}catch(e){}}if(urlCache[id]&&img.getAttribute("src")!==urlCache[id])img.src=urlCache[id]}}
+const localAssets={upload:async blob=>{const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);return{id}}};
+function anchorSave(b,filename){const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+const localDownloads={save:async({filename,data,type})=>{
+  const mime=type||"text/plain",b=data instanceof Blob?data:new Blob([data],{type:mime+";charset=utf-8"});
+  let file=null;try{file=new File([b],filename,{type:mime})}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    const sh=document.getElementById("sheet");document.getElementById("shName").textContent=filename;sh.hidden=false;
+    document.getElementById("shX").onclick=()=>sh.hidden=true;
+    document.getElementById("shGo").onclick=()=>{navigator.share({files:[file],title:filename}).then(()=>{sh.hidden=true}).catch(e=>{if(e&&e.name!=="AbortError")anchorSave(b,filename)})};
+    return}
+  anchorSave(b,filename)}};
+const blobToData=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r("");f.readAsDataURL(b)});
+const fname=s=>(s.code||s.name||"saha").replace(/[^\wğüşıöçĞÜŞİÖÇ-]+/g,"_");
+
+function getGps(){
+  if(!navigator.geolocation){toast("Bu tarayıcı konum vermiyor; koordinatı elle yazın");return}
+  toast("Konum alınıyor… açık havada daha hızlı");
+  navigator.geolocation.getCurrentPosition(p=>{
+    const c=p.coords;cur.coord=`${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)}`;
+    app.querySelector("#m-coord").value=cur.coord;
+    if(c.altitude!=null){cur.alt=String(Math.round(c.altitude));app.querySelector("#m-alt").value=cur.alt}
+    app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(cur.coord))+` · ±${Math.round(c.accuracy)} m`;dirty();toast("Konum alındı")
+  },e=>toast(e.code===1?"Konum izni verilmedi; tarayıcı ayarlarından izin verin":"Konum alınamadı, tekrar deneyin"),{enableHighAccuracy:true,timeout:30000,maximumAge:0});
+}
+async function htmlReport(){
+  flush();const s=cur;toast("Rapor hazırlanıyor…");
+  let ph="";for(const sec of SECTIONS){const arr=s.photos?.[sec.id]||[];if(!arr.length)continue;let imgs="";
+    for(const p of arr){try{const b=await idbGet(p.id);if(b)imgs+=`<img src="${await blobToData(b)}">`}catch(e){}}
+    ph+=`<h3>${esc(sec.t)}</h3><div class="g">${imgs}</div>`}
+  const html=`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Keşif raporu - ${esc(s.name||"saha")}</title><style>body{font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:16px;color:#13202a}pre{white-space:pre-wrap;font-size:13px;background:#f3f5f7;padding:12px;border-radius:6px}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}.g img{width:100%;border-radius:6px}h3{margin-top:24px}</style></head><body><pre>${esc(reportText())}</pre>${ph?`<h2>Fotoğraflar</h2>${ph}`:""}</body></html>`;
+  try{await localDownloads.save({filename:`kesif_${fname(s)}_${s.date||today()}.html`,data:html,type:"text/html"});toast("Rapor hazır")}catch(e){toast("Dosya kaydedilemedi")}
+}
+async function backup(){
+  toast("Yedek hazırlanıyor…");const photos={};
+  for(const s of Object.values(surveys))for(const arr of Object.values(s.photos||{}))for(const p of arr){try{const b=await idbGet(p.id);if(b)photos[p.id]=await blobToData(b)}catch(e){}}
+  const data=JSON.stringify({app:"saha-kesif",v:1,at:new Date().toISOString(),surveys,photos});
+  try{await localDownloads.save({filename:`saha-kesif-yedek_${today()}.json`,data,type:"application/json"});toast("Yedek hazır")}catch(e){toast("Yedek kaydedilemedi")}
+}
+async function restore(file){
+  try{const d=JSON.parse(await file.text());if(d.app!=="saha-kesif")throw 0;
+    for(const [id,url] of Object.entries(d.photos||{})){const b=await (await fetch(url)).blob();await idbPut(id,b)}
+    let n=0;for(const [id,s] of Object.entries(d.surveys||{})){if(!surveys[id]||(s.updatedAt||0)>(surveys[id].updatedAt||0)){surveys[id]=s;n++}}
+    lsSave();renderList();toast(`${n} keşif yüklendi`)}
+  catch(e){toast("Bu dosya bir saha keşif yedeği değil")}
+}
+
+async function init(){
+  app.addEventListener("input",onInput);app.addEventListener("change",onInput);app.addEventListener("click",onClick);
+  surveys=lsLoad();mode="local";assets=localAssets;downloads=localDownloads;
+  try{navigator.storage?.persist?.()}catch(e){}
+  addEventListener("pagehide",()=>{if(cur)flush()});
+  document.addEventListener("visibilitychange",()=>{if(document.hidden&&cur)flush()});
+  renderList();
+  if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+init();
+</script>
+</body></html>
