@@ -550,11 +550,8 @@ function updateProgress(){
 }
 function updateAssess(){
   const box=app.querySelector("#assess");if(!box)return;
-  const lines=energyLines(cur,"tr"),pr=issues(cur,"tr"),un=unknowns(cur,"tr");
-  box.innerHTML=`<div class="hint" style="margin-bottom:4px">Girdiğin bilgilerden otomatik özet (raporda böyle görünür)</div>
-   ${lines.length?`<ul>${lines.map(l=>`<li>${esc(l)}</li>`).join("")}</ul>`:`<p class="muted" style="margin:0">Sorulara cevap verdikçe burada özet oluşur.</p>`}
-   ${pr.length?`<p style="margin:6px 0 0"><b>Dikkat çeken noktalar:</b> ${esc(pr.map(p=>p.t).join("; "))}</p>`:""}
-   ${un.length?`<p style="margin:6px 0 0"><b>Sahada tespit edilemedi:</b> ${esc(un.join(", "))}</p>`:""}`;
+  const t=siteLines(cur,"tr",0).slice(1).join("\n").trim();
+  box.innerHTML=`<div class="hint" style="margin-bottom:4px">Raporda bu saha böyle görünecek</div><pre class="report" style="margin:0;max-height:none;font-family:var(--body);font-size:.88rem;background:transparent;border:0;padding:0">${t?esc(t):"Sorulara cevap verdikçe burada oluşur."}</pre>`;
 }
 async function uploadPhotos(secId,files){
   for(const f of files){
@@ -591,22 +588,6 @@ function energyLines(s,lang){
   if(w.length)out.push((en?"Site: ":"Saha: ")+w.join(", "));
   return out;
 }
-function reportText(s,lang){
-  const en=lang==="en",st=stats(s),L=[];
-  L.push(`📍 ${siteHeader(s,lang)}`);
-  L.push(`${fmtDate(s.date,lang)}${s.contact?` · ${en?"Contact":"İrtibat"}: ${s.contact}`:""}`);
-  const c=parseCoord(s.coord);if(c)L.push(`GPS: ${c[0]}, ${c[1]} – https://maps.google.com/?q=${c[0]},${c[1]}`);
-  L.push("");energyLines(s,lang).forEach(x=>L.push("• "+x));
-  const op=optText(s,lang);if(op)L.push("• "+op);
-  const pr=issues(s,lang);if(pr.length){L.push("",en?"Points of attention:":"Dikkat çeken noktalar:");pr.forEach(p=>L.push(`– ${p.t}${p.n?`: ${p.n}`:""}`))}
-  const un=unknowns(s,lang);if(un.length)L.push("",(en?"Not determined on site: ":"Sahada tespit edilemedi: ")+un.join(", "));
-  if(s.general)L.push("",(en?"Note: ":"Not: ")+tNote(s.general,lang));
-  const notes=ITEMS.filter(({it,key})=>!["bad","unk"].includes(status(it,E(s,key)))&&E(s,key).n).map(({it,key})=>`– ${en?it.se:it.s}: ${tNote(E(s,key).n,lang)}`);
-  if(notes.length){L.push("",en?"Other notes:":"Diğer notlar:");L.push(...notes)}
-  L.push("",`${st.done}/${TOTAL} ${en?"items checked":"madde kontrol edildi"}`);
-  return L.join("\n");
-}
-
 /* ---------- daily report ---------- */
 let dState={date:null,sel:{},photos:false};
 function renderDaily(date){
@@ -616,11 +597,15 @@ function renderDaily(date){
   const list=Object.values(surveys).filter(s=>s.date===dState.date).sort((a,b)=>String(a.name).localeCompare(String(b.name),"tr",{numeric:true}));
   list.forEach(s=>{if(!(s.id in dState.sel))dState.sel[s.id]=true});
   app.innerHTML=`
-  <div class="topbar"><button class="btn ghost" id="back" aria-label="Geri">←</button><div class="title"><b>Günlük rapor</b><span>Müdüre gidecek kısa özet</span></div></div>
+  <div class="topbar"><button class="btn ghost" id="back" aria-label="Geri">←</button><div class="title"><b>Günlük rapor</b><span>Müdüre gidecek rapor</span></div></div>
   <section class="panel">
    <div class="grid2">
     <label class="f" for="d-date">Tarih<input id="d-date" type="date" value="${esc(dState.date)}"></label>
     <label class="f" for="d-author">Hazırlayan<input id="d-author" value="${esc(prefs.author)}" placeholder="Ad Soyad"></label>
+   </div>
+   <div class="grid2">
+    <label class="f" for="d-unit">Birim / unvan<input id="d-unit" value="${esc(prefs.unit)}" placeholder="Enerji Birimi"></label>
+    <label class="f" for="d-project">Proje<input id="d-project" value="${esc(prefs.project)}" placeholder="Proje adı"></label>
    </div>
    <div class="row"><span class="hint">Dil:</span>${langSeg()}</div>
    ${list.length?`<div class="checks">${list.map(s=>`<label class="chk" for="ds-${s.id}"><input type="checkbox" id="ds-${s.id}" data-dsel="${s.id}" ${dState.sel[s.id]?"checked":""}><span><b>${esc(siteHeader(s,"tr"))}</b><small>${stats(s).done}/${TOTAL} madde</small></span></label>`).join("")}</div>`
@@ -630,7 +615,7 @@ function renderDaily(date){
   <section class="panel">
    <h2 style="font-size:1.15rem">Önizleme</h2>
    <pre class="report" id="dPrev" style="max-height:none;font-family:var(--body);font-size:.92rem"></pre>
-   <div class="row"><button class="btn primary" id="dCopy">Metni kopyala (WhatsApp)</button><button class="btn" id="dFile">Dosya olarak paylaş (mail)</button></div>
+   <div class="row"><button class="btn primary" id="dFile">Rapor dosyası (mail / WhatsApp)</button><button class="btn" id="dCopy">Metni kopyala</button></div>
    <div class="hint">Raporu gönderdikten sonra yedek almayı unutma: <button type="button" class="linkbtn" id="dBk">Şimdi yedek al</button></div>
    <label class="chk" for="d-ph"><input type="checkbox" id="d-ph" ${dState.photos?"checked":""}><span><b>Dosyaya fotoğrafları da ekle</b><small>Sadece dosya için geçerli; dosya büyür</small></span></label>
   </section>`;
@@ -646,6 +631,8 @@ function dailyInput(e){
   const el=e.target;
   if(el.id==="d-date"&&e.type==="change"&&el.value){renderDaily(el.value);return}
   if(el.id==="d-author"){prefs.author=el.value;savePrefs()}
+  if(el.id==="d-unit"){prefs.unit=el.value;savePrefs()}
+  if(el.id==="d-project"){prefs.project=el.value;savePrefs()}
   if(el.id==="d-notes"){daily[dState.date]=el.value;saveDaily()}
   if(el.dataset.dsel)dState.sel[el.dataset.dsel]=el.checked;
   if(el.id==="d-ph")dState.photos=el.checked;
@@ -653,65 +640,138 @@ function dailyInput(e){
 }
 function dailySel(){return Object.values(surveys).filter(s=>s.date===dState.date&&dState.sel[s.id]).sort((a,b)=>String(a.name).localeCompare(String(b.name),"tr",{numeric:true}))}
 function overall(){return{done:sites.filter(x=>siteStatus(x).k!=="none").length,total:sites.length}}
+/* ---------- structured report (each item on its own line, note right under it) ---------- */
+const ANS={
+ "sebeke.direk":{yes:["Var","Present"],no:["Yakında yok","None nearby"]},
+ "sebeke.trafo":{yes:["Var","Present"],no:["Yakında yok","None nearby"]},
+ "sebeke.engel":{yes:["Engel var","Obstacle present"],no:["Engel yok","Clear"]},
+ "sebeke.saat":{yes:["Sık kesiliyor","Frequent outages"],no:["Sık kesilmiyor","Outages not frequent"]},
+ "alan.jen":{yes:["Var","Available"],no:["Yok","None"]},
+ "alan.yakit":{yes:["Gelebilir","Accessible"],no:["Gelemez","Not accessible"]},
+ "alan.ev":{yes:["Evlere yakın","Close to houses"],no:["Evlerden uzak","Away from houses"]},
+ "alan.su":{yes:["Risk var","Risk observed"],no:["Risk görülmedi","No risk observed"]},
+ "ges.golge":{yes:["Var","Yes, shaded"],no:["Yok","None"]},
+ "ges.guney":{yes:["Açık","Open"],no:["Kapalı","Blocked"]},
+ "ges.guvenli":{yes:["Güvenli görünüyor","Appears secure"],no:["Risk var","At risk"]},
+ "cevre.vinc":{yes:["Girebilir","Accessible"],no:["Giremez","Not accessible"]},
+ "cevre.tuz":{yes:["Yakın","Nearby"],no:["Uzak","Not nearby"]},
+ "cevre.guvenlik":{yes:["Risk var","Risk reported"],no:["Risk bildirilmedi","No risk reported"]}
+};
+function valsText(s,key,it,lang){
+  const en=lang==="en",v=E(s,key).v||{},out=[];
+  if(it.area){const a=areaOf(v);if(a)out.push(`${v.en} × ${v.boy} m ≈ ${fmt(a,0,lang)} m²`+(it.kwp?(en?` (≈${fmt(a/7,1,lang)} kWp)`:` (≈${fmt(a/7,1,lang)} kWp panel)`):""));return out.join(", ")}
+  for(const f of it.f||[]){const x=String(v[f.k]||"").trim();if(!x)continue;
+    if(f.k==="saat"){out.push(en?`supply ~${x} h/day`:`günde ~${x} saat elektrik`);continue}
+    const val=f.type==="sel"?optLabel(key,f.k,x,lang):x;
+    out.push(it.f.length===1&&f.type==="sel"?val:`${(en?f.le:f.l).toLocaleLowerCase(en?"en":"tr")} ${val}${f.u?" "+(en&&f.ue?f.ue:f.u):""}`)}
+  return out.join(", ");
+}
+function rowFor(s,it,key,lang){
+  const en=lang==="en",e=E(s,key),st=status(it,e),t=it.type||"q";
+  if(t==="p"||!st)return null;
+  let ans="";
+  if(t==="q")ans=e.a==="unk"?(en?"Not determined on site":"Sahada tespit edilemedi"):(ANS[key]?.[e.a]?.[en?1:0]||(e.a==="yes"?(en?"Yes":"Evet"):(en?"No":"Hayır")));
+  const showV=t!=="q"||!it.fIf||e.a===it.fIf,vals=showV?valsText(s,key,it,lang):"";
+  return{st,label:en?it.se:it.s,text:[ans,vals].filter(Boolean).join(" – "),note:tNote(e.n,lang)};
+}
+function siteRows(s,lang){return SECTIONS.filter(sec=>sec.id!=="foto").map(sec=>({sec,rows:sec.items.map(it=>rowFor(s,it,sec.id+"."+it.id,lang)).filter(Boolean)})).filter(g=>g.rows.length)}
+function photoCount(s){return Object.values(s.photos||{}).reduce((a,x)=>a+x.length,0)}
 function optText(s,lang){const o=(s.opts||[]).filter(k=>OPTS[k]);if(!o.length)return "";const en=lang==="en";return (en?"Possible options (preliminary): ":"Olası seçenekler (ön görüş): ")+o.map(k=>(en?OPTS_EN:OPTS)[k]).join(", ")}
-function siteBlock(s,lang){
+function siteLines(s,lang,idx){
   const en=lang==="en",L=[],st=stats(s);
-  L.push(`📍 ${siteHeader(s,lang)}`+(st.done<TOTAL*0.6?(en?` (partial: ${st.done}/${TOTAL})`:` (eksik: ${st.done}/${TOTAL})`):""));
-  energyLines(s,lang).filter(x=>!/^(Saha|Site): /.test(x)).forEach(x=>L.push("• "+x));
-  const op=optText(s,lang);if(op)L.push("• "+op);
-  const pr=issues(s,lang);if(pr.length)L.push(`• ${en?"Attention":"Dikkat"}: ${pr.map(p=>p.t+(p.n?` (${p.n})`:"")).join("; ")}`);
-  const un=unknowns(s,lang);if(un.length)L.push(`• ${en?"Not determined on site":"Sahada tespit edilemedi"}: ${un.join(", ")}`);
-  const on=ITEMS.filter(({it,key})=>!["bad","unk"].includes(status(it,E(s,key)))&&(it.type||"q")!=="p"&&E(s,key).n).map(({it,key})=>`${en?it.se:it.s}: ${tNote(E(s,key).n,lang)}`);
-  if(on.length)L.push(`• ${en?"Observations":"Gözlemler"}: ${on.join("; ")}`);
-  if(s.general)L.push(`• ${en?"Note":"Not"}: ${tNote(s.general,lang)}`);
+  L.push(`${idx?idx+") ":""}${siteHeader(s,lang)}`);
+  const meta=[];const c=parseCoord(s.coord);if(c)meta.push(`GPS: ${c[0]}, ${c[1]}`);if(s.contact)meta.push(`${en?"Contact":"İrtibat"}: ${s.contact}`);
+  if(meta.length)L.push(meta.join(" · "));
+  if(st.done<TOTAL*0.6)L.push(en?`(Partial survey: ${st.done}/${TOTAL} items)`:`(Kısmi keşif: ${st.done}/${TOTAL} madde)`);
+  for(const g of siteRows(s,lang)){
+    L.push("",(en?g.sec.en:g.sec.t).toLocaleUpperCase(en?"en":"tr"));
+    for(const r of g.rows){L.push(`${r.st==="bad"?"⚠️":"•"} ${r.label}: ${r.text}`);if(r.note)L.push(`    ↳ ${r.note}`)}
+  }
+  const op=optText(s,lang),n=photoCount(s);
+  if(op||s.general||n){L.push("");if(op)L.push(op);if(s.general)L.push(`${en?"General note":"Genel not"}: ${tNote(s.general,lang)}`);if(n)L.push(en?`Photos: ${n} (in the file version)`:`Fotoğraf: ${n} adet (dosya sürümünde)`)}
   return L;
 }
+const SEP="━━━━━━━━━━━━━━━━";
+function headerLines(lang,list,daily,date){
+  const en=lang==="en",o=overall(),L=[];
+  L.push(daily?(en?"DAILY SITE SURVEY REPORT – ENERGY":"GÜNLÜK SAHA KEŞİF RAPORU – ENERJİ"):(en?"SITE SURVEY REPORT – ENERGY":"SAHA KEŞİF RAPORU – ENERJİ"));
+  L.push("");
+  if(prefs.author)L.push(`${en?"Prepared by":"Hazırlayan"}: ${prefs.author}`);
+  if(prefs.unit)L.push(`${en?"Unit":"Birim"}: ${prefs.unit}`);
+  if(prefs.project)L.push(`${en?"Project":"Proje"}: ${prefs.project}`);
+  L.push(`${en?"Date":"Tarih"}: ${fmtDate(date,lang)}`);
+  if(daily)L.push(`${en?"Sites visited":"Ziyaret edilen sahalar"}: ${list.length?list.map(s=>s.name).join(", "):"-"} (${en?"overall":"toplam"} ${o.done}/${o.total})`);
+  return L;
+}
+function reportText(s,lang){return [...headerLines(lang,[s],false,s.date),"",SEP,...siteLines(s,lang,0)].join("\n")}
 function dailyText(){
-  const lang=prefs.lang||"tr",en=lang==="en",list=dailySel(),o=overall(),L=[];
-  L.push(en?`DAILY SITE SURVEY – ENERGY · ${fmtDate(dState.date,lang)}`:`GÜNLÜK SAHA KEŞFİ – ENERJİ · ${fmtDate(dState.date,lang)}`);
-  if(prefs.author)L.push((en?"Prepared by: ":"Hazırlayan: ")+prefs.author);
-  L.push(en?`Today ${list.length} ${list.length===1?"site":"sites"}${list.length?": "+list.map(s=>s.name).join(", "):""} · Overall ${o.done}/${o.total} sites visited`
-          :`Bugün ${list.length} saha${list.length?": "+list.map(s=>s.name).join(", "):""} · Toplam ${o.done}/${o.total} sahaya gidildi`);
-  list.forEach(s=>{L.push("");L.push(...siteBlock(s,lang))});
+  const lang=prefs.lang||"tr",en=lang==="en",list=dailySel(),L=headerLines(lang,list,true,dState.date);
+  list.forEach((s,i)=>L.push("",SEP,...siteLines(s,lang,i+1)));
   if(!list.length)L.push("",en?"No site surveyed on this date.":"Bu tarihte keşif yapılmadı.");
-  const notes=(daily[dState.date]||"").trim();if(notes)L.push("",(en?"Next steps: ":"Sonraki adımlar: ")+notes);
-  const left=sites.filter(x=>siteStatus(x).k==="none").map(x=>x.name);if(left.length)L.push((notes?"":"\n")+(en?"Remaining: ":"Kalan sahalar: ")+left.join(", "));
+  const notes=(daily[dState.date]||"").trim(),left=sites.filter(x=>siteStatus(x).k==="none").map(x=>x.name);
+  if(notes||left.length){L.push("",SEP);if(notes)L.push(`${en?"Next steps":"Sonraki adımlar"}: ${notes}`);if(left.length)L.push(`${en?"Remaining sites":"Kalan sahalar"}: ${left.join(", ")}`)}
   return L.join("\n");
 }
 function updateDailyPreview(){const p=app.querySelector("#dPrev");if(p)p.textContent=dailyText()}
-async function dailyHtml(){
-  const lang=prefs.lang||"tr",en=lang==="en",list=dailySel(),o=overall();toast("Rapor hazırlanıyor…");let cards="";
-  for(const s of list){let ph="";
-    if(dState.photos){for(const sec of SECTIONS)for(const p of s.photos?.[sec.id]||[]){try{const b=await idbGet(p.id);if(b)ph+=`<img src="${await blobToData(b)}" alt="">`}catch(e){}}}
-    const pr=issues(s,lang),un=unknowns(s,lang),c=parseCoord(s.coord);
-    cards+=`<section class="site"><div class="h"><h2>${esc(siteHeader(s,lang))}</h2><span class="v none">${stats(s).done}/${TOTAL} ${en?"items":"madde"}</span></div>
-     <ul>${energyLines(s,lang).map(x=>{const i=x.indexOf(": ");return `<li><b>${esc(x.slice(0,i))}:</b> ${esc(x.slice(i+2))}</li>`}).join("")}
-     ${optText(s,lang)?(()=>{const t=optText(s,lang),i=t.indexOf(": ");return `<li><b>${esc(t.slice(0,i))}:</b> ${esc(t.slice(i+2))}</li>`})():""}</ul>
-     ${pr.length?`<p class="att"><b>${en?"Attention":"Dikkat"}:</b> ${esc(pr.map(p=>p.t+(p.n?` (${p.n})`:"")).join("; "))}</p>`:""}
-     ${un.length?`<p class="unk"><b>${en?"Not determined on site":"Sahada tespit edilemedi"}:</b> ${esc(un.join(", "))}</p>`:""}
-     ${(()=>{const on=ITEMS.filter(({it,key})=>!["bad","unk"].includes(status(it,E(s,key)))&&(it.type||"q")!=="p"&&E(s,key).n).map(({it,key})=>`${en?it.se:it.s}: ${tNote(E(s,key).n,lang)}`);return on.length?`<p><b>${en?"Observations":"Gözlemler"}:</b> ${esc(on.join("; "))}</p>`:""})()}
-     ${s.general?`<p><b>${en?"Note":"Not"}:</b> ${esc(tNote(s.general,lang))}</p>`:""}
-     ${c?`<p class="m"><a href="https://maps.google.com/?q=${c[0]},${c[1]}">GPS ${c[0]}, ${c[1]}</a>${s.contact?` · ${esc(s.contact)}`:""}</p>`:""}
-     ${ph?`<div class="g">${ph}</div>`:""}</section>`}
-  const notes=(daily[dState.date]||"").trim(),left=sites.filter(x=>siteStatus(x).k==="none").map(x=>x.name);
-  const title=`${en?"Daily site survey – Energy":"Günlük saha keşfi – Enerji"} · ${fmtDate(dState.date,lang)}`;
-  const html=`<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>
-body{font-family:-apple-system,system-ui,"Segoe UI",Arial,sans-serif;max-width:760px;margin:0 auto;padding:20px 16px 40px;color:#13202a;line-height:1.5;background:#fff}
-header{border-bottom:3px solid #13202a;padding-bottom:8px;margin-bottom:14px}h1{margin:0;font-size:22px}.sub{color:#566673}
-.site{border:1px solid #cfd7dd;border-radius:10px;padding:12px 14px;margin:12px 0}.h{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}.h h2{margin:0;font-size:18px}
-ul{margin:8px 0;padding-left:18px}li{margin:2px 0}.v{padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap}
-.ok{background:#dff1e6;color:#1d7f47}.mid{background:#fbf0d6;color:#7a5200}.bad{background:#f8e1dc;color:#b93a24}.none{background:#e6eaed;color:#566673}
-.att{background:#f8e1dc;border-radius:6px;padding:6px 10px}.unk{background:#fbf0d6;border-radius:6px;padding:6px 10px}.m{font-size:13px;color:#566673}
-.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}.g img{width:100%;border-radius:6px}.notes{background:#f3f5f7;border-radius:8px;padding:10px 12px;white-space:pre-wrap}
-</style></head><body>
-<header><h1>${esc(title)}</h1><div class="sub">${prefs.author?`${en?"Prepared by":"Hazırlayan"}: ${esc(prefs.author)} · `:""}${en?`Today ${list.length} ${list.length===1?"site":"sites"} · Overall ${o.done}/${o.total}`:`Bugün ${list.length} saha · Toplam ${o.done}/${o.total}`}</div></header>
-${cards||`<p>${en?"No site surveyed on this date.":"Bu tarihte keşif yapılmadı."}</p>`}
-${notes?`<h3>${en?"Next steps":"Sonraki adımlar"}</h3><div class="notes">${esc(notes)}</div>`:""}
-${left.length?`<p><b>${en?"Remaining sites":"Kalan sahalar"}:</b> ${esc(left.join(", "))}</p>`:""}
-</body></html>`;
-  try{await saveFile({filename:`${en?"daily-report":"gunluk-rapor"}_${dState.date}.html`,data:html,type:"text/html"})}catch(e){toast("Dosya hazırlanamadı")}
+async function buildHtml(list,{lang,isDaily,photos,date}){
+  const en=lang==="en",o=overall();
+  const title=isDaily?(en?"Daily Site Survey Report":"Günlük Saha Keşif Raporu"):(en?"Site Survey Report":"Saha Keşif Raporu");
+  const meta=[[en?"Prepared by":"Hazırlayan",prefs.author],[en?"Unit":"Birim",prefs.unit],[en?"Project":"Proje",prefs.project],[en?"Date":"Tarih",fmtDate(date,lang)],
+    [en?"Sites":"Sahalar",list.map(s=>s.name).join(", ")+(isDaily?` (${en?"overall":"toplam"} ${o.done}/${o.total})`:"")]].filter(x=>x[1]);
+  let body="";
+  for(const [i,s] of list.entries()){
+    const st=stats(s),c=parseCoord(s.coord);
+    let rows="";
+    for(const g of siteRows(s,lang)){
+      rows+=`<tr class="grp"><th colspan="2">${esc(en?g.sec.en:g.sec.t)}</th></tr>`;
+      for(const r of g.rows)rows+=`<tr class="r-${r.st}"><td class="k">${esc(r.label)}</td><td>${r.st==="bad"?'<span class="flag">!</span> ':""}${esc(r.text)}${r.note?`<div class="note">↳ ${esc(r.note)}</div>`:""}</td></tr>`;
+    }
+    let ph="";
+    if(photos){for(const sec of SECTIONS)for(const p of s.photos?.[sec.id]||[]){try{const b=await idbGet(p.id);if(b)ph+=`<figure><img src="${await blobToData(b)}" alt=""><figcaption>${esc(en?sec.en:sec.t)}</figcaption></figure>`}catch(e){}}}
+    const op=optText(s,lang);
+    body+=`<section class="site">
+     <h2><span class="no">${list.length>1?i+1:"•"}</span>${esc(siteHeader(s,lang))}</h2>
+     <p class="sm">${[c?`<a href="https://maps.google.com/?q=${c[0]},${c[1]}">GPS ${c[0]}, ${c[1]}</a>`:"",s.contact?`${en?"Contact":"İrtibat"}: ${esc(s.contact)}`:"",`${st.done}/${TOTAL} ${en?"items checked":"madde kontrol edildi"}`].filter(Boolean).join(" · ")}</p>
+     ${rows?`<table>${rows}</table>`:`<p class="sm">${en?"No information entered.":"Bilgi girilmedi."}</p>`}
+     ${op?`<p class="box"><b>${esc(op.split(": ")[0])}:</b> ${esc(op.split(": ").slice(1).join(": "))}</p>`:""}
+     ${s.general?`<p class="box"><b>${en?"General note":"Genel not"}:</b> ${esc(tNote(s.general,lang))}</p>`:""}
+     ${ph?`<div class="g">${ph}</div>`:""}
+    </section>`;
+  }
+  const notes=isDaily?(daily[dState.date]||"").trim():"",left=isDaily?sites.filter(x=>siteStatus(x).k==="none").map(x=>x.name):[];
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} – ${esc(fmtDate(date,lang))}</title><style>
+*{box-sizing:border-box}body{font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#1c2730;background:#fff;margin:0;line-height:1.45;font-size:15px}
+.doc{max-width:780px;margin:0 auto;padding:28px 18px 40px}
+.top{border-bottom:3px solid #1c3d5a;padding-bottom:12px;margin-bottom:16px}.top small{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#5b6b78}.top h1{margin:4px 0 0;font-size:22px;color:#1c3d5a}
+table.meta{border-collapse:collapse;margin:0 0 20px;font-size:14px}table.meta td{padding:3px 14px 3px 0;vertical-align:top}table.meta td:first-child{color:#5b6b78;white-space:nowrap}
+.site{margin:0 0 22px;page-break-inside:avoid}.site h2{font-size:17px;margin:0 0 2px;color:#1c3d5a;display:flex;gap:8px;align-items:center}
+.no{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:50%;background:#1c3d5a;color:#fff;font-size:12px}
+.sm{color:#5b6b78;font-size:13px;margin:2px 0 8px}.sm a{color:#1c3d5a}
+table{width:100%;border-collapse:collapse;font-size:14px}td{padding:6px 8px;border-bottom:1px solid #e1e6ea;vertical-align:top}td.k{width:38%;color:#3d4c58}
+tr.grp th{text-align:left;background:#eef2f5;color:#1c3d5a;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:6px 8px}
+tr.r-bad td{background:#fdf1ee}tr.r-unk td:last-child{color:#7a6a3a;font-style:italic}
+.flag{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#b8432c;color:#fff;font-size:11px;font-weight:700;font-style:normal}
+.note{color:#5b6b78;font-size:13px;margin-top:2px;font-style:normal}
+.box{background:#f5f7f9;border-left:3px solid #1c3d5a;padding:8px 10px;margin:8px 0;font-size:14px}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}.g img{width:100%;border-radius:4px;display:block}figure{margin:0}figcaption{font-size:11px;color:#5b6b78}
+.end{border-top:1px solid #c9d2d9;margin-top:24px;padding-top:10px;font-size:12px;color:#5b6b78}
+.legend{font-size:12px;color:#5b6b78;margin:-10px 0 16px}
+@media print{.doc{padding:0}.site{page-break-inside:avoid}}
+</style></head><body><div class="doc">
+<div class="top"><small>${en?"Energy · Site survey":"Enerji · Saha keşfi"}</small><h1>${esc(title)}</h1></div>
+<table class="meta">${meta.map(([k,v])=>`<tr><td>${esc(k)}</td><td><b>${esc(v)}</b></td></tr>`).join("")}</table>
+<p class="legend"><span class="flag">!</span> ${en?"point of attention":"dikkat çeken nokta"} · <i>${en?"italic: not determined on site":"italik: sahada tespit edilemedi"}</i></p>
+${body||`<p>${en?"No site surveyed on this date.":"Bu tarihte keşif yapılmadı."}</p>`}
+${notes?`<p class="box"><b>${en?"Next steps":"Sonraki adımlar"}:</b> ${esc(notes)}</p>`:""}
+${left.length?`<p class="sm"><b>${en?"Remaining sites":"Kalan sahalar"}:</b> ${esc(left.join(", "))}</p>`:""}
+<div class="end">${en?"This report records on-site observations only; it contains no technical assessment.":"Bu rapor yalnızca sahada yapılan gözlemleri içerir; teknik değerlendirme içermez."}${prefs.author?` · ${esc(prefs.author)}`:""}</div>
+</div></body></html>`;
 }
-
+async function dailyHtml(){
+  const lang=prefs.lang||"tr",en=lang==="en";toast("Rapor hazırlanıyor…");
+  try{const html=await buildHtml(dailySel(),{lang,isDaily:true,photos:dState.photos,date:dState.date});
+    await saveFile({filename:`${en?"daily-report":"gunluk-rapor"}_${dState.date}.html`,data:html,type:"text/html"})}catch(e){toast("Dosya hazırlanamadı")}
+}
 /* ---------- device storage ---------- */
 let idbP=null;const urlCache={};
 function idb(){return idbP||(idbP=new Promise((res,rej)=>{const r=indexedDB.open("saha-kesif-foto",1);r.onupgradeneeded=()=>r.result.createObjectStore("p");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
@@ -743,11 +803,8 @@ function getGps(){
 }
 async function htmlReport(){
   flush();const s=cur,lang=prefs.lang||"tr",en=lang==="en";toast("Rapor hazırlanıyor…");
-  let ph="";for(const sec of SECTIONS){const arr=s.photos?.[sec.id]||[];if(!arr.length)continue;let imgs="";
-    for(const p of arr){try{const b=await idbGet(p.id);if(b)imgs+=`<img src="${await blobToData(b)}">`}catch(e){}}
-    ph+=`<h3>${esc(en?sec.en:sec.t)}</h3><div class="g">${imgs}</div>`}
-  const html=`<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(siteHeader(s,lang))}</title><style>body{font-family:-apple-system,system-ui,sans-serif;max-width:760px;margin:0 auto;padding:16px;color:#13202a}pre{white-space:pre-wrap;font-family:inherit;font-size:15px;line-height:1.5}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}.g img{width:100%;border-radius:6px}h3{margin-top:20px}</style></head><body><pre>${esc(reportText(s,lang))}</pre>${ph}</body></html>`;
-  try{await saveFile({filename:`${en?"site-report":"saha-raporu"}_${fname(s)}_${s.date||today()}.html`,data:html,type:"text/html"})}catch(e){toast("Dosya kaydedilemedi")}
+  try{const html=await buildHtml([s],{lang,isDaily:false,photos:true,date:s.date});
+    await saveFile({filename:`${en?"site-report":"saha-raporu"}_${fname(s)}_${s.date||today()}.html`,data:html,type:"text/html"})}catch(e){toast("Dosya kaydedilemedi")}
 }
 async function backup(){
   toast("Yedek hazırlanıyor…");const photos={};
