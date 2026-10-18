@@ -137,6 +137,7 @@ details.qn summary{cursor:pointer;font-size:.88rem;font-weight:600;color:var(--m
 .qchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .qchip{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:7px 12px;font-size:.88rem;text-align:left;line-height:1.3}
 .qchip.used{background:var(--accent-soft);border-color:var(--accent)}
+.ask{display:grid;gap:4px;background:var(--sunk);border-radius:6px;padding:8px 10px}.ask p{margin:0;display:grid;gap:1px}.ask b{font-weight:600;font-size:.95rem}.ask span{font-size:.8rem;color:var(--muted)}
 .linkbtn{background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;font:inherit}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -231,6 +232,33 @@ const QN_UNK=[["Sahada görülemedi","Could not be seen on site"],["Yerel kişi 
 const QN_GEN=[["Yerel irtibat kişisi sahadaydı","Local contact was on site"],["Yerel irtibat kişisine ulaşılamadı","Local contact could not be reached"],["Sahada kısa süre kalınabildi","Only a short time on site"],["Arazi sahibiyle görüşülmedi","Landowner not met"],["Sahaya girilemedi, dışarıdan bakıldı","Could not enter site, observed from outside"],["Fotoğraf çekimine izin verilmedi","Photography not permitted"],["Hava koşulları nedeniyle tam bakılamadı","Weather limited the inspection"]];
 const QMAP=[...Object.values(QN).flat(),...QN_UNK,...QN_GEN].sort((a,b)=>b[0].length-a[0].length);
 function tNote(n,lang){if(lang!=="en"||!n)return n||"";let o=n;for(const [tr,en] of QMAP)o=o.split(tr).join(en);return o}
+/* ---------- what to ask in English (en | tr) ---------- */
+const ASK={
+ "sebeke.direk":[["Is there an electricity pole near here? How far is it?","Yakında elektrik direği var mı? Ne kadar uzakta?"]],
+ "sebeke.trafo":[["Is there a transformer near here? Where is it?","Yakında trafo var mı? Nerede?"],["The big box on the pole – can you show me?","Direğin üstündeki büyük kutu – gösterebilir misiniz?"]],
+ "sebeke.engel":[["Can we bring a cable from the pole to here?","Direkten buraya kablo çekebilir miyiz?"],["Is there private land or a road in between?","Arada özel arazi veya yol var mı?"]],
+ "sebeke.saat":[["How many hours of electricity do you get per day?","Günde kaç saat elektrik geliyor?"],["Is it worse in summer?","Yazın daha mı kötü oluyor?"],["Do people here use a shared generator?","Burada insanlar ortak jeneratör kullanıyor mu?"]],
+ "alan.olcu":[["Where are the borders of the site?","Sahanın sınırları nerede?"]],
+ "alan.jen":[["Is there space here for a generator, about 3 by 4 metres?","Burada jeneratör için yaklaşık 3'e 4 metre yer var mı?"]],
+ "alan.yakit":[["Can a fuel truck come all the way here?","Yakıt kamyonu buraya kadar gelebilir mi?"],["Also when it rains?","Yağmur yağınca da gelebilir mi?"]],
+ "alan.ev":[["How close are the nearest houses?","En yakın evler ne kadar yakın?"]],
+ "alan.su":[["Does water collect here when it rains?","Yağmur yağınca burada su birikiyor mu?"],["Has this place ever flooded?","Burayı hiç su bastı mı?"]],
+ "alan.zemin":[["Was this land filled with soil before, or is it natural ground?","Bu arazi daha önce dolgu yapıldı mı, yoksa doğal zemin mi?"]],
+ "ges.alan":[["Can we use this empty area too?","Bu boş alanı da kullanabilir miyiz?"]],
+ "ges.golge":[["Does this area get shade at any time of the day?","Bu alana günün herhangi bir saatinde gölge düşüyor mu?"],["Is anything going to be built here?","Buraya bir şey yapılması planlanıyor mu?"]],
+ "ges.guney":[["Which direction is south?","Güney hangi tarafta?"]],
+ "ges.guvenli":[["Is it safe to leave solar panels here?","Güneş panellerini burada bırakmak güvenli mi?"]],
+ "cevre.yol":[["Is the road to here good all year?","Buraya gelen yol bütün yıl iyi durumda mı?"]],
+ "cevre.vinc":[["Can a crane or a big truck get in here?","Buraya vinç veya büyük kamyon girebilir mi?"]],
+ "cevre.tuz":[["How far is the sea or the river from here?","Deniz veya nehir buraya ne kadar uzak?"]],
+ "cevre.guvenlik":[["Is there any theft in this area – fuel, cables or batteries?","Bu bölgede hırsızlık oluyor mu – yakıt, kablo veya akü?"],["Is there a guard here?","Burada bekçi var mı?"]],
+ "foto.genel":[["May I take some photos of the site?","Sahanın fotoğraflarını çekebilir miyim?"]]
+};
+const PHRASES=[
+ ["Tanışma ve açıklama",[["Hello, my name is ___. I am from the energy team.","Merhaba, adım ___. Enerji ekibindenim."],["We are checking this site for a new telecom tower.","Bu sahayı yeni bir telekom kulesi için inceliyoruz."],["Can I ask you a few questions about electricity here? It takes about 10 minutes.","Buradaki elektrikle ilgili birkaç soru sorabilir miyim? Yaklaşık 10 dakika sürer."]]],
+ ["Anlamadığında",[["Sorry, can you say that again slowly?","Pardon, tekrar yavaşça söyler misiniz?"],["Can you show me?","Bana gösterebilir misiniz?"],["Approximately? A rough number is fine.","Yaklaşık olarak? Kabaca bir rakam yeterli."],["Who can I ask about this?","Bunu kime sorabilirim?"]]],
+ ["Kapanış",[["Can I have your phone number in case I have more questions?","Başka sorum olursa diye telefon numaranızı alabilir miyim?"],["Thank you very much for your help.","Yardımınız için çok teşekkür ederim."]]]
+];
 let surveys={},sites=[],prefs={},daily={},openId=null,cur=null,saveT=null,view="list";
 const app=document.getElementById("app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -362,6 +390,11 @@ function renderGuide(){
    <p class="hint">Akşam: <b>Günlük rapor</b> › Metni kopyala › WhatsApp'tan müdüre gönder. Sonra <b>Yedek al</b> › Dosyalara Kaydet › iCloud Drive.</p>
   </section>
   <section class="panel guide">
+   <h2>İngilizce konuşma kalıpları</h2>
+   <p class="hint" style="margin:0">Her sorunun İngilizcesi zaten maddenin altında yazıyor. Bunlar sohbeti başlatmak ve bitirmek için.</p>
+   ${PHRASES.map(([h,l])=>`<h3 style="font-size:1rem;margin:6px 0 0">${h}</h3><div class="ask">${l.map(([en,tr])=>`<p><b>🗣 ${esc(en)}</b><span>${esc(tr)}</span></p>`).join("")}</div>`).join("")}
+  </section>
+  <section class="panel guide">
    <h2>Mesafe nasıl ölçülür?</h2>
    <ul>
     <li><b>Adımla:</b> normal yürüyüşte 1 adım ≈ 0,75 m. 100 adım ≈ 75 m.</li>
@@ -439,6 +472,7 @@ function itemHtml(sec,it){
   const showF=it.f&&(!it.fIf||e.a===it.fIf);
   return `<div class="item" data-key="${key}" data-s="${st}">
    <div class="q">${esc(it.q)}</div>
+   ${(ASK[key]||[]).length?`<div class="ask">${ASK[key].map(([en,tr])=>`<p><b>🗣 ${esc(en)}</b><span>${esc(tr)}</span></p>`).join("")}</div>`:""}
    ${btns}
    ${it.f?`<div class="fields" ${showF?"":"hidden"}>${it.f.map(f=>fieldHtml(key,f,v[f.k]??"")).join("")}</div>`:""}
    ${it.area?`<div class="calc num" id="calc-${key.replace(".","-")}">${calcText(it,v)}</div>`:""}
