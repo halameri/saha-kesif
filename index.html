@@ -348,7 +348,7 @@ function renderList(){
    </button>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 20.10.2026-c</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 20.10.2026-d</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#guideBtn").onclick=renderGuide;
   app.querySelector("#guideBtn2")?.addEventListener("click",renderGuide);
@@ -826,7 +826,7 @@ tr.r-bad td{background:#fdf1ee}tr.r-unk td:last-child{color:#7a6a3a;font-style:i
 </style></head><body><div class="doc">
 <div class="top"><small>${en?"Energy · Site survey":"Enerji · Saha keşfi"}</small><h1>${esc(title)}</h1></div>
 <table class="meta">${meta.map(([k,v])=>`<tr><td>${esc(k)}</td><td><b>${esc(v)}</b></td></tr>`).join("")}</table>
-<p class="legend"><span class="flag">!</span> ${en?"point of attention":"dikkat çeken nokta"} · <i>${en?"italic: not determined on site":"italik: sahada tespit edilemedi"}</i></p>
+
 ${body||`<p>${en?"No site surveyed on this date.":"Bu tarihte keşif yapılmadı."}</p>`}
 ${notes?`<p class="box"><b>${en?"Next steps":"Sonraki adımlar"}:</b> ${esc(notes)}</p>`:""}
 ${left.length?`<p class="sm"><b>${en?"Remaining sites":"Kalan sahalar"}:</b> ${esc(left.join(", "))}</p>`:""}
