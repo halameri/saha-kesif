@@ -180,9 +180,9 @@ const SECTIONS=[
   {id:"zemin",type:"m",q:"Zemin nasıl?",en:"Ground type",s:"Zemin",se:"Ground",f:[{k:"tip",l:"Zemin",le:"Ground",type:"sel",o:["Toprak","Kum","Kaya","Dolgu / moloz","Bataklık / ıslak"],oe:["Soil","Sand","Rock","Fill / rubble","Marshy / wet"]}],
    tip:"Zemin tipi topraklama ve temel için önemli. Yakından bir fotoğraf çek."}]},
  {id:"ges",t:"Güneş paneli (GES)",en:"Solar (PV)",items:[
-  {id:"alan",type:"m",q:"Güneş paneli için boş alan",en:"Free area for solar panels",s:"Panel alanı",se:"PV area",area:1,kwp:1,
-   f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],
-   tip:"Duvar içinde ya da hemen yanında, düz ve boş alanı adımla. Uygulama yaklaşık kaç kWp panel sığacağını hesaplar (≈7 m² başına 1 kWp)."},
+  {id:"alan",q:"Güneş paneli için boş alan var mı?",en:"Is there free space for solar panels?",s:"Panel alanı",se:"PV area",good:"yes",bt:"Güneş paneli için boş alan yok",be:"No free space for solar panels",area:1,kwp:1,
+   fIf:"yes",f:[{k:"en",l:"En (isteğe bağlı)",le:"Width",u:"m"},{k:"boy",l:"Boy (isteğe bağlı)",le:"Length",u:"m"}],
+   tip:"Ölçü şart değil; genel durumu hazır notlardan seçmen yeterli. Ölçebilirsen uygulama yaklaşık kaç kWp panel sığacağını hesaplar (≈7 m² başına 1 kWp)."},
   {id:"golge",q:"Panel alanına gölge düşürecek bir şey var mı?",en:"Anything that would shade the panel area?",s:"Gölge",se:"Shading",good:"no",bt:"Panel alanına gölge düşüyor",be:"Panel area is shaded",
    tip:"Bina, ağaç, duvar, kulenin kendisi. Kulenin gölgesi gün içinde döner; kuleye çok yakın alanlar gölgede kalır."},
   {id:"guney",q:"Güney tarafı açık mı?",en:"Is the south side open?",s:"Güney yönü",se:"South side",good:"yes",bt:"Güney tarafı kapalı",be:"South side is blocked",
@@ -217,13 +217,13 @@ const QN={
  "sebeke.engel":[["Arada özel tarla / bahçe var","Private farmland / garden in between"],["Arada asfalt yol var","Paved road in between"],["Arada kanal / dere var","Canal / stream in between"],["Arada evler var","Houses in between"]],
  "sebeke.saat":[["Yerel kişiye göre yazın kesinti artıyor","Per local contact, outages increase in summer"],["Mahallede ortak jeneratör kullanılıyor","Neighbourhood uses a shared generator"],["Elektrik dönüşümlü / programlı veriliyor","Supply is rotating / scheduled"],["Kesinti hakkında bilgi alınamadı","No information on outages"]],
  "alan.olcu":[["Ölçüler adımlanarak alındı (yaklaşık)","Measured by pacing (approximate)"],["Saha sınırı belli değil, duvar yok","Site boundary not marked, no wall"],["Mevcut bir duvar var","Existing wall in place"],["Kroki çizildi, fotoğrafı eklendi","Hand sketch drawn, photo attached"]],
- "alan.oda":[["Oda boş, kullanılabilir görünüyor","Room is empty and appears usable"],["Odada klima var","Room has air conditioning"],["Odada klima yok","No air conditioning in the room"],["Odada elektrik panosu var","Room has an electrical panel"],["Oda başka bir kuruma / firmaya ait","Room belongs to another organisation / company"],["Odaya girmek için izin gerekiyor","Permission needed to enter the room"],["Oda bakımsız / tadilat gerekir","Room is in poor condition / needs repair"]],
+ "alan.oda":[["Boş odalar var","Empty rooms available"],["Sistem salonunda boş alan var","Free space in the equipment hall"],["Oda boş, kullanılabilir görünüyor","Room is empty and appears usable"],["Odada klima var","Room has air conditioning"],["Odada klima yok","No air conditioning in the room"],["Odada elektrik panosu var","Room has an electrical panel"],["Oda başka bir kuruma / firmaya ait","Room belongs to another organisation / company"],["Odaya girmek için izin gerekiyor","Permission needed to enter the room"],["Oda bakımsız / tadilat gerekir","Room is in poor condition / needs repair"]],
  "alan.jen":[["Duvar içinde yer var","Space inside the wall"],["Sadece duvar dışında yer var","Space only outside the wall"],["Yer dar, yerleşim planı gerekir","Tight space, layout needed"]],
  "alan.yakit":[["Yol dar, sadece küçük araç girebilir","Narrow road, small vehicles only"],["Yağmurda yol çamur oluyor","Road gets muddy when it rains"],["Kamyon sahaya kadar değil, yakınına kadar gelebilir","Truck can get close but not to the site"]],
  "alan.ev":[["En yakın ev duvarın hemen yanında","Nearest house right next to the wall"],["Etrafta yerleşim yok","No houses around"],["Yakında okul / cami var","School / mosque nearby"]],
  "alan.su":[["Zemin çevresinden alçakta","Ground lower than surroundings"],["Kurumuş çamur izleri var","Dried mud marks visible"],["Yerel kişiye göre yağmurda su basıyor","Per local contact, it floods when it rains"],["Zemin yüksek, su birikmez görünüyor","Ground is raised, no pooling expected"]],
  "alan.zemin":[["Dolgu zemin, sıkıştırılmamış görünüyor","Fill ground, looks uncompacted"],["Yüzeyde tuz izleri var","Salt traces on the surface"],["Zemin ıslak / bataklık","Ground is wet / marshy"]],
- "ges.alan":[["Alan duvar içinde","Area inside the wall"],["Alan duvar dışında, ek arazi gerekir","Area outside the wall, extra land needed"],["Konteyner çatısı da kullanılabilir","Container roof could also be used"]],
+ "ges.alan":[["Geniş açık alan var","Large open area available"],["Sınırlı alan var","Limited space available"],["Çatıda kullanılabilir alan var","Usable roof space available"],["Sahanın yanında boş arazi var","Vacant land next to the site"],["Alan duvar içinde","Area inside the wall"],["Alan duvar dışında, ek arazi gerekir","Area outside the wall, extra land needed"],["Konteyner çatısı da kullanılabilir","Container roof could also be used"]],
  "ges.golge":[["Kulenin gölgesi öğleden sonra alana düşüyor","Tower shadow falls on the area in the afternoon"],["Yakında yüksek bina var","Tall building nearby"],["Hurma ağaçları gölge yapıyor","Palm trees cast shade"],["Gölge yok, alan tamamen açık","No shade, area fully open"]],
  "ges.guney":[["Güney tarafında bina var","Building on the south side"],["Güney tarafı tamamen açık","South side fully open"]],
  "ges.guvenli":[["Duvar alçak, kolay aşılır","Wall is low, easy to climb"],["Bekçi var","Guard present"],["Bölgede panel hırsızlığı duyulmuş","Panel theft reported in the area"]],
@@ -233,7 +233,7 @@ const QN={
  "cevre.guvenlik":[["Yerel kişiye göre yakıt hırsızlığı oluyor","Per local contact, fuel theft occurs"],["Kablo hırsızlığı duyulmuş","Cable theft reported"],["Bölge sakin, risk bildirilmedi","Area quiet, no risk reported"],["Bekçi / koruma var","Guard / security present"]]
 };
 const QN_UNK=[["Sahada görülemedi","Could not be seen on site"],["Yerel kişi bilmiyor","Local contact does not know"],["Erişim olmadığı için bakılamadı","Could not be checked (no access)"]];
-const QN_GEN=[["Yerel irtibat kişisi sahadaydı","Local contact was on site"],["Yerel irtibat kişisine ulaşılamadı","Local contact could not be reached"],["Sahada kısa süre kalınabildi","Only a short time on site"],["Arazi sahibiyle görüşülmedi","Landowner not met"],["Sahaya girilemedi, dışarıdan bakıldı","Could not enter site, observed from outside"],["Fotoğraf çekimine izin verilmedi","Photography not permitted"],["Hava koşulları nedeniyle tam bakılamadı","Weather limited the inspection"]];
+const QN_GEN=[["Boş odalar var","Empty rooms available"],["Sistem salonunda boş alan var","Free space in the equipment hall"],["GES için geniş boş alan var","Large free area for solar panels"],["Yerel irtibat kişisi sahadaydı","Local contact was on site"],["Yerel irtibat kişisine ulaşılamadı","Local contact could not be reached"],["Sahada kısa süre kalınabildi","Only a short time on site"],["Arazi sahibiyle görüşülmedi","Landowner not met"],["Sahaya girilemedi, dışarıdan bakıldı","Could not enter site, observed from outside"],["Fotoğraf çekimine izin verilmedi","Photography not permitted"],["Hava koşulları nedeniyle tam bakılamadı","Weather limited the inspection"]];
 const QMAP=[...Object.values(QN).flat(),...QN_UNK,...QN_GEN].sort((a,b)=>b[0].length-a[0].length);
 function tNote(n,lang){if(lang!=="en"||!n)return n||"";let o=n;for(const [tr,en] of QMAP)o=o.split(tr).join(en);return o}
 /* ---------- what to ask in English (en | tr) ---------- */
@@ -301,7 +301,7 @@ function possible(s){
   const out={};
   if(pole==="yes")out.grid=dist>500?"direk uzak":"direk yakın";
   if(jen==="yes")out.gen="yer var";
-  if(shade==="no"&&(pa==null||pa>=30))out.pv="gölge yok"+(pa?`, ~${Math.round(pa)} m²`:"");
+  if(shade==="no"&&A(s,"ges.alan")!=="no"&&(pa==null||pa>=30))out.pv="gölge yok"+(pa?`, ~${Math.round(pa)} m²`:"");
   if(out.gen&&out.pv)out.hyb="ikisi de mümkün görünüyor";
   return out;
 }
@@ -688,6 +688,7 @@ const ANS={
  "sebeke.engel":{yes:["Engel var","Obstacle present"],no:["Engel yok","Clear"]},
  "sebeke.saat":{yes:["Sık kesiliyor","Frequent outages"],no:["Sık kesilmiyor","Outages not frequent"]},
  "alan.oda":{yes:["Var","Available"],no:["Yok","None"]},
+ "ges.alan":{yes:["Boş alan var","Free space available"],no:["Boş alan yok","No free space"]},
  "alan.jen":{yes:["Var","Available"],no:["Yok","None"]},
  "alan.yakit":{yes:["Gelebilir","Accessible"],no:["Gelemez","Not accessible"]},
  "alan.ev":{yes:["Evlere yakın","Close to houses"],no:["Evlerden uzak","Away from houses"]},
