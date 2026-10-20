@@ -116,6 +116,7 @@ pre.report{background:var(--sunk);border:1px solid var(--line);border-radius:6px
 .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px}
 .chip{display:grid;gap:1px;text-align:left;border:1px solid var(--line);border-left:5px solid var(--na);background:var(--sunk);border-radius:8px;padding:8px 10px;min-height:44px}
 .chip b{font-family:var(--display);font-size:1.05rem}.chip span{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chip i{font-style:normal;font-size:.72rem;font-weight:600;color:var(--muted)}
+.cardrow{display:flex;gap:8px;align-items:stretch}.cardrow .card{flex:1;min-width:0}
 .chip.k-prog{border-left-color:var(--accent)}.chip.k-done{border-left-color:var(--ok);background:var(--ok-soft)}.chip.k-sartli{border-left-color:var(--accent);background:var(--accent-soft)}.chip.k-uygun{border-left-color:var(--ok);background:var(--ok-soft)}.chip.k-degil{border-left-color:var(--bad);background:var(--bad-soft)}
 .chip.k-uygun i{color:var(--ok)}.chip.k-degil i{color:var(--bad)}
 .langseg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -166,17 +167,17 @@ const SECTIONS=[
  {id:"mevcut",t:"Mevcut enerji altyapısı",en:"Existing power infrastructure",items:[
   {id:"jen",q:"Sahada veya yakında çalışan bir jeneratör var mı?",en:"Is there an existing generator on or near the site?",s:"Mevcut jeneratör",se:"Existing generator",good:null,photo:1,
    fIf:"yes",f:[{k:"kva",l:"Gücü",le:"Rating",u:"kVA"},{k:"cap",l:"Toplam kapasite",le:"Total capacity",u:"A"},{k:"used",l:"Kullanılan",le:"In use",u:"A"},{k:"saat",l:"Günde çalışma",le:"Runs",u:"saat",ue:"h/day"},{k:"sahip",l:"Sahibi",le:"Owner",type:"sel",o:["Mahalle jeneratörü","Bina / tesis sahibi","Devlet / belediye","Bilmiyorum"],oe:["Neighbourhood generator","Building / facility owner","Government / municipality","Unknown"]}],
-   tip:"Irak'ta mahalle jeneratörleri elektriği amper olarak satar. 100 kVA bir jeneratör toplam ~400 A verir (üç fazın toplamı). Gücünü, toplam ve kullanılan amperi, günde kaç saat çalıştığını sor. Boş kapasiteyi uygulama hesaplar."},
-  {id:"dc",q:"Sahada mevcut DC doğrultucu / akü sistemi var mı?",en:"Is there an existing DC rectifier / battery system?",s:"Mevcut doğrultucu / akü",se:"Existing rectifier / batteries",good:null,photo:1,
-   fIf:"yes",f:[{k:"marka",l:"Marka / model",le:"Brand / model",type:"text"},{k:"modul",l:"Modül sayısı",le:"Modules",type:"text"},{k:"yuk",l:"Ekrandaki yük akımı",le:"Load current",u:"A"},{k:"ah",l:"Akü kapasitesi",le:"Battery capacity",u:"Ah"}],
-   tip:"Telekom cihazları 48 V DC ile çalışır; UPS yerine doğrultucu + akü kullanılır. Doğrultucunun ekranının, etiketinin ve akü etiketlerinin fotoğrafını çek. Ekranda yük akımı (A) yazar; uygulama bundan sahanın DC yükünü (kW) hesaplar."}]},
+   tip:"Irak'ta mahalle jeneratörleri elektriği amper olarak satar. 100 kVA bir jeneratör toplam ~400 A verir (üç fazın toplamı). Gücünü, toplam ve kullanılan amperi, günde kaç saat çalıştığını sor. Boş kapasiteyi uygulama hesaplar."}]},
  {id:"alan",t:"Saha alanı ve jeneratör",en:"Site area and generator",items:[
   {id:"olcu",type:"m",q:"Saha (duvar içi) ölçüsü",en:"Site (compound) size",s:"Saha ölçüsü",se:"Site size",area:1,
    f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],
    tip:"Kenarları adımla (1 adım ≈ 0,75 m). Kâğıda kaba bir kroki çiz: saha, direk yönü, yol, kuzey oku. Krokinin fotoğrafını çek."},
   {id:"oda",q:"Lokasyonda hazır sistem odası var mı?",en:"Is there an existing equipment room on site?",s:"Hazır sistem odası",se:"Existing equipment room",good:null,photo:1,
-   fIf:"yes",f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],area:1,
-   tip:"Telekom ekipmanı için kullanılabilecek mevcut bir oda, bina veya konteyner. Varsa içini ve dışını, kapısını, elektrik panosunu ve klimasını fotoğrafla; kabaca ölçüsünü adımla."},
+   fIf:"yes",f:[{k:"en",l:"En (isteğe bağlı)",le:"Width",u:"m"},{k:"boy",l:"Boy (isteğe bağlı)",le:"Length",u:"m"}],area:1,
+   tip:"Telekom ekipmanı için kullanılabilecek mevcut bir oda, bina veya konteyner. Varsa içini ve dışını, kapısını, elektrik panosunu ve klimasını fotoğrafla. Ölçü şart değil."},
+  {id:"bosoda",q:"Boş oda var mı?",en:"Are there empty rooms?",s:"Boş oda",se:"Empty rooms",good:null,photo:1,
+   f:[{k:"adet",l:"Kaç tane (isteğe bağlı)",le:"Number"}],fIf:"yes"},
+  {id:"bosalan",q:"Sistem salonunda boş alan var mı?",en:"Is there free space in the equipment hall?",s:"Sistem salonunda boş alan",se:"Free space in equipment hall",good:null,photo:1},
   {id:"jen",q:"Jeneratör için ayrı yer var mı? (yaklaşık 3 × 4 m)",en:"Is there space for a generator (approx. 3 × 4 m)?",s:"Jeneratör yeri",se:"Generator space",good:"yes",bt:"Jeneratör için yer yok",be:"No space for generator"},
   {id:"yakit",q:"Yakıt kamyonu sahaya kadar gelebilir mi?",en:"Can a fuel truck reach the site?",s:"Yakıt kamyonu erişimi",se:"Fuel truck access",good:"yes",bt:"Yakıt kamyonu sahaya gelemiyor",be:"Fuel truck cannot reach the site",
    tip:"Yol genişliğine ve zeminine bak. Yağmurda çamur oluyor mu, sor."},
@@ -226,6 +227,8 @@ const QN={
  "alan.olcu":[["Ölçüler adımlanarak alındı (yaklaşık)","Measured by pacing (approximate)"],["Saha sınırı belli değil, duvar yok","Site boundary not marked, no wall"],["Mevcut bir duvar var","Existing wall in place"],["Kroki çizildi, fotoğrafı eklendi","Hand sketch drawn, photo attached"]],
  "mevcut.jen":[["Jeneratör sadece şebeke kesilince çalışıyor","Generator runs only during grid outages"],["Jeneratör 24 saat çalışıyor","Generator runs 24 hours"],["Sahibi / çalışma saati öğrenilemedi","Owner / running hours could not be confirmed"],["Jeneratörden bağlantı alınabileceği söylendi","We were told a connection can be provided"]],
  "mevcut.dc":[["Doğrultucu ekranı ve etiketi fotoğraflandı","Rectifier display and label photographed"],["Ek modül için boş yuva var","Free slots for extra modules"],["Aküler eski görünüyor","Batteries look old"],["Akü bilgisi öğrenilemedi","Battery information not available"]],
+ "alan.bosoda":[["Tamamen boş odalar var","Completely empty rooms available"],["Oda kullanılabilir görünüyor","Room appears usable"],["Odaya girmek için izin gerekiyor","Permission needed to enter the room"]],
+ "alan.bosalan":[["Salonun bir kısmı boş","Part of the hall is empty"],["Salonda raf / kabin için yer var","Space for racks / cabinets in the hall"],["Salon dolu","Hall is full"]],
  "alan.oda":[["Boş odalar var","Empty rooms available"],["Sistem salonunda boş alan var","Free space in the equipment hall"],["Oda boş, kullanılabilir görünüyor","Room is empty and appears usable"],["Odada klima var","Room has air conditioning"],["Odada klima yok","No air conditioning in the room"],["Odada elektrik panosu var","Room has an electrical panel"],["Oda başka bir kuruma / firmaya ait","Room belongs to another organisation / company"],["Odaya girmek için izin gerekiyor","Permission needed to enter the room"],["Oda bakımsız / tadilat gerekir","Room is in poor condition / needs repair"]],
  "alan.jen":[["Duvar içinde yer var","Space inside the wall"],["Sadece duvar dışında yer var","Space only outside the wall"],["Yer dar, yerleşim planı gerekir","Tight space, layout needed"]],
  "alan.yakit":[["Yol dar, sadece küçük araç girebilir","Narrow road, small vehicles only"],["Yağmurda yol çamur oluyor","Road gets muddy when it rains"],["Kamyon sahaya kadar değil, yakınına kadar gelebilir","Truck can get close but not to the site"]],
@@ -254,6 +257,8 @@ const ASK={
  "alan.olcu":[["Where are the borders of the site?","Sahanın sınırları nerede?"]],
  "mevcut.jen":[["Is there a generator here? How many kVA?","Burada jeneratör var mı? Kaç kVA?"],["How many amps in total, and how many are used now?","Toplam kaç amper, şu an kaçı kullanılıyor?"],["How many hours per day does it run?","Günde kaç saat çalışıyor?"],["Who owns the generator?","Jeneratör kime ait?"]],
  "mevcut.dc":[["Is there a DC rectifier and batteries here?","Burada DC doğrultucu ve akü var mı?"],["What is the brand and model of the rectifier?","Doğrultucunun markası ve modeli ne?"],["What is the load current on the display?","Ekrandaki yük akımı ne kadar?"],["How long do the batteries last when the power goes off?","Elektrik kesilince aküler kaç saat dayanıyor?"]],
+ "alan.bosoda":[["Are there any empty rooms we can use?","Kullanabileceğimiz boş oda var mı?"]],
+ "alan.bosalan":[["Is there free space in the equipment hall?","Sistem salonunda boş yer var mı?"]],
  "alan.oda":[["Is there an existing equipment room here that we can use?","Burada kullanabileceğimiz hazır bir sistem odası var mı?"],["Does it have power and air conditioning?","Elektriği ve kliması var mı?"],["Can I see inside and take photos?","İçini görüp fotoğraf çekebilir miyim?"]],
  "alan.jen":[["Is there space here for a generator, about 3 by 4 metres?","Burada jeneratör için yaklaşık 3'e 4 metre yer var mı?"]],
  "alan.yakit":[["Can a fuel truck come all the way here?","Yakıt kamyonu buraya kadar gelebilir mi?"],["Also when it rains?","Yağmur yağınca da gelebilir mi?"]],
@@ -275,6 +280,7 @@ const PHRASES=[
  ["Anlamadığında",[["Sorry, can you say that again slowly?","Pardon, tekrar yavaşça söyler misiniz?"],["Can you show me?","Bana gösterebilir misiniz?"],["Approximately? A rough number is fine.","Yaklaşık olarak? Kabaca bir rakam yeterli."],["Who can I ask about this?","Bunu kime sorabilirim?"]]],
  ["Kapanış",[["Can I have your phone number in case I have more questions?","Başka sorum olursa diye telefon numaranızı alabilir miyim?"],["Thank you very much for your help.","Yardımınız için çok teşekkür ederim."]]]
 ];
+let listEdit=false;
 let surveys={},sites=[],prefs={},daily={},openId=null,cur=null,saveT=null,view="list";
 const app=document.getElementById("app");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -339,17 +345,18 @@ function renderList(){
    <div class="hint">Sahaya varınca kutucuğuna dokun.</div>
   </section>
   <div class="row" style="margin-bottom:12px"><button class="btn primary" id="dailyBtn">📝 Günlük rapor</button><button class="btn" id="new">+ Listede olmayan saha</button></div>
-  ${arr.length?`<h2 style="font-size:1.2rem;margin:4px 0 8px">Keşif kayıtları</h2><div class="cards">${arr.map(s=>{const st=stats(s);return `
+  ${arr.length?`<div class="row" style="justify-content:space-between;margin:4px 0 8px"><h2 style="font-size:1.2rem">Keşif kayıtları</h2><button class="btn ghost" id="editList" style="min-height:36px">${listEdit?"Bitti":"Kayıt sil"}</button></div><div class="cards">${arr.map(s=>{const st=stats(s);return `<div class="cardrow">
    <button class="card" data-id="${esc(s.id)}">
     <h3>${esc(s.name||"Adsız saha")}${s.example?' <span class="pill p-none">Örnek</span>':""}</h3>
     <div class="meta">${esc([govOf(s),fmtDate(s.date)].filter(Boolean).join(" · "))}</div>
     <div class="side"><span class="num muted" style="font-size:.85rem">${st.done}/${TOTAL} madde</span>${st.bad?`<span class="pill p-bad">${st.bad} sorun</span>`:""}</div>
     <div class="bar"><i style="width:${Math.round(st.done/TOTAL*100)}%"></i></div>
-   </button>`}).join("")}</div>`
+   </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 20.10.2026-d</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 20.10.2026-e</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
+  app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
   app.querySelector("#guideBtn2")?.addEventListener("click",renderGuide);
   app.querySelector("#sitesBtn").onclick=renderSites;
@@ -521,6 +528,9 @@ function renderEditor(){
     <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
    </div>
    <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><span class="hint" id="coordHint">${coordHint(parseCoord(s.coord))}</span></div>
+   <div><div class="f" style="margin-bottom:6px">Sahanın genel fotoğrafları (raporun başında çıkar)</div>
+    <div class="photos" id="ph-genel">${photosHtml("genel")}</div>
+    <label class="btn upload" for="up-genel" style="margin-top:6px">📷 Genel fotoğraf ekle<input type="file" id="up-genel" accept="image/*" multiple data-up="genel"></label></div>
    <label class="f" for="m-desc">Saha tanımı (bina / yer)<input id="m-desc" data-m="desc" value="${esc(s.desc)}" placeholder="ör. IPTC binası, binada elektrik var"></label>
    <label class="f" for="m-contact">Yerel irtibat (ad, telefon)<input id="m-contact" data-m="contact" value="${esc(s.contact)}"></label>
   </section>
@@ -582,6 +592,9 @@ function fillFromSite(site){const map={gov:"gov",coord:"gps",contact:"contact"};
 function onClick(e){
   const b=e.target.closest("button");if(!b)return;
   if(b.dataset.lang){prefs.lang=b.dataset.lang;savePrefs();b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.lang===prefs.lang));if(view==="daily")updateDailyPreview();return}
+  if(view==="list"&&b.dataset.delsurvey){const id=b.dataset.delsurvey;
+    if(b.dataset.armed){const sv=surveys[id];for(const arr of Object.values(sv?.photos||{}))for(const p of arr)idbDel(p.id);delete surveys[id];lsSave();toast("Keşif silindi");renderList()}
+    else{b.dataset.armed="1";b.textContent="Emin misin?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Sil"}},3000)}return}
   if(view==="sites"&&b.dataset.delsite){if(b.dataset.armed){sites=sites.filter(x=>x.id!==b.dataset.delsite);saveSites();renderSites();toast("Saha listeden silindi (keşif kayıtları duruyor)")}else{b.dataset.armed="1";b.textContent="Emin misin? Tekrar dokun";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Sil"}},3000)}return}
   if(!cur)return;
   if(b.dataset.ans){const item=b.closest(".item"),key=item.dataset.key,e2=cur.items[key]||(cur.items[key]={}),{sec,it}=ITEMS.find(x=>x.key===key);
@@ -703,6 +716,8 @@ const ANS={
  "sebeke.engel":{yes:["Engel var","Obstacle present"],no:["Engel yok","Clear"]},
  "sebeke.saat":{yes:["Sık kesiliyor","Frequent outages"],no:["Sık kesilmiyor","Outages not frequent"]},
  "alan.oda":{yes:["Var","Available"],no:["Yok","None"]},
+ "alan.bosoda":{yes:["Var","Yes"],no:["Yok","None"]},
+ "alan.bosalan":{yes:["Var","Yes"],no:["Yok","None"]},
  "mevcut.jen":{yes:["Var","Yes"],no:["Yok","None"]},
  "mevcut.dc":{yes:["Var","Yes"],no:["Yok","None"]},
  "ges.alan":{yes:["Boş alan var","Free space available"],no:["Boş alan yok","No free space"]},
@@ -722,6 +737,7 @@ function valsText(s,key,it,lang){
   if(it.area){const a=areaOf(v);if(a)out.push(`${v.en} × ${v.boy} m ≈ ${fmt(a,0,lang)} m²`+(it.kwp?(en?` (≈${fmt(a/7,1,lang)} kWp)`:` (≈${fmt(a/7,1,lang)} kWp panel)`):""));return out.join(", ")}
   for(const f of it.f||[]){const x=String(v[f.k]||"").trim();if(!x)continue;
     if(f.k==="saat"&&key!=="mevcut.jen"){out.push(en?`supply ~${x} h/day`:`günde ~${x} saat elektrik`);continue}
+    if(key==="alan.bosoda"&&f.k==="adet"){out.push(en?`${x} room(s)`:`${x} adet`);continue}
     if(key==="mevcut.jen"&&f.k==="saat"){out.push(en?`runs ~${x} h/day`:`günde ~${x} saat çalışıyor`);continue}
     const val=f.type==="sel"?optLabel(key,f.k,x,lang):x;
     out.push(it.f.length===1&&f.type==="sel"?val:`${(en?f.le:f.l).replace(/ \(.*\)$/,"").toLocaleLowerCase(en?"en":"tr")} ${val}${f.u?" "+(en&&f.ue?f.ue:f.u):""}`)}
@@ -792,11 +808,14 @@ async function buildHtml(list,{lang,isDaily,photos,date}){
     }
     let ph="";
     if(photos){const groups=[...ITEMS.filter(x=>x.it.photo).map(x=>({id:phg(x.key),en:x.it.se,t:x.it.s})),...SECTIONS];for(const sec of groups)for(const p of s.photos?.[sec.id]||[]){try{const b=await idbGet(p.id);if(b)ph+=`<figure><img src="${await blobToData(await shrinkTo(b,1000,.6))}" alt=""><figcaption>${esc(en?sec.en:sec.t)}</figcaption></figure>`}catch(e){}}}
+    let gph="";
+    if(photos)for(const p of s.photos?.genel||[]){try{const b=await idbGet(p.id);if(b)gph+=`<figure><img src="${await blobToData(await shrinkTo(b,1200,.62))}" alt=""></figure>`}catch(e){}}
     const op=optText(s,lang);
     body+=`<section class="site">
      <h2><span class="no">${list.length>1?i+1:"•"}</span>${esc(siteHeader(s,lang))}</h2>
      ${s.desc?`<p class="desc">${esc(s.desc)}</p>`:""}
      <p class="sm">${[c?`<a href="https://maps.google.com/?q=${c[0]},${c[1]}">GPS ${c[0]}, ${c[1]}</a>`:"",s.contact?`${en?"Contact":"İrtibat"}: ${esc(s.contact)}`:"",`${st.done}/${TOTAL} ${en?"items checked":"madde kontrol edildi"}`].filter(Boolean).join(" · ")}</p>
+     ${gph?`<div class="g gtop">${gph}</div>`:""}
      ${rows?`<table>${rows}</table>`:`<p class="sm">${en?"No information entered.":"Bilgi girilmedi."}</p>`}
      ${op?`<p class="box"><b>${esc(op.split(": ")[0])}:</b> ${esc(op.split(": ").slice(1).join(": "))}</p>`:""}
      ${s.general?`<p class="box"><b>${en?"General note":"Genel not"}:</b> ${esc(tNote(s.general,lang))}</p>`:""}
@@ -819,7 +838,7 @@ tr.r-bad td{background:#fdf1ee}tr.r-unk td:last-child{color:#7a6a3a;font-style:i
 .note{color:#5b6b78;font-size:13px;margin-top:2px;font-style:normal}
 .desc{margin:2px 0 0;font-size:14px}
 .box{background:#f5f7f9;border-left:3px solid #1c3d5a;padding:8px 10px;margin:8px 0;font-size:14px}
-.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}.g img{width:100%;border-radius:4px;display:block}figure{margin:0}figcaption{font-size:11px;color:#5b6b78}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}.gtop{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin:6px 0 12px}.g img{width:100%;border-radius:4px;display:block}figure{margin:0}figcaption{font-size:11px;color:#5b6b78}
 .end{border-top:1px solid #c9d2d9;margin-top:24px;padding-top:10px;font-size:12px;color:#5b6b78}
 .legend{font-size:12px;color:#5b6b78;margin:-10px 0 16px}
 @media print{.doc{padding:0}.site{page-break-inside:avoid}}
