@@ -167,6 +167,9 @@ const SECTIONS=[
   {id:"olcu",type:"m",q:"Saha (duvar içi) ölçüsü",en:"Site (compound) size",s:"Saha ölçüsü",se:"Site size",area:1,
    f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],
    tip:"Kenarları adımla (1 adım ≈ 0,75 m). Kâğıda kaba bir kroki çiz: saha, direk yönü, yol, kuzey oku. Krokinin fotoğrafını çek."},
+  {id:"oda",q:"Lokasyonda hazır sistem odası var mı?",en:"Is there an existing equipment room on site?",s:"Hazır sistem odası",se:"Existing equipment room",good:null,photo:1,
+   fIf:"yes",f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],area:1,
+   tip:"Telekom ekipmanı için kullanılabilecek mevcut bir oda, bina veya konteyner. Varsa içini ve dışını, kapısını, elektrik panosunu ve klimasını fotoğrafla; kabaca ölçüsünü adımla."},
   {id:"jen",q:"Jeneratör için ayrı yer var mı? (yaklaşık 3 × 4 m)",en:"Is there space for a generator (approx. 3 × 4 m)?",s:"Jeneratör yeri",se:"Generator space",good:"yes",bt:"Jeneratör için yer yok",be:"No space for generator"},
   {id:"yakit",q:"Yakıt kamyonu sahaya kadar gelebilir mi?",en:"Can a fuel truck reach the site?",s:"Yakıt kamyonu erişimi",se:"Fuel truck access",good:"yes",bt:"Yakıt kamyonu sahaya gelemiyor",be:"Fuel truck cannot reach the site",
    tip:"Yol genişliğine ve zeminine bak. Yağmurda çamur oluyor mu, sor."},
@@ -214,6 +217,7 @@ const QN={
  "sebeke.engel":[["Arada özel tarla / bahçe var","Private farmland / garden in between"],["Arada asfalt yol var","Paved road in between"],["Arada kanal / dere var","Canal / stream in between"],["Arada evler var","Houses in between"]],
  "sebeke.saat":[["Yerel kişiye göre yazın kesinti artıyor","Per local contact, outages increase in summer"],["Mahallede ortak jeneratör kullanılıyor","Neighbourhood uses a shared generator"],["Elektrik dönüşümlü / programlı veriliyor","Supply is rotating / scheduled"],["Kesinti hakkında bilgi alınamadı","No information on outages"]],
  "alan.olcu":[["Ölçüler adımlanarak alındı (yaklaşık)","Measured by pacing (approximate)"],["Saha sınırı belli değil, duvar yok","Site boundary not marked, no wall"],["Mevcut bir duvar var","Existing wall in place"],["Kroki çizildi, fotoğrafı eklendi","Hand sketch drawn, photo attached"]],
+ "alan.oda":[["Oda boş, kullanılabilir görünüyor","Room is empty and appears usable"],["Odada klima var","Room has air conditioning"],["Odada klima yok","No air conditioning in the room"],["Odada elektrik panosu var","Room has an electrical panel"],["Oda başka bir kuruma / firmaya ait","Room belongs to another organisation / company"],["Odaya girmek için izin gerekiyor","Permission needed to enter the room"],["Oda bakımsız / tadilat gerekir","Room is in poor condition / needs repair"]],
  "alan.jen":[["Duvar içinde yer var","Space inside the wall"],["Sadece duvar dışında yer var","Space only outside the wall"],["Yer dar, yerleşim planı gerekir","Tight space, layout needed"]],
  "alan.yakit":[["Yol dar, sadece küçük araç girebilir","Narrow road, small vehicles only"],["Yağmurda yol çamur oluyor","Road gets muddy when it rains"],["Kamyon sahaya kadar değil, yakınına kadar gelebilir","Truck can get close but not to the site"]],
  "alan.ev":[["En yakın ev duvarın hemen yanında","Nearest house right next to the wall"],["Etrafta yerleşim yok","No houses around"],["Yakında okul / cami var","School / mosque nearby"]],
@@ -239,6 +243,7 @@ const ASK={
  "sebeke.engel":[["Can we bring a cable from the pole to here?","Direkten buraya kablo çekebilir miyiz?"],["Is there private land or a road in between?","Arada özel arazi veya yol var mı?"]],
  "sebeke.saat":[["How many hours of electricity do you get per day?","Günde kaç saat elektrik geliyor?"],["Is it worse in summer?","Yazın daha mı kötü oluyor?"],["Do people here use a shared generator?","Burada insanlar ortak jeneratör kullanıyor mu?"]],
  "alan.olcu":[["Where are the borders of the site?","Sahanın sınırları nerede?"]],
+ "alan.oda":[["Is there an existing equipment room here that we can use?","Burada kullanabileceğimiz hazır bir sistem odası var mı?"],["Does it have power and air conditioning?","Elektriği ve kliması var mı?"],["Can I see inside and take photos?","İçini görüp fotoğraf çekebilir miyim?"]],
  "alan.jen":[["Is there space here for a generator, about 3 by 4 metres?","Burada jeneratör için yaklaşık 3'e 4 metre yer var mı?"]],
  "alan.yakit":[["Can a fuel truck come all the way here?","Yakıt kamyonu buraya kadar gelebilir mi?"],["Also when it rains?","Yağmur yağınca da gelebilir mi?"]],
  "alan.ev":[["How close are the nearest houses?","En yakın evler ne kadar yakın?"]],
@@ -283,7 +288,7 @@ function status(it,e){
   const t=it.type||"q";
   if(t==="m")return Object.values(e.v||{}).some(x=>String(x).trim())?"ok":"";
   if(t==="p")return e.a==="yes"?"ok":"";
-  if(!e.a)return "";if(e.a==="unk")return "unk";return e.a===it.good?"ok":"bad";
+  if(!e.a)return "";if(e.a==="unk")return "unk";if(!it.good)return "ok";return e.a===it.good?"ok":"bad";
 }
 function stats(s){let done=0,bad=0,unk=0;for(const {it,key} of ITEMS){const st=status(it,E(s,key));if(st)done++;if(st==="bad")bad++;if(st==="unk")unk++}return{done,bad,unk}}
 function secStats(s,sec){let done=0,bad=0;for(const it of sec.items){const st=status(it,E(s,sec.id+"."+it.id));if(st)done++;if(st==="bad")bad++}return{done,bad}}
@@ -467,7 +472,7 @@ function fieldHtml(key,f,val){
 function calcText(it,v,lang="tr"){if(!it.area)return "";const a=areaOf(v);if(!a)return "";let t=`= ${fmt(a,0,lang)} m²`;if(it.kwp)t+=lang==="en"?` · approx. ${fmt(a/7,1,lang)} kWp`:` · yaklaşık ${fmt(a/7)} kWp panel sığar`;return t}
 function itemHtml(sec,it){
   const key=sec.id+"."+it.id,e=cur.items[key]||{},v=e.v||{},t=it.type||"q",st=status(it,e);
-  const btns=t==="q"?`<div class="seg" role="group" aria-label="Cevap">${[["yes","Evet"],["no","Hayır"],["unk","Bilmiyorum"]].map(([k,l])=>`<button type="button" data-ans="${k}" aria-pressed="${e.a===k}" class="${e.a===k?"on-"+(k==="unk"?"unk":k===it.good?"ok":"bad"):""}">${l}</button>`).join("")}</div>`
+  const btns=t==="q"?`<div class="seg" role="group" aria-label="Cevap">${[["yes","Evet"],["no","Hayır"],["unk","Bilmiyorum"]].map(([k,l])=>`<button type="button" data-ans="${k}" aria-pressed="${e.a===k}" class="${e.a===k?"on-"+(k==="unk"?"unk":(!it.good||k===it.good)?"ok":"bad"):""}">${l}</button>`).join("")}</div>`
     :t==="p"?`<div class="seg" style="grid-template-columns:1fr"><button type="button" data-ans="yes" data-toggle="1" aria-pressed="${e.a==="yes"}" class="${e.a==="yes"?"on-ok":""}">${e.a==="yes"?"✓ Çekildi":"Çekildi olarak işaretle"}</button></div>`:"";
   const showF=it.f&&(!it.fIf||e.a===it.fIf);
   return `<div class="item" data-key="${key}" data-s="${st}">
@@ -476,11 +481,13 @@ function itemHtml(sec,it){
    ${btns}
    ${it.f?`<div class="fields" ${showF?"":"hidden"}>${it.f.map(f=>fieldHtml(key,f,v[f.k]??"")).join("")}</div>`:""}
    ${it.area?`<div class="calc num" id="calc-${key.replace(".","-")}">${calcText(it,v)}</div>`:""}
+   ${it.photo&&e.a==="yes"?`<div class="photos" id="ph-${phg(key)}">${photosHtml(phg(key))}</div><label class="btn upload" for="up-${phg(key)}">📷 ${esc(it.s)} fotoğrafı ekle<input type="file" id="up-${phg(key)}" accept="image/*" multiple data-up="${phg(key)}"></label>`:""}
    ${it.tip?`<details class="tip"><summary>Nasıl bakılır?</summary><p>${esc(it.tip)}</p></details>`:""}
    ${t==="p"?"":e.n?`<textarea id="n-${key.replace(".","-")}" data-note="${key}" placeholder="Not">${esc(e.n)}</textarea>`:`<button type="button" class="note-toggle" data-addnote="${key}">+ Kendi notunu yaz</button>`}
-   ${t==="p"?"":qnHtml(key,[...(QN[key]||[]),...(t==="q"?QN_UNK:[])],st==="bad"||st==="unk",e.n)}
+   ${t==="p"?"":qnHtml(key,[...(QN[key]||[]),...(t==="q"?QN_UNK:[])],st==="bad"||st==="unk"||(it.photo&&e.a==="yes"),e.n)}
   </div>`;
 }
+const phg=key=>key.replace(".","-");
 function qnHtml(key,list,open,note){if(!list.length)return "";return `<details class="qn" ${open?"open":""}><summary>Hazır notlar <span class="hint">(dokun, nota eklensin)</span></summary><div class="qchips">${list.map(([tr])=>`<button type="button" class="qchip${(note||"").includes(tr)?" used":""}" data-qn="${key}" data-txt="${esc(tr)}">${esc(tr)}</button>`).join("")}</div></details>`}
 function appendNote(old,t){old=(old||"").trim();if(old.includes(t))return old;return old?old.replace(/[.\s]*$/,"")+". "+t:t}
 function renderEditor(){
@@ -680,6 +687,7 @@ const ANS={
  "sebeke.trafo":{yes:["Var","Present"],no:["Yakında yok","None nearby"]},
  "sebeke.engel":{yes:["Engel var","Obstacle present"],no:["Engel yok","Clear"]},
  "sebeke.saat":{yes:["Sık kesiliyor","Frequent outages"],no:["Sık kesilmiyor","Outages not frequent"]},
+ "alan.oda":{yes:["Var","Available"],no:["Yok","None"]},
  "alan.jen":{yes:["Var","Available"],no:["Yok","None"]},
  "alan.yakit":{yes:["Gelebilir","Accessible"],no:["Gelemez","Not accessible"]},
  "alan.ev":{yes:["Evlere yakın","Close to houses"],no:["Evlerden uzak","Away from houses"]},
@@ -761,7 +769,7 @@ async function buildHtml(list,{lang,isDaily,photos,date}){
       for(const r of g.rows)rows+=`<tr class="r-${r.st}"><td class="k">${esc(r.label)}</td><td>${r.st==="bad"?'<span class="flag">!</span> ':""}${esc(r.text)}${r.note?`<div class="note">↳ ${esc(r.note)}</div>`:""}</td></tr>`;
     }
     let ph="";
-    if(photos){for(const sec of SECTIONS)for(const p of s.photos?.[sec.id]||[]){try{const b=await idbGet(p.id);if(b)ph+=`<figure><img src="${await blobToData(b)}" alt=""><figcaption>${esc(en?sec.en:sec.t)}</figcaption></figure>`}catch(e){}}}
+    if(photos){const groups=[...ITEMS.filter(x=>x.it.photo).map(x=>({id:phg(x.key),en:x.it.se,t:x.it.s})),...SECTIONS];for(const sec of groups)for(const p of s.photos?.[sec.id]||[]){try{const b=await idbGet(p.id);if(b)ph+=`<figure><img src="${await blobToData(b)}" alt=""><figcaption>${esc(en?sec.en:sec.t)}</figcaption></figure>`}catch(e){}}}
     const op=optText(s,lang);
     body+=`<section class="site">
      <h2><span class="no">${list.length>1?i+1:"•"}</span>${esc(siteHeader(s,lang))}</h2>
