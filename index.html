@@ -553,7 +553,7 @@ function renderEditor(){
     <div class="checks" id="optBox"></div></div>
    <label class="f" for="m-general">Ek bilgi / not (isteğe bağlı)<textarea id="m-general" data-m="general" placeholder="Saha ziyaretiyle ilgili genel bilgi">${esc(s.general)}</textarea></label>
    ${qnHtml("__gen",QN_GEN,true,s.general)}
-   <div class="row"><button class="btn" id="copy">Bu sahanın detaylı raporu</button><button class="btn" id="dlh">Fotoğraflı rapor (.html)</button></div>
+   <div class="row"><button class="btn primary" id="pdf">📄 PDF olarak kaydet</button><button class="btn" id="copy">Bu sahanın detaylı raporu</button><button class="btn" id="dlh">Fotoğraflı rapor (.html)</button></div>
    <pre class="report" id="report" hidden></pre>
    <div id="delZone" style="margin-top:8px"><button class="btn ghost danger" id="del">Bu keşfi sil</button></div>
   </section>`;
@@ -561,6 +561,7 @@ function renderEditor(){
   app.querySelector("#copy").onclick=()=>copyText(reportText(cur,prefs.lang||"tr"),app.querySelector("#report"));
   app.querySelector("#del").onclick=askDelete;
   app.querySelector("#dlh").onclick=htmlReport;
+  app.querySelector("#pdf").onclick=pdfReport;
   app.querySelector("#gps").onclick=getGps;
   app.querySelector("#mapBtn").onclick=()=>addMap(false);
   updateProgress();updateAssess();renderOpts();hydrate();
@@ -689,14 +690,15 @@ function renderDaily(date){
   <section class="panel">
    <h2 style="font-size:1.15rem">Önizleme</h2>
    <pre class="report" id="dPrev" style="max-height:none;font-family:var(--body);font-size:.92rem"></pre>
-   <div class="row"><button class="btn primary" id="dFile">Rapor dosyası (mail / WhatsApp)</button><button class="btn" id="dCopy">Metni kopyala</button></div>
+   <div class="row"><button class="btn primary" id="dPdf">📄 PDF olarak kaydet</button><button class="btn" id="dFile">Rapor dosyası (mail / WhatsApp)</button><button class="btn" id="dCopy">Metni kopyala</button></div>
    <div class="hint">Raporu gönderdikten sonra yedek almayı unutma: <button type="button" class="linkbtn" id="dBk">Şimdi yedek al</button></div>
-   <label class="chk" for="d-ph"><input type="checkbox" id="d-ph" ${dState.photos?"checked":""}><span><b>Dosyaya fotoğrafları da ekle</b><small>Sadece dosya için geçerli; dosya büyür</small></span></label>
+   <label class="chk" for="d-ph"><input type="checkbox" id="d-ph" ${dState.photos?"checked":""}><span><b>Dosyaya ve PDF'e fotoğrafları da ekle</b><small>Metni kopyalamayı etkilemez; dosya ve PDF büyür</small></span></label>
   </section>`;
   app.querySelector("#back").onclick=renderList;
   app.querySelector("#dCopy").onclick=()=>copyText(dailyText(),app.querySelector("#dPrev"));
   app.querySelector("#dBk").onclick=backup;
   app.querySelector("#dFile").onclick=dailyHtml;
+  app.querySelector("#dPdf").onclick=dailyPdf;
   app.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>renderDaily(b.dataset.day));
   updateDailyPreview();
 }
@@ -853,7 +855,13 @@ tr.r-bad td{background:#fdf1ee}tr.r-unk td:last-child{color:#7a6a3a;font-style:i
 .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}.gmap{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin:6px 0 10px}.gtop{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin:6px 0 12px}.g img{width:100%;border-radius:4px;display:block}figure{margin:0}figcaption{font-size:11px;color:#5b6b78}
 .end{border-top:1px solid #c9d2d9;margin-top:24px;padding-top:10px;font-size:12px;color:#5b6b78}
 .legend{font-size:12px;color:#5b6b78;margin:-10px 0 16px}
-@media print{.doc{padding:0}.site{page-break-inside:avoid}}
+@page{size:A4;margin:14mm}
+@media print{html,body{background:#fff}body{font-size:12.5px}.doc{padding:0;max-width:none}
+.top{page-break-after:avoid}.site{page-break-inside:avoid}.site h2{page-break-after:avoid}
+tr{page-break-inside:avoid}tr.grp th{page-break-after:avoid}
+.g{grid-template-columns:repeat(3,1fr)}.gmap{grid-template-columns:1fr}.gtop{grid-template-columns:repeat(2,1fr)}
+.g img{page-break-inside:avoid;max-height:52mm;object-fit:cover}.gmap img{max-height:90mm;object-fit:contain}
+.box{page-break-inside:avoid}a{color:inherit;text-decoration:none}}
 </style></head><body><div class="doc">
 <div class="top"><small>${en?"Energy · Site survey":"Enerji · Saha keşfi"}</small><h1>${esc(title)}</h1></div>
 <table class="meta">${meta.map(([k,v])=>`<tr><td>${esc(k)}</td><td><b>${esc(v)}</b></td></tr>`).join("")}</table>
@@ -938,6 +946,39 @@ function getGps(){
     app.querySelector("#m-coord").value=cur.coord;
     app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(cur.coord))+` · ±${Math.round(c.accuracy)} m`;dirty();toast("Konum alındı");if(navigator.onLine!==false)setTimeout(()=>addMap(true),400)
   },e=>toast(e.code===1?"Konum izni yok: Ayarlar › Gizlilik › Konum Servisleri › Safari Web Siteleri":"Konum alınamadı, tekrar dene"),{enableHighAccuracy:true,timeout:30000,maximumAge:0});
+}
+/* ---------- PDF: raporu yeni sekmede açıp yazdırma penceresini aç ---------- */
+function printableDoc(html){
+  return html.replace("</body>","<script>window.addEventListener(\"load\",function(){setTimeout(function(){try{window.print()}catch(e){}},350)});<\/script></body>");
+}
+async function printDoc(build){
+  let w=null;
+  try{w=window.open("","_blank")}catch(e){}
+  toast("Rapor hazırlanıyor…");
+  let html=null;
+  try{html=await build()}catch(e){html=null}
+  if(!html){if(w&&!w.closed)w.close();toast("Rapor hazırlanamadı");return}
+  const doc=printableDoc(html);
+  if(w&&!w.closed){
+    try{w.document.open();w.document.write(doc);w.document.close();
+      toast("Açılan sayfada: Paylaş → Yazdır → PDF olarak kaydet");return}
+    catch(e){try{w.close()}catch(e2){}}
+  }
+  const f=document.createElement("iframe");
+  f.setAttribute("aria-hidden","true");
+  f.style.cssText="position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0";
+  f.onload=()=>setTimeout(()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast("Yazdırma açılamadı, .html raporu indirip paylaşabilirsin")}
+    setTimeout(()=>f.remove(),120000)},350);
+  document.body.appendChild(f);
+  f.srcdoc=doc;
+}
+function pdfReport(){
+  flush();const s=cur,lang=prefs.lang||"tr";
+  return printDoc(()=>buildHtml([s],{lang,isDaily:false,photos:true,date:s.date}));
+}
+function dailyPdf(){
+  const lang=prefs.lang||"tr";
+  return printDoc(()=>buildHtml(dailySel(),{lang,isDaily:true,photos:dState.photos,date:dState.date}));
 }
 async function htmlReport(){
   flush();const s=cur,lang=prefs.lang||"tr",en=lang==="en";toast("Rapor hazırlanıyor…");
