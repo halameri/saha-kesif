@@ -349,7 +349,7 @@ function renderList(){
    </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-c</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-d</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
@@ -525,8 +525,8 @@ function renderEditor(){
    <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><span class="hint" id="coordHint">${coordHint(parseCoord(s.coord))}</span></div>
    <div><div class="f" style="margin-bottom:6px">Harita (raporda ilk görsel)</div>
     <div class="photos maps" id="ph-harita">${photosHtml("harita")}</div>
-    <button type="button" class="btn" id="mapBtn" style="margin-top:6px">🗺 ${(s.photos?.harita||[]).length?"Haritayı yenile":"Harita ekle"}</button>
-    <div class="hint">Konumumu al'a basınca internet varsa harita kendiliğinden eklenir.</div></div>
+    <div class="row" style="margin-top:6px"><button type="button" class="btn" id="mapBtn">🗺 ${(s.photos?.harita||[]).length?"Haritayı yenile":"Harita ekle"}</button><label class="btn upload" for="up-harita">📱 Google Maps ekran görüntüsü<input type="file" id="up-harita" accept="image/*" multiple data-up="harita"></label></div>
+    <div class="hint">Konumumu al'a basınca internet varsa harita kendiliğinden eklenir. Google Maps uydu görüntüsü istersen: “Haritada aç”a bas, ekran görüntüsü al, sonra “Google Maps ekran görüntüsü” ile ekle.</div></div>
    <div><div class="f" style="margin-bottom:6px">Sahanın genel fotoğrafları (raporun başında çıkar)</div>
     <div class="photos" id="ph-genel">${photosHtml("genel")}</div>
     <label class="btn upload" for="up-genel" style="margin-top:6px">📷 Genel fotoğraf ekle<input type="file" id="up-genel" accept="image/*" multiple data-up="genel"></label></div>
