@@ -183,9 +183,18 @@ const SECTIONS=[
    tip:"Islak zemin, kurumuş çamur izi, çevresinden alçakta kalan çukur yer. Yerel kişiye sor: “Yağmurda burası su tutar mı?”"},
   {id:"zemin",type:"m",q:"Zemin nasıl?",en:"Ground type",s:"Zemin",se:"Ground",f:[{k:"tip",l:"Zemin",le:"Ground",type:"sel",o:["Toprak","Kum","Kaya","Dolgu / moloz","Bataklık / ıslak"],oe:["Soil","Sand","Rock","Fill / rubble","Marshy / wet"]}],
    tip:"Zemin tipi topraklama ve temel için önemli. Yakından bir fotoğraf çek."}]},
+ {id:"sogutma",t:"Soğutma ve akü yeri",en:"Cooling and battery space",items:[
+  {id:"dis",q:"Split klima dış ünitesi için yer var mı?",en:"Is there space for the split AC outdoor unit?",s:"Klima dış ünite yeri",se:"AC outdoor unit space",good:"yes",bt:"Klima dış ünitesi için yer yok",be:"No space for AC outdoor unit",photo:1,
+   tip:"Dış ünite duvara veya çatıya konur. Havası alan, mümkünse doğrudan güneş almayan bir yer iyidir. Oda ile dış ünite arası çok uzak olmamalı."},
+  {id:"gunes",q:"Oda doğrudan güneş alıyor mu?",en:"Is the room exposed to direct sun?",s:"Odanın güneş alması",se:"Room sun exposure",good:"no",bt:"Oda doğrudan güneş alıyor (soğutma ihtiyacı artar)",be:"Room exposed to direct sun (higher cooling need)",
+   tip:"Çatı katındaki, güneye / batıya bakan veya ince duvarlı odalar çok ısınır. Bu, daha büyük klima demektir."},
+  {id:"aku",q:"Aküler için uygun yer var mı?",en:"Is there a suitable place for batteries?",s:"Akü yeri",se:"Battery space",good:"yes",bt:"Aküler için uygun yer yok",be:"No suitable place for batteries",photo:1,
+   tip:"Aküler ağırdır (her biri 30–60 kg). Sağlam zemin ve serin bir yer gerekir; sıcak akünün ömrünü kısaltır."}]},
  {id:"ges",t:"Güneş paneli (GES)",en:"Solar (PV)",items:[
   {id:"alan",q:"Güneş paneli için boş alan var mı?",en:"Is there free space for solar panels?",s:"Panel alanı",se:"PV area",good:"yes",bt:"Güneş paneli için boş alan yok",be:"No free space for solar panels",
    tip:"Ölçü gerekmez; genel durumu hazır notlardan seç (geniş alan, sınırlı alan, çatı...)."},
+  {id:"cati",q:"Çatıya erişim var mı, çatı GES için uygun mu?",en:"Is the roof accessible and suitable for solar?",s:"Çatı (GES)",se:"Roof (solar)",good:"yes",bt:"Çatı GES için uygun değil / erişim yok",be:"Roof not suitable for solar / no access",photo:1,
+   tip:"Çatıya merdiven veya kapıdan çıkılabiliyor mu? Çatı düz ve sağlam mı? Üzerinde su deposu, anten gibi engeller var mı?"},
   {id:"golge",q:"Panel alanına gölge düşürecek bir şey var mı?",en:"Anything that would shade the panel area?",s:"Gölge",se:"Shading",good:"no",bt:"Panel alanına gölge düşüyor",be:"Panel area is shaded",
    tip:"Bina, ağaç, duvar, kulenin kendisi. Kulenin gölgesi gün içinde döner; kuleye çok yakın alanlar gölgede kalır."},
   {id:"guney",q:"Güney tarafı açık mı?",en:"Is the south side open?",s:"Güney yönü",se:"South side",good:"yes",bt:"Güney tarafı kapalı",be:"South side is blocked",
@@ -224,6 +233,10 @@ const QN={
  "mevcut.dc":[["Doğrultucu ekranı ve etiketi fotoğraflandı","Rectifier display and label photographed"],["Ek modül için boş yuva var","Free slots for extra modules"],["Aküler eski görünüyor","Batteries look old"],["Akü bilgisi öğrenilemedi","Battery information not available"]],
  "alan.bosoda":[["Tamamen boş odalar var","Completely empty rooms available"],["Oda kullanılabilir görünüyor","Room appears usable"],["Odaya girmek için izin gerekiyor","Permission needed to enter the room"]],
  "alan.bosalan":[["Salonun bir kısmı boş","Part of the hall is empty"],["Salonda raf / kabin için yer var","Space for racks / cabinets in the hall"],["Salon dolu","Hall is full"]],
+ "sogutma.dis":[["Duvarda yer var","Space on the wall"],["Çatıda yer var","Space on the roof"],["Mevcut dış üniteler var","Existing outdoor units present"],["Dış ünite güneş alacak","Outdoor unit would be in the sun"]],
+ "sogutma.gunes":[["Oda çatı katında","Room is on the top floor"],["Odanın duvarı / penceresi güneye bakıyor","Room wall / window faces south"],["Oda iç tarafta, gölgede","Room is inside, shaded"]],
+ "sogutma.aku":[["Odada akü için yer var","Space for batteries in the room"],["Zemin sağlam (beton)","Solid floor (concrete)"],["Yer sıcak, havalandırma yok","Hot place, no ventilation"],["Zemin zayıf","Weak floor"]],
+ "ges.cati":[["Çatı düz ve geniş","Roof is flat and large"],["Çatıya merdivenle çıkılıyor","Roof accessible by stairs"],["Çatıda su depoları / antenler var","Water tanks / antennas on the roof"],["Çatıya erişim yok","No roof access"],["Çatı zayıf görünüyor","Roof looks weak"]],
  "alan.oda":[["Boş odalar var","Empty rooms available"],["Sistem salonunda boş alan var","Free space in the equipment hall"],["Oda boş, kullanılabilir görünüyor","Room is empty and appears usable"],["Odada klima var","Room has air conditioning"],["Odada klima yok","No air conditioning in the room"],["Odada elektrik panosu var","Room has an electrical panel"],["Oda başka bir kuruma / firmaya ait","Room belongs to another organisation / company"],["Odaya girmek için izin gerekiyor","Permission needed to enter the room"],["Oda bakımsız / tadilat gerekir","Room is in poor condition / needs repair"]],
  "alan.jen":[["Duvar içinde yer var","Space inside the wall"],["Sadece duvar dışında yer var","Space only outside the wall"],["Yer dar, yerleşim planı gerekir","Tight space, layout needed"]],
  "alan.yakit":[["Yol dar, sadece küçük araç girebilir","Narrow road, small vehicles only"],["Yağmurda yol çamur oluyor","Road gets muddy when it rains"],["Kamyon sahaya kadar değil, yakınına kadar gelebilir","Truck can get close but not to the site"]],
@@ -349,7 +362,7 @@ function renderList(){
    </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-e</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-f</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
@@ -710,6 +723,10 @@ const ANS={
  "sebeke.engel":{yes:["Engel var","Obstacle present"],no:["Engel yok","Clear"]},
  "sebeke.saat":{yes:["Sık kesiliyor","Frequent outages"],no:["Sık kesilmiyor","Outages not frequent"]},
  "alan.oda":{yes:["Var","Available"],no:["Yok","None"]},
+ "sogutma.dis":{yes:["Yer var","Space available"],no:["Yer yok","No space"]},
+ "sogutma.gunes":{yes:["Evet, güneş alıyor","Yes, exposed"],no:["Hayır","No"]},
+ "sogutma.aku":{yes:["Yer var","Space available"],no:["Yer yok","No space"]},
+ "ges.cati":{yes:["Uygun","Suitable"],no:["Uygun değil","Not suitable"]},
  "alan.bosoda":{yes:["Var","Yes"],no:["Yok","None"]},
  "alan.bosalan":{yes:["Var","Yes"],no:["Yok","None"]},
  "mevcut.jen":{yes:["Var","Yes"],no:["Yok","None"]},
