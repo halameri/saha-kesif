@@ -99,6 +99,7 @@ details.sec[open]>summary{border-bottom:1px solid var(--line)}
 .calc:empty{display:none}
 .note-toggle{justify-self:start;font-size:.85rem;color:var(--muted);background:none;border:none;padding:4px 0;text-decoration:underline}
 .secfoot{padding:14px;display:grid;gap:10px;background:var(--sunk)}
+.photos.maps{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.photos.maps img{aspect-ratio:10/7}
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
 .photos figure{margin:0;position:relative}
 .photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;max-width:100%}
@@ -348,7 +349,7 @@ function renderList(){
    </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-b</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-c</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
@@ -522,6 +523,10 @@ function renderEditor(){
     <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
    </div>
    <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><span class="hint" id="coordHint">${coordHint(parseCoord(s.coord))}</span></div>
+   <div><div class="f" style="margin-bottom:6px">Harita (raporda ilk görsel)</div>
+    <div class="photos maps" id="ph-harita">${photosHtml("harita")}</div>
+    <button type="button" class="btn" id="mapBtn" style="margin-top:6px">🗺 ${(s.photos?.harita||[]).length?"Haritayı yenile":"Harita ekle"}</button>
+    <div class="hint">Konumumu al'a basınca internet varsa harita kendiliğinden eklenir.</div></div>
    <div><div class="f" style="margin-bottom:6px">Sahanın genel fotoğrafları (raporun başında çıkar)</div>
     <div class="photos" id="ph-genel">${photosHtml("genel")}</div>
     <label class="btn upload" for="up-genel" style="margin-top:6px">📷 Genel fotoğraf ekle<input type="file" id="up-genel" accept="image/*" multiple data-up="genel"></label></div>
@@ -552,6 +557,7 @@ function renderEditor(){
   app.querySelector("#del").onclick=askDelete;
   app.querySelector("#dlh").onclick=htmlReport;
   app.querySelector("#gps").onclick=getGps;
+  app.querySelector("#mapBtn").onclick=()=>addMap(false);
   updateProgress();updateAssess();renderOpts();hydrate();
 }
 function renderOpts(){const box=app.querySelector("#optBox");if(!box)return;const pos=possible(cur),sel=cur.opts||[];
@@ -802,6 +808,8 @@ async function buildHtml(list,{lang,isDaily,photos,date}){
     }
     let ph="";
     if(photos){const groups=[...ITEMS.filter(x=>x.it.photo).map(x=>({id:phg(x.key),en:x.it.se,t:x.it.s})),...SECTIONS];for(const sec of groups)for(const p of s.photos?.[sec.id]||[]){try{const b=await idbGet(p.id);if(b)ph+=`<figure><img src="${await blobToData(await shrinkTo(b,1000,.6))}" alt=""><figcaption>${esc(en?sec.en:sec.t)}</figcaption></figure>`}catch(e){}}}
+    let mph="";
+    for(const p of s.photos?.harita||[]){try{const b=await idbGet(p.id);if(b)mph+=`<figure><img src="${await blobToData(await shrinkTo(b,1000,.75))}" alt=""></figure>`}catch(e){}}
     let gph="";
     if(photos)for(const p of s.photos?.genel||[]){try{const b=await idbGet(p.id);if(b)gph+=`<figure><img src="${await blobToData(await shrinkTo(b,1200,.62))}" alt=""></figure>`}catch(e){}}
     const op=optText(s,lang);
@@ -809,6 +817,7 @@ async function buildHtml(list,{lang,isDaily,photos,date}){
      <h2><span class="no">${list.length>1?i+1:"•"}</span>${esc(siteHeader(s,lang))}</h2>
      ${s.desc?`<p class="desc">${esc(s.desc)}</p>`:""}
      <p class="sm">${[c?`<a href="https://maps.google.com/?q=${c[0]},${c[1]}">GPS ${c[0]}, ${c[1]}</a>`:"",s.contact?`${en?"Contact":"İrtibat"}: ${esc(s.contact)}`:"",`${st.done}/${TOTAL} ${en?"items checked":"madde kontrol edildi"}`].filter(Boolean).join(" · ")}</p>
+     ${mph?`<div class="g gmap">${mph}</div>`:""}
      ${gph?`<div class="g gtop">${gph}</div>`:""}
      ${rows?`<table>${rows}</table>`:`<p class="sm">${en?"No information entered.":"Bilgi girilmedi."}</p>`}
      ${op?`<p class="box"><b>${esc(op.split(": ")[0])}:</b> ${esc(op.split(": ").slice(1).join(": "))}</p>`:""}
@@ -832,7 +841,7 @@ tr.r-bad td{background:#fdf1ee}tr.r-unk td:last-child{color:#7a6a3a;font-style:i
 .note{color:#5b6b78;font-size:13px;margin-top:2px;font-style:normal}
 .desc{margin:2px 0 0;font-size:14px}
 .box{background:#f5f7f9;border-left:3px solid #1c3d5a;padding:8px 10px;margin:8px 0;font-size:14px}
-.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}.gtop{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin:6px 0 12px}.g img{width:100%;border-radius:4px;display:block}figure{margin:0}figcaption{font-size:11px;color:#5b6b78}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:10px}.gmap{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));margin:6px 0 10px}.gtop{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin:6px 0 12px}.g img{width:100%;border-radius:4px;display:block}figure{margin:0}figcaption{font-size:11px;color:#5b6b78}
 .end{border-top:1px solid #c9d2d9;margin-top:24px;padding-top:10px;font-size:12px;color:#5b6b78}
 .legend{font-size:12px;color:#5b6b78;margin:-10px 0 16px}
 @media print{.doc{padding:0}.site{page-break-inside:avoid}}
@@ -871,13 +880,54 @@ async function saveFile({filename,data,type,onDone}){
   anchorSave(b,filename);toast("Dosya hazır");onDone&&onDone()}
 const blobToData=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r("");f.readAsDataURL(b)});
 const fname=s=>(s.name||"saha").replace(/[^\wğüşıöçĞÜŞİÖÇ-]+/g,"_");
+/* ---------- map image from coordinates (OpenStreetMap tiles) ---------- */
+async function makeMapImage(lat,lon,z,label){
+  const W=1000,H=700,n=2**z,lr=lat*Math.PI/180;
+  const cx=(lon+180)/360*n*256,cy=(1-Math.log(Math.tan(lr)+1/Math.cos(lr))/Math.PI)/2*n*256;
+  const x0=cx-W/2,y0=cy-H/2;
+  const c=document.createElement("canvas");c.width=W;c.height=H;const g=c.getContext("2d");
+  g.fillStyle="#e8e6e1";g.fillRect(0,0,W,H);
+  const jobs=[];
+  for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){
+    if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n;
+    jobs.push(fetch(`https://tile.openstreetmap.org/${z}/${X}/${ty}.png`).then(r=>{if(!r.ok)throw new Error("tile");return r.blob()}).then(b=>createImageBitmap(b)).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))));
+  }
+  await Promise.all(jobs);
+  const mx=W/2,my=H/2;
+  g.beginPath();g.arc(mx,my,46,0,2*Math.PI);g.strokeStyle="rgba(210,34,34,.55)";g.lineWidth=5;g.stroke();
+  g.beginPath();g.moveTo(mx,my);g.bezierCurveTo(mx-26,my-30,mx-22,my-60,mx,my-60);g.bezierCurveTo(mx+22,my-60,mx+26,my-30,mx,my);g.closePath();
+  g.fillStyle="#d22";g.fill();g.lineWidth=4;g.strokeStyle="#fff";g.stroke();
+  g.beginPath();g.arc(mx,my-40,8,0,2*Math.PI);g.fillStyle="#fff";g.fill();
+  const t1=label||"",t2=`${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+  g.font="bold 26px -apple-system,system-ui,Arial,sans-serif";const w1=g.measureText(t1).width;g.font="20px -apple-system,system-ui,Arial,sans-serif";const w2=g.measureText(t2).width;
+  const bw=Math.max(w1,w2)+28;g.fillStyle="rgba(255,255,255,.92)";g.fillRect(12,12,bw,t1?76:44);
+  g.fillStyle="#1c2730";if(t1){g.font="bold 26px -apple-system,system-ui,Arial,sans-serif";g.fillText(t1,26,46)}
+  g.font="20px -apple-system,system-ui,Arial,sans-serif";g.fillText(t2,26,t1?76:42);
+  const at="© OpenStreetMap contributors";g.font="15px -apple-system,system-ui,Arial,sans-serif";const aw=g.measureText(at).width;
+  g.fillStyle="rgba(255,255,255,.85)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
+  return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.85));
+}
+async function addMap(auto){
+  if(!cur)return;const c=parseCoord(cur.coord);
+  if(!c){if(!auto)toast("Önce koordinatı gir ya da Konumumu al'a bas");return}
+  toast("Harita hazırlanıyor…");
+  try{
+    const near=await makeMapImage(c[0],c[1],17,cur.name),wide=await makeMapImage(c[0],c[1],15,cur.name);
+    for(const p of cur.photos.harita||[])idbDel(p.id);
+    cur.photos.harita=[];
+    for(const b of [near,wide]){const id=uid();await idbPut(id,b);urlCache[id]=URL.createObjectURL(b);cur.photos.harita.push({id})}
+    const box=app.querySelector("#ph-harita");if(box){box.innerHTML=photosHtml("harita");hydrate()}
+    const mb=app.querySelector("#mapBtn");if(mb)mb.textContent="🗺 Haritayı yenile";
+    dirty();toast("Harita eklendi")
+  }catch(e){toast(auto?"Harita eklenemedi (internet yok?). Sonra 'Harita ekle'ye bas.":"Harita eklenemedi. İnternet bağlantısını kontrol et.")}
+}
 function getGps(){
   if(!navigator.geolocation){toast("Bu tarayıcı konum vermiyor; koordinatı elle yaz");return}
   toast("Konum alınıyor… açık havada daha hızlı");
   navigator.geolocation.getCurrentPosition(p=>{
     if(!cur)return;const c=p.coords;cur.coord=`${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)}`;
     app.querySelector("#m-coord").value=cur.coord;
-    app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(cur.coord))+` · ±${Math.round(c.accuracy)} m`;dirty();toast("Konum alındı")
+    app.querySelector("#coordHint").innerHTML=coordHint(parseCoord(cur.coord))+` · ±${Math.round(c.accuracy)} m`;dirty();toast("Konum alındı");if(navigator.onLine!==false)setTimeout(()=>addMap(true),400)
   },e=>toast(e.code===1?"Konum izni yok: Ayarlar › Gizlilik › Konum Servisleri › Safari Web Siteleri":"Konum alınamadı, tekrar dene"),{enableHighAccuracy:true,timeout:30000,maximumAge:0});
 }
 async function htmlReport(){
