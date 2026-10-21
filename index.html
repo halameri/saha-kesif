@@ -173,10 +173,8 @@ const SECTIONS=[
    f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],
    tip:"Kenarları adımla (1 adım ≈ 0,75 m). Kâğıda kaba bir kroki çiz: saha, direk yönü, yol, kuzey oku. Krokinin fotoğrafını çek."},
   {id:"oda",q:"Lokasyonda hazır sistem odası var mı?",en:"Is there an existing equipment room on site?",s:"Hazır sistem odası",se:"Existing equipment room",good:null,photo:1,
-   fIf:"yes",f:[{k:"en",l:"En (isteğe bağlı)",le:"Width",u:"m"},{k:"boy",l:"Boy (isteğe bağlı)",le:"Length",u:"m"}],area:1,
-   tip:"Telekom ekipmanı için kullanılabilecek mevcut bir oda, bina veya konteyner. Varsa içini ve dışını, kapısını, elektrik panosunu ve klimasını fotoğrafla. Ölçü şart değil."},
-  {id:"bosoda",q:"Boş oda var mı?",en:"Are there empty rooms?",s:"Boş oda",se:"Empty rooms",good:null,photo:1,
-   f:[{k:"adet",l:"Kaç tane (isteğe bağlı)",le:"Number"}],fIf:"yes"},
+   tip:"Telekom ekipmanı için kullanılabilecek mevcut bir oda, bina veya konteyner. Varsa içini ve dışını, kapısını, elektrik panosunu ve klimasını fotoğrafla. Ölçü gerekmez; genel bilgi yeterli."},
+  {id:"bosoda",q:"Boş oda var mı?",en:"Are there empty rooms?",s:"Boş oda",se:"Empty rooms",good:null,photo:1},
   {id:"bosalan",q:"Sistem salonunda boş alan var mı?",en:"Is there free space in the equipment hall?",s:"Sistem salonunda boş alan",se:"Free space in equipment hall",good:null,photo:1},
   {id:"jen",q:"Jeneratör için ayrı yer var mı? (yaklaşık 3 × 4 m)",en:"Is there space for a generator (approx. 3 × 4 m)?",s:"Jeneratör yeri",se:"Generator space",good:"yes",bt:"Jeneratör için yer yok",be:"No space for generator"},
   {id:"yakit",q:"Yakıt kamyonu sahaya kadar gelebilir mi?",en:"Can a fuel truck reach the site?",s:"Yakıt kamyonu erişimi",se:"Fuel truck access",good:"yes",bt:"Yakıt kamyonu sahaya gelemiyor",be:"Fuel truck cannot reach the site",
@@ -354,7 +352,7 @@ function renderList(){
    </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 20.10.2026-e</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-a</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
