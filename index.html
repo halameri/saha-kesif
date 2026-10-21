@@ -154,7 +154,7 @@ details.qn summary{cursor:pointer;font-size:.88rem;font-weight:600;color:var(--m
 const SECTIONS=[
  {id:"sebeke",t:"Şebeke elektriği",en:"Grid power",items:[
   {id:"direk",q:"Yakında elektrik direği var mı?",en:"Is there a power pole nearby?",s:"Elektrik direği",se:"Power pole",good:"yes",bt:"Yakında elektrik direği yok",be:"No power pole nearby",
-   fIf:"yes",f:[{k:"mesafe",l:"Sahaya uzaklık",le:"Distance",u:"m"},{k:"tip",l:"Hat tipi",le:"Line type",type:"sel",o:["Alçak gerilim (AG)","Orta gerilim (OG)","Bilmiyorum"],oe:["Low voltage (LV)","Medium voltage (MV)","Unknown"]}],
+   fIf:"yes",f:[{k:"mesafe",l:"Binadan direğe uzaklık",le:"Distance from building",u:"m"},{k:"tip",l:"Hat tipi",le:"Line type",type:"sel",o:["Alçak gerilim (AG)","Orta gerilim (OG)","Bilmiyorum"],oe:["Low voltage (LV)","Medium voltage (MV)","Unknown"]}],
    tip:"Mesafe: Google Maps'te sahaya uzun bas › “Mesafeyi ölç” ile direğe kadar çek, ya da adım say (1 adım ≈ 0,75 m). Hat tipi: alçak, ahşap/beton direk ve ince teller genelde AG; yüksek direk ve büyük izolatörler (zincir gibi) OG'dir. Emin değilsen “Bilmiyorum” seç, direğin ve tellerin yakından fotoğrafını çek."},
   {id:"trafo",q:"Yakında trafo var mı?",en:"Is there a transformer nearby?",s:"Trafo",se:"Transformer",good:"yes",bt:"Yakında trafo yok",be:"No transformer nearby",
    fIf:"yes",f:[{k:"mesafe",l:"Sahaya uzaklık",le:"Distance",u:"m"},{k:"kva",l:"Gücü (genelde 100–1000)",le:"Rating",u:"kVA"},{k:"kv",l:"Gerilim",le:"Voltage",type:"sel",o:["11 kV → 0,4 kV","33 kV → 11 kV","33 kV → 0,4 kV","Bilmiyorum"],oe:["11 kV → 0.4 kV","33 kV → 11 kV","33 kV → 0.4 kV","Unknown"]}],
@@ -169,9 +169,6 @@ const SECTIONS=[
    fIf:"yes",f:[{k:"kva",l:"Gücü",le:"Rating",u:"kVA"},{k:"cap",l:"Toplam kapasite",le:"Total capacity",u:"A"},{k:"used",l:"Kullanılan",le:"In use",u:"A"},{k:"saat",l:"Günde çalışma",le:"Runs",u:"saat",ue:"h/day"},{k:"sahip",l:"Sahibi",le:"Owner",type:"sel",o:["Mahalle jeneratörü","Bina / tesis sahibi","Devlet / belediye","Bilmiyorum"],oe:["Neighbourhood generator","Building / facility owner","Government / municipality","Unknown"]}],
    tip:"Irak'ta mahalle jeneratörleri elektriği amper olarak satar. 100 kVA bir jeneratör toplam ~400 A verir (üç fazın toplamı). Gücünü, toplam ve kullanılan amperi, günde kaç saat çalıştığını sor. Boş kapasiteyi uygulama hesaplar."}]},
  {id:"alan",t:"Saha alanı ve jeneratör",en:"Site area and generator",items:[
-  {id:"olcu",type:"m",q:"Saha (duvar içi) ölçüsü",en:"Site (compound) size",s:"Saha ölçüsü",se:"Site size",area:1,
-   f:[{k:"en",l:"En",le:"Width",u:"m"},{k:"boy",l:"Boy",le:"Length",u:"m"}],
-   tip:"Kenarları adımla (1 adım ≈ 0,75 m). Kâğıda kaba bir kroki çiz: saha, direk yönü, yol, kuzey oku. Krokinin fotoğrafını çek."},
   {id:"oda",q:"Lokasyonda hazır sistem odası var mı?",en:"Is there an existing equipment room on site?",s:"Hazır sistem odası",se:"Existing equipment room",good:null,photo:1,
    tip:"Telekom ekipmanı için kullanılabilecek mevcut bir oda, bina veya konteyner. Varsa içini ve dışını, kapısını, elektrik panosunu ve klimasını fotoğrafla. Ölçü gerekmez; genel bilgi yeterli."},
   {id:"bosoda",q:"Boş oda var mı?",en:"Are there empty rooms?",s:"Boş oda",se:"Empty rooms",good:null,photo:1},
@@ -186,9 +183,8 @@ const SECTIONS=[
   {id:"zemin",type:"m",q:"Zemin nasıl?",en:"Ground type",s:"Zemin",se:"Ground",f:[{k:"tip",l:"Zemin",le:"Ground",type:"sel",o:["Toprak","Kum","Kaya","Dolgu / moloz","Bataklık / ıslak"],oe:["Soil","Sand","Rock","Fill / rubble","Marshy / wet"]}],
    tip:"Zemin tipi topraklama ve temel için önemli. Yakından bir fotoğraf çek."}]},
  {id:"ges",t:"Güneş paneli (GES)",en:"Solar (PV)",items:[
-  {id:"alan",q:"Güneş paneli için boş alan var mı?",en:"Is there free space for solar panels?",s:"Panel alanı",se:"PV area",good:"yes",bt:"Güneş paneli için boş alan yok",be:"No free space for solar panels",area:1,kwp:1,
-   fIf:"yes",f:[{k:"en",l:"En (isteğe bağlı)",le:"Width",u:"m"},{k:"boy",l:"Boy (isteğe bağlı)",le:"Length",u:"m"}],
-   tip:"Ölçü şart değil; genel durumu hazır notlardan seçmen yeterli. Ölçebilirsen uygulama yaklaşık kaç kWp panel sığacağını hesaplar (≈7 m² başına 1 kWp)."},
+  {id:"alan",q:"Güneş paneli için boş alan var mı?",en:"Is there free space for solar panels?",s:"Panel alanı",se:"PV area",good:"yes",bt:"Güneş paneli için boş alan yok",be:"No free space for solar panels",
+   tip:"Ölçü gerekmez; genel durumu hazır notlardan seç (geniş alan, sınırlı alan, çatı...)."},
   {id:"golge",q:"Panel alanına gölge düşürecek bir şey var mı?",en:"Anything that would shade the panel area?",s:"Gölge",se:"Shading",good:"no",bt:"Panel alanına gölge düşüyor",be:"Panel area is shaded",
    tip:"Bina, ağaç, duvar, kulenin kendisi. Kulenin gölgesi gün içinde döner; kuleye çok yakın alanlar gölgede kalır."},
   {id:"guney",q:"Güney tarafı açık mı?",en:"Is the south side open?",s:"Güney yönü",se:"South side",good:"yes",bt:"Güney tarafı kapalı",be:"South side is blocked",
@@ -352,7 +348,7 @@ function renderList(){
    </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-a</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-b</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
@@ -402,7 +398,7 @@ function renderGuide(){
     <li>Sahanın kutucuğuna dokun, <b>📍 Konumumu al</b>'a bas.</li>
     <li>Etrafı bir tur dolaş, 4 yöne fotoğraf çek.</li>
     <li><b>En yakın elektrik direğini bul.</b> Mesafeyi haritada ölç ya da adımla. Direğin ve tellerin fotoğrafını çek.</li>
-    <li>Sahayı adımla, kâğıda kroki çiz (saha, direk, yol, kuzey oku). Krokinin fotoğrafını çek.</li>
+    <li>Ölçü olarak sadece <b>binadan en yakın elektrik direğine uzaklığı</b> al (adımla ya da haritada). Diğer alanlar için genel bilgi ve fotoğraf yeterli.</li>
     <li>Jeneratör ve güneş paneli için yer var mı bak. Pusula ile güneyi bul.</li>
     <li><b>Yerel kişiye sor:</b> Günde kaç saat elektrik var? Yağmurda su basar mı? Hırsızlık olur mu? Yakıt kamyonu gelebilir mi?</li>
     <li>Emin olmadığın her şeye <b>Bilmiyorum</b> de. Raporda “sahada tespit edilemedi” olarak çıkar. Bu tamamen normal; neden bilinmediğini hazır notlardan seçebilirsin (ör. “Yerel kişi bilmiyor”).</li>
