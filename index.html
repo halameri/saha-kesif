@@ -177,8 +177,6 @@ const SECTIONS=[
   {id:"jen",q:"Jeneratör için ayrı yer var mı? (yaklaşık 3 × 4 m)",en:"Is there space for a generator (approx. 3 × 4 m)?",s:"Jeneratör yeri",se:"Generator space",good:"yes",bt:"Jeneratör için yer yok",be:"No space for generator"},
   {id:"yakit",q:"Yakıt kamyonu sahaya kadar gelebilir mi?",en:"Can a fuel truck reach the site?",s:"Yakıt kamyonu erişimi",se:"Fuel truck access",good:"yes",bt:"Yakıt kamyonu sahaya gelemiyor",be:"Fuel truck cannot reach the site",
    tip:"Yol genişliğine ve zeminine bak. Yağmurda çamur oluyor mu, sor."},
-  {id:"ev",q:"Jeneratör evlere çok yakın olur mu?",en:"Would the generator be close to houses?",s:"Evlere yakınlık",se:"Proximity to houses",good:"no",bt:"Jeneratör evlere yakın olur (gürültü, egzoz)",be:"Generator would be close to houses (noise, exhaust)",
-   fIf:"yes",f:[{k:"mesafe",l:"En yakın ev",le:"Nearest house",u:"m"}]},
   {id:"su",q:"Zeminde su birikmesi veya sel izi var mı?",en:"Any signs of water pooling or flooding?",s:"Su / sel riski",se:"Flood risk",good:"no",bt:"Su birikmesi / sel riski var",be:"Water pooling / flood risk",
    tip:"Islak zemin, kurumuş çamur izi, çevresinden alçakta kalan çukur yer. Yerel kişiye sor: “Yağmurda burası su tutar mı?”"},
   {id:"zemin",type:"m",q:"Zemin nasıl?",en:"Ground type",s:"Zemin",se:"Ground",f:[{k:"tip",l:"Zemin",le:"Ground",type:"sel",o:["Toprak","Kum","Kaya","Dolgu / moloz","Bataklık / ıslak"],oe:["Soil","Sand","Rock","Fill / rubble","Marshy / wet"]}],
@@ -362,7 +360,7 @@ function renderList(){
    </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-f</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-g</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
