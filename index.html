@@ -349,7 +349,7 @@ function renderList(){
    </button>${listEdit?`<button class="btn danger" data-delsurvey="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`
   :`<div class="empty"><p class="muted" style="margin:0;max-width:42ch">Henüz keşif yok. Denemek için örnek bir keşfe bakabilirsin; sonra silebilirsin.</p><button class="btn" id="ex">Örnek keşfi göster</button></div>`}
   <div class="row" style="margin-top:16px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
-  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-d</p>`;
+  <p class="store-note" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kurun. "}İnternet gerekmez. Kayıtlar ve fotoğraflar sadece bu telefonda; her akşam Yedek al.<br>Sürüm: 21.10.2026-e</p>`;
   app.querySelector("#new").onclick=()=>newSurvey();
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelector("#guideBtn").onclick=renderGuide;
@@ -406,11 +406,6 @@ function renderGuide(){
     <li>En alttaki Özet'e bak; eksik kalan önemli bir şey var mı kontrol et. Değerlendirme yapman gerekmiyor, sen bilgiyi aktarıyorsun.</li>
    </ol>
    <p class="hint">Akşam: <b>Günlük rapor</b> › Metni kopyala › WhatsApp'tan müdüre gönder. Sonra <b>Yedek al</b> › Dosyalara Kaydet › iCloud Drive.</p>
-  </section>
-  <section class="panel guide">
-   <h2>İngilizce konuşma kalıpları</h2>
-   <p class="hint" style="margin:0">Her sorunun İngilizcesi zaten maddenin altında yazıyor. Bunlar sohbeti başlatmak ve bitirmek için.</p>
-   ${PHRASES.map(([h,l])=>`<h3 style="font-size:1rem;margin:6px 0 0">${h}</h3><div class="ask">${l.map(([en,tr])=>`<p><b>🗣 ${esc(en)}</b><span>${esc(tr)}</span></p>`).join("")}</div>`).join("")}
   </section>
   <section class="panel guide">
    <h2>Mesafe nasıl ölçülür?</h2>
@@ -491,7 +486,6 @@ function itemHtml(sec,it){
   const showF=it.f&&(!it.fIf||e.a===it.fIf);
   return `<div class="item" data-key="${key}" data-s="${st}">
    <div class="q">${esc(it.q)}</div>
-   ${(ASK[key]||[]).length?`<div class="ask">${ASK[key].map(([en,tr])=>`<p><b>🗣 ${esc(en)}</b><span>${esc(tr)}</span></p>`).join("")}</div>`:""}
    ${btns}
    ${it.f?`<div class="fields" ${showF?"":"hidden"}>${it.f.map(f=>fieldHtml(key,f,v[f.k]??"")).join("")}</div>`:""}
    ${it.area?`<div class="calc num" id="calc-${key.replace(".","-")}">${calcText(it,v)}</div>`:""}
