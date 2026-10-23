@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#13202a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Saha Keşfi 2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<link rel="icon" href="../icon-192.png">
+<title>Saha Keşfi 2</title>
+<style>
+/* Layout: single-column field tool, sticky top bar, collapsible sections, large tap targets */
+:root{
+  --bg:#e9edf0;--surface:#fff;--sunk:#f3f5f7;--ink:#13202a;--muted:#566673;--line:#cfd7dd;
+  --accent:#e09b12;--accent-ink:#1b1403;--accent-soft:#fbf0d6;--navy:#1c3d5a;
+  --ok:#1d7f47;--ok-soft:#dff1e6;--bad:#b93a24;--bad-soft:#f8e1dc;
+  --body:system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1419;--surface:#172129;--sunk:#111a20;--ink:#e4ebf0;--muted:#94a4b0;--line:#2a3842;
+  --accent:#f0b12e;--accent-ink:#1b1403;--accent-soft:#3a2d10;--navy:#8fb6d6;
+  --ok:#4cc17e;--ok-soft:#173826;--bad:#f07a62;--bad-soft:#40201a;color-scheme:dark}}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+img{max-width:100%}[hidden]{display:none!important}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 80px}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}.hint{font-size:.82rem;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 14px;min-height:44px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.sm{min-height:36px;padding:6px 10px;font-size:.9rem}
+.masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-block:8px 14px;border-bottom:3px solid var(--ink);margin-bottom:14px;flex-wrap:wrap}
+.masthead h1{font-size:1.9rem;text-transform:uppercase;line-height:1}
+.masthead small{display:block;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:12px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label.f,.f{display:grid;gap:4px;font-size:.85rem;color:var(--muted);font-weight:600}
+label.f input,label.f select,textarea,.inp{background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:10px;min-height:44px;color:var(--ink);width:100%;font-size:16px;font-weight:400}
+textarea{min-height:70px;resize:vertical}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.topbar .title{flex:1;min-width:0}.topbar .title b{display:block;font-size:1.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.topbar .title span{font-size:.8rem;color:var(--muted)}
+.saved{font-size:.78rem;color:var(--muted);white-space:nowrap}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;border:1px solid var(--line);background:var(--sunk);border-radius:8px;min-height:44px;padding:8px 10px;font-weight:600;font-size:.92rem}
+.seg button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .seg button[aria-pressed="true"]{color:#0e1419}}
+details.sec{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:10px;overflow:hidden}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px;display:flex;align-items:center;gap:10px}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary h2{flex:1;font-size:1.15rem;text-transform:uppercase}
+details.sec>summary .sn{font-family:var(--mono);font-size:.8rem;color:var(--muted);width:1.4em}
+details.sec>summary .cnt{font-family:var(--mono);font-size:.75rem;padding:2px 6px;border-radius:4px;background:var(--sunk);color:var(--muted)}
+details.sec>summary .chev{color:var(--muted);transition:transform .15s}details.sec[open]>summary .chev{transform:rotate(90deg)}
+details.sec[open]>summary{border-bottom:1px solid var(--line)}
+.item{padding:14px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.item:last-child{border-bottom:0}
+.item .q{font-weight:700}
+.sub{background:var(--sunk);border-radius:8px;padding:10px;display:grid;gap:8px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.photos:empty{display:none}
+.photos figure{margin:0;position:relative}
+.photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;background:var(--sunk)}
+.photos figure .mk{position:absolute;left:4px;bottom:4px;background:var(--accent);color:var(--accent-ink);font-size:.7rem;font-weight:700;border-radius:4px;padding:1px 5px}
+.photos.maps{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.photos.maps img{aspect-ratio:10/7}
+.upload{position:relative;display:inline-flex;align-items:center;gap:6px}
+.upload input{position:absolute;width:1px;height:1px;opacity:0}
+details.qn summary,details.tip summary{cursor:pointer;font-size:.86rem;font-weight:600;color:var(--muted);list-style:none}
+details.qn summary::before{content:"✎ "}details.tip summary::before{content:"ⓘ "}
+details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8px 10px;font-size:.9rem}
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.qchip{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:7px 12px;font-size:.88rem;text-align:left;line-height:1.3}
+.qchip.used{background:var(--accent-soft);border-color:var(--accent)}
+.note-toggle{justify-self:start;background:none;border:0;padding:2px 0;color:var(--muted);text-decoration:underline;font-size:.88rem}
+.gen{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:8px;background:var(--surface)}
+.gen h3{font-size:1rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.calcline{font-size:.9rem;background:var(--accent-soft);border-radius:6px;padding:6px 10px}
+.res{width:100%;border-collapse:collapse;font-size:.92rem}.res td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}.res td:last-child{text-align:right;font-weight:700;font-family:var(--mono);white-space:nowrap}
+.res tr.tot td{background:var(--ok-soft);font-weight:800}
+.flag{border-radius:6px;padding:8px 10px;font-size:.9rem}.flag.bad{background:var(--bad-soft)}.flag.ok{background:var(--ok-soft)}
+.cards{display:grid;gap:8px}
+.cardrow{display:flex;gap:8px;align-items:stretch}.cardrow .card{flex:1;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-align:left;display:grid;gap:2px;width:100%}
+.card b{font-size:1.1rem}.card span{font-size:.85rem;color:var(--muted)}
+.pill{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:2px 7px;background:var(--sunk);color:var(--muted);vertical-align:middle}
+.pill.it{background:#dbe7f2;color:#1c3d5a}.pill.tt{background:var(--accent-soft);color:var(--ink)}
+.dayh{font-size:.8rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.empty{background:var(--surface);border:2px dashed var(--line);border-radius:10px;padding:24px;text-align:center;display:grid;gap:10px;justify-items:center}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;z-index:60;max-width:92vw;text-align:center}
+.sheet{position:fixed;inset:auto 0 0 0;z-index:50;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(0,0,0,.2);padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet-in{max-width:720px;margin:0 auto;display:grid;gap:10px}
+.confirm{background:var(--bad-soft);border-radius:8px;padding:10px;display:grid;gap:8px}
+.checks{display:grid;gap:6px}
+.chk{display:flex;gap:10px;align-items:flex-start;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer}
+.chk input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+.chk span{display:grid;gap:2px;min-width:0}.chk small{color:var(--muted)}
+.banner{border:1px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:12px;display:grid;gap:8px;margin-bottom:12px}
+/* overlays: photo viewer + annotation */
+.ov{position:fixed;inset:0;z-index:40;background:#0b0f12;color:#fff;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.ov .bar{display:flex;gap:6px;align-items:center;padding:8px 10px;flex-wrap:wrap;background:#141b21}
+.ov .bar .btn{background:#222c34;border-color:#33414c;color:#fff;min-height:40px;padding:6px 12px}
+.ov .bar .btn.on{background:#e09b12;color:#1b1403;border-color:#e09b12}
+.ov .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
+.ov .stage img,.ov .stage canvas{max-width:100%;max-height:100%;object-fit:contain}
+.ov input.cap{flex:1;min-width:140px;background:#222c34;border:1px solid #33414c;border-radius:6px;color:#fff;padding:8px;min-height:40px}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid #fff;padding:0}
+.sw.on{outline:3px solid #e09b12;outline-offset:1px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap" id="app"><p class="muted">Yükleniyor…</p></div>
+<div class="toast" id="toast" hidden></div>
+<div class="sheet" id="sheet" hidden><div class="sheet-in"><b id="shName"></b><span class="hint">Açılan menüden WhatsApp, Mail veya “Dosyalara Kaydet” seçebilirsin.</span><div class="row"><button class="btn primary" id="shGo">Paylaş / Kaydet</button><button class="btn" id="shX">Kapat</button></div></div></div>
+<div class="sheet" id="upd" hidden><div class="sheet-in"><b>Uygulamanın yeni sürümü hazır</b><div class="row"><button class="btn primary" id="updGo">Yenile</button><button class="btn" id="updX">Sonra</button></div></div></div>
+<div id="ov"></div>
+
+<script>
+"use strict";
+const VERSION="2.0 · 24.10.2026";
+/* =========================================================
+   1. FORM DEFINITION
+   kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
+   ph = fotoğraf, ms = isteğe bağlı ölçü (en × boy), only = saha tipi
+   ========================================================= */
+const TYPES={itpc:"İTPC santrali",tt:"Yeni TT santrali"};
+const TYPE_HINT={itpc:"Mevcut İTPC binası; binada elektrik var",tt:"Yeni kurulacak santral (konteyner olabilir)"};
+const SEC=[
+ {id:"alan",t:"Sistem salonu ve alan",items:[
+  {k:"salon",kind:"yn",q:"Hazır sistem salonu var mı?",s:"Hazır sistem salonu",ph:1,phAlways:0,
+   tip:"Salonun genel görünümünü, mevcut kabinleri, elektrik panosunu ve klimaları fotoğrafla.",
+   qn:["Salon klimalı","Salonda elektrik panosu var","Salon düzenli ve bakımlı","Salon dolu, yer sıkıntısı var","Salonda yükseltilmiş döşeme var"]},
+  {k:"salonBos",kind:"yn",q:"Sistem salonunda bize verilecek boş alan var mı?",s:"Salonda bize verilecek alan",ph:1,ms:1,
+   tip:"Bize ayrılacak yeri göster ve fotoğrafla. Fotoğraf üzerinde alanı işaretleyebilirsin (fotoğrafa dokun › İşaretle).",
+   qn:["Raf / kabin için yer var","Salonun bir köşesi boş","Yer var ama düzenleme gerekir","Yer yetersiz","Yer bina yetkilisi tarafından gösterildi"]},
+  {k:"oda",kind:"yn",q:"Ayrı boş oda var mı?",s:"Ayrı boş oda",ph:1,ms:1,
+   qn:["Oda tamamen boş","Oda kullanılabilir görünüyor","Oda tadilat gerektirir","Odada klima var","Odaya giriş izni gerekiyor"]},
+  {k:"kont",kind:"yn",q:"Konteyner / kabin için uygun alan var mı?",s:"Konteyner alanı",ph:1,ms:1,only:"tt",
+   qn:["Bina bahçesinde alan var","Çatıda alan var","Zemin düz","Zemin hazırlığı gerekir","Vinç girişi mümkün"]}
+ ]},
+ {id:"sebeke",t:"Şebeke bağlantısı",only:"tt",items:[
+  {k:"direk",kind:"yn",q:"Yakında elektrik direği var mı?",s:"Elektrik direği",ph:1,
+   num:{k:"m",l:"Binadan direğe uzaklık",u:"m"},
+   tip:"Mesafeyi adımla (1 adım ≈ 0,75 m) ya da Google Maps'te uzun bas › Mesafeyi ölç.",
+   qn:["Direk binaya bitişik","Direk yolun karşı tarafında","Arada özel arazi var","Hat orta gerilim (OG)","Hat alçak gerilim (AG)"]},
+  {k:"trafo",kind:"yn",q:"Yakında trafo var mı?",s:"Trafo",ph:1,
+   qn:["Trafo etiketi okunamadı","Trafo yerde, kilitli kabinde","Trafo direk üstünde","Trafo dolu görünüyor"]}
+ ]},
+ {id:"elektrik",t:"Elektrik durumu",items:[
+  {k:"kesinti",kind:"num",q:"En kötü durumda elektrik günde kaç saat kesiliyor?",s:"Günlük kesinti (en kötü durum)",u:"saat",
+   tip:"Bina görevlisine sor: “Yazın en kötü günlerde elektrik günde kaç saat kesik?” Kesinti yoksa 0 yaz.",
+   qn:["Yazın kesinti artıyor","Bilgi bina görevlisinden alındı","Kesinti yok denecek kadar az","Bilgi kesin değil, tahmini"]},
+  {k:"enuzun",kind:"num",q:"En uzun tek kesinti kaç saat sürüyor? (isteğe bağlı)",s:"En uzun tek kesinti",u:"saat",
+   tip:"Akü yedeklemesi için asıl önemli olan budur. Günde toplam 12 saat kesik olabilir ama 3'er saatlik parçalar halinde."},
+  {k:"duzen",kind:"ch",q:"Kesintiler programlı mı, rastgele mi?",s:"Kesinti düzeni",o:["Programlı","Rastgele","Karışık","Bilinmiyor"],
+   qn:["Program: 2 saat açık / 2 saat kapalı","Program: 4 saat açık / 2 saat kapalı","Gece kesintisi daha fazla","Kesinti saatleri önceden duyuruluyor"]}
+ ]},
+ {id:"sogutma",t:"Soğutma",items:[
+  {k:"sogutma",kind:"ch",q:"Bizim ekipman için soğutma nasıl sağlanacak?",s:"Soğutma",o:["Mevcut soğutma kullanılabilir","Yeni split klima gerekli","Bilinmiyor"],ph:1,phAlways:1,
+   tip:"Mevcut klimaların sayısına, çalışıp çalışmadığına ve bizim ekipmanı da soğutup soğutamayacağına bak. Klimaların fotoğrafını çek.",
+   qn:["Salonda merkezi klima var","Salonda split klimalar var","Mevcut klimalar yetersiz görünüyor","Klimalar jeneratöre bağlı","Klima dış ünitesi için yer var"]}
+ ]},
+ {id:"jen",t:"Jeneratör",items:[
+  {k:"jen",kind:"yn",q:"Sahada jeneratör var mı?",s:"Jeneratör",gens:1,
+   tip:"Her jeneratör için gücünü (kVA), yaklaşık yüzde kaçının kullanıldığını ve asıl mı yedek mi olduğunu sor. Etiketinin fotoğrafını çek.",
+   qn:["Jeneratörler otomatik devreye giriyor (ATS)","Jeneratör elle çalıştırılıyor","Yakıt ikmali düzenli","Jeneratör bakımsız görünüyor","Kapasite bilgisi bina görevlisinden alındı"]}
+ ]}
+];
+const ALL=[];SEC.forEach(sec=>sec.items.forEach(it=>ALL.push({sec,it})));
+const GEN_QN=["Etiket fotoğrafı çekildi","Yakıt tankı ayrı","Jeneratör kabinli (sessiz tip)","Jeneratör eski görünüyor"];
+const GENERAL_QN=["Bina görevlisi eşlik etti","Sahada kısa süre kalınabildi","Bazı alanlara giriş izni verilmedi","Fotoğraf çekimi kısıtlıydı","Bilgiler tahminidir, teyit edilmeli"];
+/* energy constants */
+const DCV=54,EFF=0.95,PF=0.8,CH=0.1,BREAKERS=[16,20,25,32,40,50,63,80,100];
+const SPLIT_KW={"1":1.3,"1.5":1.9,"2":2.5};
+
+/* =========================================================
+   2. STATE + STORAGE
+   ========================================================= */
+let surveys={},prefs={},cur=null,view="list",saveT=null,listEdit=false;
+const app=document.getElementById("app");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const num=x=>{const n=parseFloat(String(x??"").replace(",","."));return isNaN(n)?null:n};
+const fmt=(n,d=1)=>n==null?"":Number(n).toLocaleString("tr-TR",{maximumFractionDigits:d});
+const norm=s=>String(s||"").trim().toLowerCase();
+function fmtDate(d){if(!d)return "";const [y,m,dd]=d.split("-");return `${dd}.${m}.${y}`}
+function toast(m,ms=2600){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,ms)}
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast("Telefon hafızası dolu olabilir");return false}}
+const saveAll=()=>lsSet("sk2-surveys",surveys),savePrefs=()=>lsSet("sk2-prefs",prefs);
+function parseCoord(c){const m=String(c||"").match(/(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)/);if(!m)return null;const la=parseFloat(m[1].replace(",",".")),lo=parseFloat(m[2].replace(",","."));return Math.abs(la)<=90&&Math.abs(lo)<=180?[la,lo]:null}
+/* IndexedDB for photos */
+let idbP=null;const urlCache={};
+function idb(){return idbP||(idbP=new Promise((res,rej)=>{const r=indexedDB.open("sk2-foto",1);r.onupgradeneeded=()=>r.result.createObjectStore("p");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+async function idbTx(mode,fn){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction("p",mode),st=t.objectStore("p"),r=fn(st);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})}
+const idbPut=(id,b)=>idbTx("readwrite",st=>st.put(b,id));
+const idbGet=id=>idbTx("readonly",st=>st.get(id));
+const idbDel=id=>{if(urlCache[id]){URL.revokeObjectURL(urlCache[id]);delete urlCache[id]}return idbTx("readwrite",st=>st.delete(id)).catch(()=>{})};
+async function urlOf(id){if(urlCache[id])return urlCache[id];try{const b=await idbGet(id);if(b)return urlCache[id]=URL.createObjectURL(b)}catch(e){}return ""}
+async function hydrate(root=app){for(const img of root.querySelectorAll("img[data-pid]")){const u=await urlOf(img.dataset.pid);if(u&&img.getAttribute("src")!==u)img.src=u}}
+function shrinkTo(blob,max,q){return new Promise(res=>{const img=new Image(),u=URL.createObjectURL(blob);img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>res(b||blob),"image/jpeg",q)};img.onerror=()=>{URL.revokeObjectURL(u);res(blob)};img.src=u})}
+function blobToImg(blob){return new Promise((res,rej)=>{const u=URL.createObjectURL(blob),img=new Image();img.onload=()=>res(img);img.onerror=rej;img.src=u})}
+const blobToData=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r("");f.readAsDataURL(b)});
+
+/* survey helpers */
+const A=(s,k)=>s.a?.[k]??"";
+const V=(s,k)=>s.v?.[k]??"";
+const shown=(s,it,sec)=>!(it.only&&it.only!==s.type)&&!(sec&&sec.only&&sec.only!==s.type);
+function answered(s,it){const a=A(s,it.k);if(it.kind==="num")return a!==""&&a!=null;return !!a}
+function progress(s){let t=0,d=0;for(const {sec,it} of ALL){if(!shown(s,it,sec))continue;t++;if(answered(s,it))d++}return{t,d}}
+function areaOf(s,k){const e=num(V(s,k+".en")),b=num(V(s,k+".boy"));return e>0&&b>0?e*b:null}
+function photos(s,g){return s.photos?.[g]||[]}
+
+/* =========================================================
+   3. ENERGY CALCULATION
+   ========================================================= */
+function genStats(s){
+  const gens=(A(s,"jen")==="yes"?(s.gens||[]):[]).map(g=>{const kva=num(g.kva),pct=num(g.pct);const free=kva!=null&&pct!=null?kva*(100-pct)/100:null;return{...g,kvaN:kva,pctN:pct,free}});
+  const main=gens.filter(g=>g.role!=="Yedek"),use=main.length?main:gens;
+  const known=use.filter(g=>g.free!=null);
+  return{gens,count:gens.length,totalKva:gens.reduce((a,g)=>a+(g.kvaN||0),0),free:known.length?known.reduce((a,g)=>a+g.free,0):null,mainCount:main.length,backupCount:gens.length-main.length};
+}
+function energy(s){
+  const L=s.load||{};
+  const dcA=num(L.dcA)??25,hours=num(L.hours)??10,li=(L.batType||"Lityum")==="Lityum";
+  const dod=li?0.9:0.8,aging=li?1.05:1.25;
+  const battNeed=Math.ceil(dcA*hours/dod*aging/50)*50;
+  const batt=num(L.batt)||battNeed;
+  const backupReal=batt*dod/dcA;
+  const splitOn=L.split==="yes"||(L.split!=="no"&&A(s,"sogutma")==="Yeni split klima gerekli");
+  const ton=L.ton||"1.5",splitW=splitOn?SPLIT_KW[ton]*1000:0;
+  const dcW=dcA*DCV,rectW=dcW/EFF,chgA=batt*CH,chgW=chgA*DCV/EFF;
+  const normalW=rectW+splitW,peakW=rectW+chgW+splitW;
+  const A220=peakW/220,kVA=peakW/1000/PF,phase=peakW/(1.732*380);
+  const breaker=BREAKERS.find(b=>b>=A220*1.25)||Math.ceil(A220*1.25);
+  const worst=num(A(s,"enuzun"))??num(A(s,"kesinti"));
+  const worstSrc=num(A(s,"enuzun"))!=null?"en uzun tek kesinti":"günlük kesinti";
+  const g=genStats(s);
+  return{dcA,hours,li,batt,battNeed,backupReal,splitOn,ton,splitW,dcW,rectW,chgA,chgW,normalW,peakW,A220,kVA,phase,breaker,worst,worstSrc,
+    backupOk:worst==null?null:worst<=hours,genOk:g.free==null?null:g.free>=kVA,genFree:g.free};
+}
+
+/* =========================================================
+   4. AUTO SUMMARY (written Turkish paragraph)
+   ========================================================= */
+function siteSummary(s){
+  const P=[],name=s.name||"Saha",tt=s.type==="tt";
+  P.push(`${name}${s.gov?` (${s.gov})`:""} ${s.date?fmtDate(s.date)+" tarihinde ":""}ziyaret edilmiştir.${s.type?` Saha ${tt?"yeni bir TT santrali kurulması planlanan bir lokasyondur":"mevcut bir İTPC santralidir; binada şebeke elektriği bulunmaktadır"}.`:""}`);
+  const sal=A(s,"salon"),bos=A(s,"salonBos"),oda=A(s,"oda"),ba=areaOf(s,"salonBos"),oa=areaOf(s,"oda");
+  if(sal==="yes"){let t="Sahada hazır bir sistem salonu bulunmaktadır";
+    if(bos==="yes")t+=`; salonda tarafımıza verilebilecek boş alan mevcuttur${ba?` (yaklaşık ${fmt(ba,0)} m²)`:""}`;
+    else if(bos==="no")t+=", ancak salonda tarafımıza ayrılabilecek boş alan bulunmamaktadır";
+    else if(bos==="unk")t+="; salonda bize alan verilip verilemeyeceği henüz netleşmemiştir";
+    P.push(t+".")}
+  else if(sal==="no")P.push("Sahada hazır bir sistem salonu bulunmamaktadır.");
+  else if(bos==="yes")P.push(`Sistem salonunda tarafımıza verilebilecek boş alan mevcuttur${ba?` (yaklaşık ${fmt(ba,0)} m²)`:""}.`);
+  if(oda==="yes")P.push(`Ayrıca kullanılabilecek ayrı bir boş oda vardır${oa?` (yaklaşık ${fmt(oa,0)} m²)`:""}.`);
+  else if(oda==="no")P.push("Ayrı bir boş oda bulunmamaktadır.");
+  if(tt){const k=A(s,"kont"),ka=areaOf(s,"kont");
+    if(k==="yes")P.push(`Konteyner veya kabin için uygun bir alan mevcuttur${ka?` (yaklaşık ${fmt(ka,0)} m²)`:""}.`);else if(k==="no")P.push("Konteyner veya kabin için uygun bir alan görülmemiştir.");
+    const d=A(s,"direk"),m=num(V(s,"direk.m"));
+    if(d==="yes")P.push(`En yakın elektrik direği ${m!=null?`binaya yaklaşık ${fmt(m,0)} m uzaklıktadır`:"sahanın yakınındadır"}${A(s,"trafo")==="yes"?" ve yakında bir trafo bulunmaktadır":""}.`);
+    else if(d==="no")P.push("Sahanın yakınında elektrik direği bulunmamaktadır.");}
+  const k=num(A(s,"kesinti")),en=num(A(s,"enuzun")),du=A(s,"duzen");
+  if(k===0)P.push("Bölgede elektrik kesintisi yok denecek kadar azdır.");
+  else if(k!=null){let t=`Elektrik en kötü durumda günde yaklaşık ${fmt(k)} saat kesilmektedir`;
+    if(du==="Programlı")t+=" ve kesintiler belirli bir programa göre yapılmaktadır";
+    else if(du==="Rastgele")t+=" ve kesintiler belirli bir programa bağlı olmadan, rastgele gerçekleşmektedir";
+    else if(du==="Karışık")t+="; kesintilerin bir kısmı programlı, bir kısmı rastgeledir";
+    if(en!=null)t+=`. En uzun tek kesinti yaklaşık ${fmt(en)} saat sürmektedir`;
+    P.push(t+".")}
+  else if(du&&du!=="Bilinmiyor")P.push(`Elektrik kesintileri ${du==="Programlı"?"programlı":du==="Rastgele"?"rastgele":"kısmen programlı, kısmen rastgele"} gerçekleşmektedir.`);
+  const so=A(s,"sogutma");
+  if(so==="Mevcut soğutma kullanılabilir")P.push("Ekipmanlarımızın soğutulması için sahadaki mevcut soğutma sisteminin kullanılabileceği görülmüştür.");
+  else if(so==="Yeni split klima gerekli")P.push("Ekipmanlarımızın soğutulması için yeni bir split klima eklenmesi gerekmektedir.");
+  else if(so==="Bilinmiyor")P.push("Soğutmanın nasıl sağlanacağı henüz netleşmemiştir.");
+  const j=A(s,"jen"),g=genStats(s);
+  if(j==="no")P.push("Sahada jeneratör bulunmamaktadır.");
+  else if(j==="yes"){
+    if(g.count){const parts=g.gens.map(x=>`${x.kvaN!=null?fmt(x.kvaN,0)+" kVA":"gücü bilinmeyen"} ${x.role==="Yedek"?"yedek":"asıl"} jeneratör${x.pctN===0?" (şu an boşta)":x.pctN!=null?` (yaklaşık %${fmt(x.pctN,0)} yüklü)`:""}`);
+      P.push(`Sahada ${g.count} adet jeneratör bulunmaktadır: ${parts.join(", ")}.`);
+      if(g.free!=null)P.push(`${g.mainCount&&g.backupCount?"Asıl jeneratörlerde":"Jeneratörlerde"} yaklaşık ${fmt(g.free,0)} kVA boş kapasite bulunmaktadır.`)}
+    else P.push("Sahada jeneratör bulunmaktadır; kapasite bilgisi alınamamıştır.")}
+  else if(j==="unk")P.push("Sahada jeneratör olup olmadığı netleştirilememiştir.");
+  if(s.load?.on){const e=energy(s);
+    P.push(`Bu lokasyonda öngörülen ${fmt(e.dcA)} A (-48 V DC) yükümüz, akü şarjı${e.splitOn?" ve soğutma":""} ile birlikte en kötü durumda yaklaşık ${fmt(e.peakW/1000)} kW (220 V'ta yaklaşık ${fmt(e.A220,0)} A, ${fmt(e.kVA)} kVA) güç gerektirmektedir; güvenlik payıyla ${e.breaker} A besleme talep edilmelidir.`);
+    if(e.genOk===true)P.push("Jeneratörlerin boş kapasitesi bu ihtiyacı karşılamaya yeterli görünmektedir.");
+    else if(e.genOk===false)P.push("Jeneratörlerin boş kapasitesi bu ihtiyaç için yetersiz görünmektedir.");
+    if(e.backupOk===false)P.push(`${e.worstSrc==="en uzun tek kesinti"?"En uzun tek kesinti":"Günlük kesinti süresi"} (${fmt(e.worst)} saat) ${fmt(e.hours,0)} saatlik akü yedeklemesini aştığından jeneratör desteği gereklidir.`);
+    else if(e.backupOk===true&&e.worst>0)P.push(`Kesinti süresi ${fmt(e.hours,0)} saatlik akü yedeklemesi ile karşılanabilmektedir.`);}
+  return P.join(" ");
+}
+function overallSummary(list,label){
+  if(!list.length)return "";
+  const P=[],n=list.length;
+  P.push(`Bu rapor, ${label} ziyaret edilen ${n} sahanın enerji açısından mevcut durumunu özetlemektedir (${list.map(s=>s.name||"Adsız saha").join(", ")}).`);
+  const it=list.filter(s=>s.type==="itpc").length,tt=list.filter(s=>s.type==="tt").length;
+  if(it&&tt)P.push(`Sahaların ${it} tanesi mevcut İTPC santrali, ${tt} tanesi yeni TT santrali lokasyonudur.`);
+  else if(it)P.push(n>1?"Sahaların tamamı mevcut İTPC santralidir.":"Saha mevcut bir İTPC santralidir.");
+  else if(tt)P.push(n>1?"Sahaların tamamı yeni TT santrali lokasyonudur.":"Saha yeni bir TT santrali lokasyonudur.");
+  const cnt=k=>list.filter(s=>A(s,k)==="yes").length;
+  const a=cnt("salonBos"),o=cnt("oda");
+  if(a||o)P.push(`${a?`${a} sahada sistem salonunda tarafımıza verilebilecek boş alan`:""}${a&&o?", ":""}${o?`${o} sahada ayrı boş oda`:""} bulunmaktadır.`);
+  const ks=list.map(s=>({s,k:num(A(s,"kesinti"))})).filter(x=>x.k!=null);
+  if(ks.length){const mx=ks.reduce((p,c)=>c.k>p.k?c:p),mn=Math.min(...ks.map(x=>x.k));
+    P.push(ks.length>1&&mx.k!==mn?`En kötü durumdaki günlük elektrik kesintisi sahalara göre ${fmt(mn)} ile ${fmt(mx.k)} saat arasında değişmektedir; en uzun kesinti ${mx.s.name||"bir"} sahasındadır.`:`En kötü durumdaki günlük elektrik kesintisi yaklaşık ${fmt(mx.k)} saattir.`)}
+  const sp=list.filter(s=>A(s,"sogutma")==="Yeni split klima gerekli").length,ex=list.filter(s=>A(s,"sogutma")==="Mevcut soğutma kullanılabilir").length;
+  if(ex&&sp)P.push(`${ex} sahada mevcut soğutma kullanılabilecekken ${sp} sahada yeni split klima gerekmektedir.`);
+  else if(sp)P.push(`${sp===n?"Tüm sahalarda":`${sp} sahada`} yeni split klima gerekmektedir.`);
+  else if(ex)P.push(`${ex===n?"Tüm sahalarda":`${ex} sahada`} mevcut soğutma kullanılabilecektir.`);
+  const gj=list.filter(s=>A(s,"jen")==="yes").length;
+  if(gj)P.push(`${gj===n?"Tüm sahalarda":`${gj} sahada`} jeneratör bulunmaktadır.`);
+  const en=list.filter(s=>s.load?.on).map(s=>({s,e:energy(s)}));
+  if(en.length){const ws=en.map(x=>x.e.peakW/1000),bs=[...new Set(en.map(x=>x.e.breaker))];
+    P.push(`Enerji hesabı yapılan sahalarda ihtiyacımız saha başına en kötü durumda yaklaşık ${fmt(Math.min(...ws))}${Math.max(...ws)-Math.min(...ws)>0.05?`–${fmt(Math.max(...ws))}`:""} kW olup ${bs.length===1?`${bs[0]} A`:`${Math.min(...bs)}–${Math.max(...bs)} A`} besleme talep edilmektedir.`);
+    const over=en.filter(x=>x.e.backupOk===false).map(x=>x.s.name);
+    if(over.length)P.push(`${over.join(", ")} ${over.length>1?"sahalarında":"sahasında"} kesinti süresi akü yedeklemesini aştığı için jeneratör desteği gereklidir.`);
+    const weak=en.filter(x=>x.e.genOk===false).map(x=>x.s.name);
+    if(weak.length)P.push(`${weak.join(", ")} ${weak.length>1?"sahalarında":"sahasında"} jeneratörlerin boş kapasitesi yetersiz görünmektedir.`);}
+  return P.join(" ");
+}
+
+/* =========================================================
+   5. LIST SCREEN
+   ========================================================= */
+function ago(t){if(!t)return "hiç alınmadı";const m=Math.round((Date.now()-t)/6e4);if(m<60)return `${m} dk önce`;const h=Math.round(m/60);if(h<24)return `${h} saat önce`;return `${Math.round(h/24)} gün önce`}
+function renderList(){
+  view="list";cur=null;
+  const arr=Object.values(surveys).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.updatedAt||0)-(a.updatedAt||0));
+  const days=[...new Set(arr.map(s=>s.date))];
+  const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  app.innerHTML=`
+  <div class="masthead"><div><small>Enerji birimi · saha keşfi</small><h1>Saha Keşfi 2</h1></div>
+   <button class="btn primary" id="new">+ Yeni saha</button></div>
+  ${prefs.unsaved?`<div class="banner"><b>Yedeklenmemiş değişiklikler var</b><span style="font-size:.9rem">Son yedek: ${ago(prefs.lastBackup)}. Telefon kaybolursa veya uygulama silinirse kayıtlar gider.</span><div class="row"><button class="btn primary" id="bk">Şimdi yedek al</button></div></div>`:prefs.lastBackup?`<p class="hint" style="margin:0 0 10px">✓ Tüm kayıtlar yedekli · son yedek ${ago(prefs.lastBackup)}</p>`:""}
+  <div class="row" style="margin-bottom:12px"><button class="btn primary" id="rep">📄 Rapor (PDF)</button></div>
+  ${arr.length?`<div class="row" style="justify-content:space-between"><h2 style="font-size:1.1rem">Keşifler</h2><button class="btn ghost sm" id="editList">${listEdit?"Bitti":"Kayıt sil"}</button></div>
+   ${days.map(d=>`<div class="dayh">${fmtDate(d)||"Tarihsiz"}</div><div class="cards">${arr.filter(s=>s.date===d).map(s=>{const p=progress(s);return `<div class="cardrow"><button class="card" data-id="${esc(s.id)}"><b>${esc(s.name||"Adsız saha")} ${s.type?`<span class="pill ${s.type==="tt"?"tt":"it"}">${s.type==="tt"?"Yeni TT":"İTPC"}</span>`:""}</b><span>${esc([s.gov,`${p.d}/${p.t} soru`,photoCount(s)?`${photoCount(s)} fotoğraf`:""].filter(Boolean).join(" · "))}</span></button>${listEdit?`<button class="btn danger" data-del="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`).join("")}`
+  :`<div class="empty"><b>Henüz keşif yok</b><span class="muted" style="max-width:40ch">Sahaya varınca “+ Yeni saha”ya bas, saha tipini seç ve soruları doldur. Gün sonunda “Rapor (PDF)” ile raporu hazırla.</span></div>`}
+  <div class="row" style="margin-top:18px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
+  <p class="hint" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kur. "}İnternet gerekmez; kayıtlar ve fotoğraflar sadece bu telefonda. Her akşam yedek al.<br>Sürüm ${VERSION}</p>`;
+  app.querySelector("#new").onclick=newSurvey;
+  app.querySelector("#rep").onclick=()=>renderReport();
+  app.querySelector("#bk")?.addEventListener("click",backup);
+  app.querySelector("#bk2").onclick=backup;
+  app.querySelector("#rs").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)restore(f)};
+  app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
+  app.querySelectorAll(".card").forEach(b=>b.onclick=()=>openSurvey(b.dataset.id));
+  app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Emin misin?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Sil"}},3000);return}
+    const s=surveys[b.dataset.del];for(const arr of Object.values(s.photos||{}))for(const p of arr){idbDel(p.id);if(p.orig)idbDel(p.orig)}
+    delete surveys[b.dataset.del];saveAll();toast("Keşif silindi");renderList()});
+}
+function photoCount(s){return Object.values(s.photos||{}).reduce((a,x)=>a+x.length,0)}
+function newSurvey(){
+  const s={id:uid(),name:"",type:"",gov:"",coord:"",contact:"",date:today(),a:{},v:{},n:{},photos:{},gens:[],load:{on:false,dcA:"25",hours:"10",batType:"Lityum",batt:"300",split:"auto",ton:"1.5"},summary:"",summaryEdited:false,createdAt:Date.now(),updatedAt:Date.now()};
+  surveys[s.id]=s;saveAll();openSurvey(s.id);
+}
+function openSurvey(id){cur=surveys[id];cur.a=cur.a||{};cur.v=cur.v||{};cur.n=cur.n||{};cur.photos=cur.photos||{};cur.gens=cur.gens||[];cur.load=cur.load||{};renderEditor();scrollTo(0,0)}
+
+/* =========================================================
+   6. EDITOR
+   ========================================================= */
+const names=()=>[...new Set(Object.values(surveys).map(s=>s.name).filter(Boolean))];
+function photoStrip(g,cls=""){return `<div class="photos ${cls}" id="ph-${g}">${photos(cur,g).map((p,i)=>`<figure><img data-pid="${esc(p.id)}" src="${urlCache[p.id]||""}" alt="${esc(p.cap||"Fotoğraf "+(i+1))}" data-open="${g}" data-i="${i}">${p.orig?'<span class="mk">✎</span>':""}</figure>`).join("")}</div>`}
+function addPhotoBtn(g,label="📷 Fotoğraf ekle"){return `<label class="btn upload sm" for="up-${g}">${label}<input type="file" id="up-${g}" accept="image/*" multiple data-up="${g}"></label>`}
+function qnHtml(key,list,open){const note=key==="__gen"?cur.genNote:cur.n[key];if(!list?.length)return "";return `<details class="qn" ${open?"open":""}><summary>Hazır notlar</summary><div class="qchips">${list.map(t=>`<button type="button" class="qchip${(note||"").includes(t)?" used":""}" data-qn="${esc(key)}" data-txt="${esc(t)}">${esc(t)}</button>`).join("")}</div></details>`}
+function noteHtml(key){const n=key==="__gen"?cur.genNote:cur.n[key];return n?`<textarea data-note="${esc(key)}" placeholder="Not">${esc(n)}</textarea>`:`<button type="button" class="note-toggle" data-addnote="${esc(key)}">+ Not yaz</button>`}
+function itemHtml(sec,it){
+  const s=cur,a=A(s,it.k);
+  let ctl="";
+  if(it.kind==="yn")ctl=`<div class="seg">${[["yes","Evet"],["no","Hayır"],["unk","Bilmiyorum"]].map(([k,l])=>`<button type="button" data-ans="${it.k}" data-val="${k}" aria-pressed="${a===k}">${l}</button>`).join("")}</div>`;
+  else if(it.kind==="ch")ctl=`<div class="seg">${it.o.map(o=>`<button type="button" data-ans="${it.k}" data-val="${esc(o)}" aria-pressed="${a===o}">${esc(o)}</button>`).join("")}</div>`;
+  else ctl=`<label class="f" style="max-width:220px">${it.u?`Süre (${it.u})`:"Değer"}<input class="num" inputmode="decimal" data-num="${it.k}" value="${esc(a)}" placeholder="ör. 6"></label>`;
+  const yes=a==="yes";
+  const extra=[];
+  if(it.num&&yes)extra.push(`<label class="f" style="max-width:240px">${it.num.l} (${it.num.u})<input class="num" inputmode="decimal" data-v="${it.k}.${it.num.k}" value="${esc(V(s,it.k+"."+it.num.k))}"></label>`);
+  if(it.ms&&yes){const ar=areaOf(s,it.k);extra.push(`<div><div class="f" style="margin-bottom:4px">Ölçü (isteğe bağlı)</div><div class="grid2" style="grid-template-columns:1fr 1fr"><label class="f">En (m)<input class="num" inputmode="decimal" data-v="${it.k}.en" value="${esc(V(s,it.k+".en"))}"></label><label class="f">Boy (m)<input class="num" inputmode="decimal" data-v="${it.k}.boy" value="${esc(V(s,it.k+".boy"))}"></label></div><div class="hint" id="ar-${it.k}">${ar?`≈ ${fmt(ar,0)} m²`:""}</div></div>`)}
+  if(it.ph&&(it.phAlways||yes||it.kind!=="yn"&&a))extra.push(`<div class="sub">${photoStrip(it.k)}<div class="row">${addPhotoBtn(it.k,`📷 ${it.s} fotoğrafı`)}</div></div>`);
+  if(it.gens&&yes)extra.push(gensHtml());
+  return `<div class="item" data-item="${it.k}">
+   <div class="q">${esc(it.q)}</div>${ctl}${extra.join("")}
+   ${it.tip?`<details class="tip"><summary>Nasıl bakılır?</summary><p>${esc(it.tip)}</p></details>`:""}
+   ${noteHtml(it.k)}${qnHtml(it.k,it.qn,a==="unk"||(it.ph&&yes))}
+  </div>`;
+}
+function gensHtml(){
+  const g=genStats(cur);
+  return `<div class="sub" id="gensBox">
+   ${cur.gens.map((x,i)=>{const st=g.gens[i];return `<div class="gen" data-gen="${x.id}">
+     <h3>Jeneratör ${i+1}<button type="button" class="btn ghost sm danger" data-delgen="${x.id}">Kaldır</button></h3>
+     <div class="grid2" style="grid-template-columns:1fr 1fr">
+      <label class="f">Gücü (kVA)<input class="num" inputmode="decimal" data-g="kva" value="${esc(x.kva)}" placeholder="ör. 100"></label>
+      <label class="f">Kullanım (%, yaklaşık)<input class="num" inputmode="decimal" data-g="pct" value="${esc(x.pct)}" placeholder="ör. 45"></label>
+     </div>
+     <div class="seg">${["Asıl","Yedek"].map(r=>`<button type="button" data-grole="${r}" aria-pressed="${(x.role||"Asıl")===r}">${r}</button>`).join("")}</div>
+     <div class="calcline" data-gcalc>${genCalcText(st)}</div>
+     <input class="inp" data-g="note" value="${esc(x.note)}" placeholder="Not (ör. ATS ile otomatik devreye giriyor)">
+     <div class="qchips">${GEN_QN.map(t=>`<button type="button" class="qchip${(x.note||"").includes(t)?" used":""}" data-gqn="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+     ${photoStrip("gen-"+x.id)}<div class="row">${addPhotoBtn("gen-"+x.id,"📷 Jeneratör fotoğrafı")}</div>
+    </div>`}).join("")}
+   <button type="button" class="btn" id="addGen">+ Jeneratör ekle</button>
+   ${g.count?`<div class="hint" id="genTot">${genTotText(g)}</div>`:""}
+  </div>`;
+}
+function genCalcText(st){if(!st||st.kvaN==null)return "Gücü ve kullanım oranını yazınca boş kapasite hesaplanır.";if(st.free==null)return `${fmt(st.kvaN,0)} kVA · toplam ≈ ${fmt(st.kvaN*1000/230,0)} A (230 V)`;return `Boş kapasite ≈ <b>${fmt(st.free,0)} kVA</b> (≈ ${fmt(st.free*1000/230,0)} A, 230 V)`}
+function genTotText(g){return `${g.count} jeneratör${g.backupCount?` (${g.mainCount} asıl, ${g.backupCount} yedek)`:""} · toplam ${fmt(g.totalKva,0)} kVA${g.free!=null?` · ${g.backupCount&&g.mainCount?"asıl ":""}boş kapasite ≈ ${fmt(g.free,0)} kVA`:""}`}
+function energyHtml(){
+  const L=cur.load,e=energy(cur);
+  return `<details class="sec" data-sec="enerji" ${L.on?"open":""}>
+   <summary><span class="sn">★</span><h2>Enerji ihtiyacı (isteğe bağlı)</h2><span class="chev">›</span></summary>
+   <div class="item">
+    <label class="chk" for="loadOn"><input type="checkbox" id="loadOn" ${L.on?"checked":""}><span><b>Bu sahada enerji hesabı yap ve rapora ekle</b><small>DC yükümüzden AC ihtiyacını, rectifier, akü ve soğutmayı hesaplar</small></span></label>
+    <div ${L.on?"":"hidden"} id="loadBox" style="display:grid;gap:10px">
+     <div class="grid2">
+      <label class="f">DC yük (A, -48 V)<input class="num" inputmode="decimal" data-l="dcA" value="${esc(L.dcA)}"></label>
+      <label class="f">Akü yedekleme süresi (saat)<input class="num" inputmode="decimal" data-l="hours" value="${esc(L.hours)}"></label>
+      <label class="f">Akü tipi<select data-l="batType">${["Lityum","Kurşun-asit"].map(o=>`<option${(L.batType||"Lityum")===o?" selected":""}>${o}</option>`).join("")}</select></label>
+      <label class="f">Akü kapasitesi (Ah, 48 V)<input class="num" inputmode="decimal" data-l="batt" value="${esc(L.batt)}" placeholder="boş = önerilen"></label>
+      <label class="f">Yeni split klima<select data-l="split">${[["auto","Soğutma cevabına göre"],["yes","Evet, dahil et"],["no","Hayır"]].map(([k,l])=>`<option value="${k}"${(L.split||"auto")===k?" selected":""}>${l}</option>`).join("")}</select></label>
+      <label class="f">Split kapasitesi<select data-l="ton">${[["1","1 ton (12.000 BTU)"],["1.5","1,5 ton (18.000 BTU)"],["2","2 ton (24.000 BTU)"]].map(([k,l])=>`<option value="${k}"${(L.ton||"1.5")===k?" selected":""}>${l}</option>`).join("")}</select></label>
+     </div>
+     <div id="energyOut">${energyOutHtml(e)}</div>
+    </div>
+   </div></details>`;
+}
+function energyOutHtml(e){
+  return `<table class="res"><tbody>
+   <tr><td>Fiber kabin / DC yük (${fmt(e.dcA)} A × ${DCV} V)</td><td>${fmt(e.dcW,0)} W</td></tr>
+   <tr><td>Rectifier AC girişi (verim %95)</td><td>${fmt(e.rectW,0)} W · ${fmt(e.rectW/220)} A</td></tr>
+   <tr><td>Akü şarjı (${fmt(e.batt,0)} Ah × 0,1C = ${fmt(e.chgA,0)} A)</td><td>${fmt(e.chgW,0)} W · ${fmt(e.chgW/220)} A</td></tr>
+   <tr><td>Split klima ${e.splitOn?`(${String(e.ton).replace(".",",")} ton)`:"(dahil değil)"}</td><td>${fmt(e.splitW,0)} W · ${fmt(e.splitW/220)} A</td></tr>
+   <tr><td>Normal çalışma (akü dolu)</td><td>${fmt(e.normalW/1000)} kW · ${fmt(e.normalW/220)} A</td></tr>
+   <tr class="tot"><td>En kötü durum (şarj + klima)</td><td>${fmt(e.peakW/1000)} kW · ${fmt(e.A220)} A · ${fmt(e.kVA)} kVA</td></tr>
+   <tr class="tot"><td>Talep (güvenlik payıyla)</td><td>${e.breaker} A · 220 V</td></tr>
+   <tr><td>3 faz besleme olursa</td><td>faz başı ≈ ${fmt(e.phase,0)} A</td></tr>
+   <tr><td>Rectifier kapasitesi (yük + şarj, N+1)</td><td>≥ ${Math.ceil((e.dcA+e.chgA)/10)*10} A</td></tr>
+   <tr><td>Önerilen akü (${e.li?"lityum":"kurşun-asit"}, ${fmt(e.hours,0)} saat)</td><td>${fmt(e.battNeed,0)} Ah</td></tr>
+   <tr><td>Seçilen akü ile yedekleme</td><td>≈ ${fmt(e.backupReal)} saat</td></tr>
+  </tbody></table>
+  ${e.backupOk===false?`<div class="flag bad">⚠️ ${e.worstSrc==="en uzun tek kesinti"?"En uzun kesinti":"Günlük kesinti"} (${fmt(e.worst)} saat) akü yedeklemesini (${fmt(e.hours,0)} saat) aşıyor. Jeneratör desteği gerekli.</div>`:e.backupOk===true?`<div class="flag ok">✓ Kesinti süresi (${fmt(e.worst)} saat) akü yedeklemesi içinde.</div>`:""}
+  ${e.genOk===false?`<div class="flag bad">⚠️ Jeneratör boş kapasitesi (≈ ${fmt(e.genFree,0)} kVA) ihtiyaçtan (${fmt(e.kVA)} kVA) az.</div>`:e.genOk===true?`<div class="flag ok">✓ Jeneratör boş kapasitesi (≈ ${fmt(e.genFree,0)} kVA) ihtiyaç için yeterli.</div>`:""}`;
+}
+function renderEditor(){
+  view="editor";const s=cur,p=progress(s);
+  if(!s.summaryEdited)s.summary=siteSummary(s);
+  app.innerHTML=`
+  <div class="topbar"><button class="btn ghost" id="back" aria-label="Listeye dön">←</button>
+   <div class="title"><b id="tName">${esc(s.name||"Yeni saha")}</b><span id="tProg">${p.d}/${p.t} soru</span></div><span class="saved" id="saved">Kaydedildi</span></div>
+  <section class="panel" aria-label="Saha bilgileri">
+   <label class="f" for="m-name">Saha adı<input id="m-name" data-m="name" list="nl" value="${esc(s.name)}" placeholder="ör. Ali Al-Garbi" autocomplete="off"></label>
+   <datalist id="nl">${names().map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+   <div><div class="f" style="margin-bottom:6px">Saha tipi</div>
+    <div class="seg">${Object.entries(TYPES).map(([k,l])=>`<button type="button" data-type="${k}" aria-pressed="${s.type===k}">${l}</button>`).join("")}</div>
+    <div class="hint" style="margin-top:4px">${s.type?esc(TYPE_HINT[s.type]):"Tipi seçince sorular buna göre düzenlenir."}</div></div>
+   <div class="grid2">
+    <label class="f" for="m-gov">İl / bölge<input id="m-gov" data-m="gov" value="${esc(s.gov)}" placeholder="ör. Maysan"></label>
+    <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
+   </div>
+   <label class="f" for="m-coord">GPS (enlem, boylam)<input id="m-coord" class="num" inputmode="decimal" data-m="coord" value="${esc(s.coord)}" placeholder="32.468763, 46.688981"></label>
+   <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><span class="hint" id="coordHint">${coordHint()}</span></div>
+   <div><div class="f" style="margin-bottom:6px">Harita (raporda ilk görsel)</div>
+    ${photoStrip("harita","maps")}
+    <div class="row" style="margin-top:6px"><button type="button" class="btn sm" id="mapBtn">🗺 ${photos(s,"harita").length?"Haritayı yenile":"Harita oluştur"}</button>${addPhotoBtn("harita","📱 Google Maps ekran görüntüsü")}</div>
+    <div class="hint">Konumumu al'a basınca internet varsa harita kendiliğinden eklenir. Uydu görüntüsü için: Haritada aç › ekran görüntüsü al › buradan ekle. Haritaya dokunup binayı işaretleyebilirsin.</div></div>
+   <div><div class="f" style="margin-bottom:6px">Sahanın genel fotoğrafları</div>${photoStrip("genel")}<div class="row" style="margin-top:6px">${addPhotoBtn("genel","📷 Genel fotoğraf ekle")}</div></div>
+   <label class="f" for="m-contact">Bina görevlisi / irtibat (isteğe bağlı)<input id="m-contact" data-m="contact" value="${esc(s.contact)}" placeholder="Ad, telefon"></label>
+  </section>
+  ${s.type?SEC.filter(sec=>!sec.only||sec.only===s.type).map((sec,i)=>{const its=sec.items.filter(it=>shown(s,it,sec));const d=its.filter(it=>answered(s,it)).length;
+    return `<details class="sec" data-sec="${sec.id}" ${i===0?"open":""}><summary><span class="sn">${i+1}</span><h2>${sec.t}</h2><span class="cnt" id="c-${sec.id}">${d}/${its.length}</span><span class="chev">›</span></summary>${its.map(it=>itemHtml(sec,it)).join("")}</details>`}).join("")+energyHtml()
+   :`<div class="empty"><b>Önce saha tipini seç</b><span class="muted">İTPC santrali mi, yeni TT santrali mi?</span></div>`}
+  <section class="panel" aria-label="Özet">
+   <h2 style="font-size:1.15rem;text-transform:uppercase">Saha özeti</h2>
+   <div class="hint">Cevaplarından otomatik yazılır; istersen düzenleyebilirsin. Raporda bu paragraf çıkar.</div>
+   <textarea id="sumTxt" style="min-height:160px">${esc(s.summary)}</textarea>
+   <div class="row"><button type="button" class="btn sm" id="sumRe">↻ Özeti yeniden yaz</button><span class="hint" id="sumState">${s.summaryEdited?"Elle düzenlendi":"Otomatik"}</span></div>
+   <div><div class="f" style="margin-bottom:6px">Genel not (isteğe bağlı)</div>${noteHtml("__gen")}${qnHtml("__gen",GENERAL_QN,false)}</div>
+   <div id="delZone"><button class="btn ghost danger sm" id="del">Bu keşfi sil</button></div>
+  </section>`;
+  app.querySelector("#back").onclick=()=>{flush();renderList()};
+  app.querySelector("#gps").onclick=getGps;
+  app.querySelector("#mapBtn").onclick=()=>addMap(false);
+  app.querySelector("#sumRe").onclick=()=>{s.summaryEdited=false;s.summary=siteSummary(s);app.querySelector("#sumTxt").value=s.summary;app.querySelector("#sumState").textContent="Otomatik";dirty()};
+  app.querySelector("#del").onclick=askDelete;
+  hydrate();
+}
+function coordHint(){const c=parseCoord(cur.coord);return c?`<a href="https://www.google.com/maps?q=${c[0]},${c[1]}" target="_blank" rel="noopener">Haritada aç</a>`:"İnternet gerekmez."}
+function refreshSummary(){if(!cur.summaryEdited){cur.summary=siteSummary(cur);const t=app.querySelector("#sumTxt");if(t&&document.activeElement!==t)t.value=cur.summary}}
+function refreshCounts(){const p=progress(cur);const tp=app.querySelector("#tProg");if(tp)tp.textContent=`${p.d}/${p.t} soru`;
+  for(const sec of SEC){const el=app.querySelector("#c-"+sec.id);if(!el)continue;const its=sec.items.filter(it=>shown(cur,it,sec));el.textContent=`${its.filter(it=>answered(cur,it)).length}/${its.length}`}}
+function refreshEnergy(){const o=app.querySelector("#energyOut");if(o)o.innerHTML=energyOutHtml(energy(cur))}
+function rerenderItem(k){const {sec,it}=ALL.find(x=>x.it.k===k);const el=app.querySelector(`.item[data-item="${k}"]`);if(el){el.outerHTML=itemHtml(sec,it);hydrate()}}
+function addGen(){cur.gens.push({id:uid(),kva:"",pct:"",role:cur.gens.length?"Yedek":"Asıl",note:""});rerenderItem("jen");dirty();const l=app.querySelectorAll(".gen");l[l.length-1]?.querySelector("input")?.focus()}
+function askDelete(){const z=app.querySelector("#delZone");z.innerHTML=`<div class="confirm"><b>Bu keşif kalıcı olarak silinsin mi?</b><div class="row"><button class="btn danger" id="delY">Evet, sil</button><button class="btn" id="delN">Vazgeç</button></div></div>`;
+  z.querySelector("#delN").onclick=()=>{z.innerHTML=`<button class="btn ghost danger sm" id="del">Bu keşfi sil</button>`;z.querySelector("#del").onclick=askDelete};
+  z.querySelector("#delY").onclick=()=>{clearTimeout(saveT);saveT=null;for(const arr of Object.values(cur.photos||{}))for(const p of arr){idbDel(p.id);if(p.orig)idbDel(p.orig)}delete surveys[cur.id];saveAll();toast("Keşif silindi");renderList()}}
+
+/* events */
+function appendNote(old,t){old=(old||"").trim();if(old.includes(t))return old;return old?old.replace(/[.\s]*$/,"")+". "+t:t}
+function onInput(e){
+  const el=e.target;
+  if(view==="report"){reportInput(e);return}
+  if(!cur||view!=="editor")return;
+  if(el.dataset.m){cur[el.dataset.m]=el.value;if(el.dataset.m==="name")app.querySelector("#tName").textContent=el.value||"Yeni saha";if(el.dataset.m==="coord")app.querySelector("#coordHint").innerHTML=coordHint();refreshSummary();dirty();return}
+  if(el.dataset.num){cur.a[el.dataset.num]=el.value.trim();refreshCounts();refreshSummary();refreshEnergy();dirty();return}
+  if(el.dataset.v){cur.v[el.dataset.v]=el.value;const k=el.dataset.v.split(".")[0];const ar=app.querySelector("#ar-"+k);if(ar){const a=areaOf(cur,k);ar.textContent=a?`≈ ${fmt(a,0)} m²`:""}refreshSummary();dirty();return}
+  if(el.dataset.note){if(el.dataset.note==="__gen")cur.genNote=el.value;else cur.n[el.dataset.note]=el.value;dirty();return}
+  if(el.dataset.g){const id=el.closest("[data-gen]").dataset.gen,g=cur.gens.find(x=>x.id===id);g[el.dataset.g]=el.value;
+    const st=genStats(cur);const box=el.closest(".gen").querySelector("[data-gcalc]");box.innerHTML=genCalcText(st.gens[cur.gens.indexOf(g)]);const tt=app.querySelector("#genTot");if(tt)tt.textContent=genTotText(st);
+    refreshSummary();refreshEnergy();dirty();return}
+  if(el.id==="loadOn"){cur.load.on=el.checked;app.querySelector("#loadBox").hidden=!el.checked;refreshSummary();dirty();return}
+  if(el.dataset.l){cur.load[el.dataset.l]=el.value;refreshEnergy();refreshSummary();dirty();return}
+  if(el.id==="sumTxt"){cur.summary=el.value;cur.summaryEdited=true;app.querySelector("#sumState").textContent="Elle düzenlendi";dirty();return}
+  if(el.dataset.up&&e.type==="change"){addPhotos(el.dataset.up,[...el.files]);el.value=""}
+}
+function onClick(e){
+  const b=e.target.closest("button,img[data-open]");if(!b||!cur||view!=="editor")return;
+  if(b.dataset.open!==undefined){openViewer(b.dataset.open,+b.dataset.i);return}
+  if(b.dataset.type){cur.type=b.dataset.type;refreshSummary();dirty();renderEditor();return}
+  if(b.dataset.ans){const k=b.dataset.ans,v=b.dataset.val;cur.a[k]=cur.a[k]===v?"":v;rerenderItem(k);refreshCounts();refreshSummary();refreshEnergy();dirty();return}
+  if(b.dataset.addnote){const key=b.dataset.addnote,ta=document.createElement("textarea");ta.dataset.note=key;ta.placeholder="Not";b.replaceWith(ta);ta.focus();return}
+  if(b.dataset.qn){const key=b.dataset.qn,t=b.dataset.txt;let val;
+    if(key==="__gen"){cur.genNote=appendNote(cur.genNote,t);val=cur.genNote}else{cur.n[key]=appendNote(cur.n[key],t);val=cur.n[key]}
+    const scope=key==="__gen"?app.querySelector('[aria-label="Özet"]'):app.querySelector(`.item[data-item="${key}"]`);
+    let ta=scope.querySelector(`textarea[data-note="${key}"]`);if(!ta){ta=document.createElement("textarea");ta.dataset.note=key;scope.querySelector(`[data-addnote="${key}"]`)?.replaceWith(ta)}
+    ta.value=val;b.classList.add("used");dirty();return}
+  if(b.dataset.grole){const id=b.closest("[data-gen]").dataset.gen,g=cur.gens.find(x=>x.id===id);g.role=b.dataset.grole;rerenderItem("jen");refreshSummary();refreshEnergy();dirty();return}
+  if(b.dataset.gqn){const id=b.closest("[data-gen]").dataset.gen,g=cur.gens.find(x=>x.id===id);g.note=appendNote(g.note,b.dataset.gqn);b.closest(".gen").querySelector('[data-g="note"]').value=g.note;b.classList.add("used");dirty();return}
+  if(b.dataset.delgen){if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Emin misin?";return}
+    const id=b.dataset.delgen;for(const p of photos(cur,"gen-"+id))idbDel(p.id);delete cur.photos["gen-"+id];cur.gens=cur.gens.filter(x=>x.id!==id);rerenderItem("jen");refreshSummary();refreshEnergy();dirty();return}
+  if(b.id==="addGen"){addGen();return}
+}
+
+/* photos */
+async function addPhotos(g,files){
+  for(const f of files){try{toast("Fotoğraf kaydediliyor…");const blob=await shrinkTo(f,1600,.82);const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);(cur.photos[g]=cur.photos[g]||[]).push({id,cap:""});dirty()}catch(e){toast("Fotoğraf kaydedilemedi (hafıza dolu olabilir)")}}
+  refreshStrip(g);toast(`${files.length} fotoğraf eklendi`);
+}
+function refreshStrip(g){const el=app.querySelector("#ph-"+CSS.escape(g));if(el){el.outerHTML=photoStrip(g,el.classList.contains("maps")?"maps":"");hydrate()}else if(view==="editor"){const k=g.startsWith("gen-")?"jen":g;if(ALL.find(x=>x.it.k===k))rerenderItem(k)}}
+const ov=document.getElementById("ov");
+async function openViewer(g,i){
+  const p=photos(cur,g)[i];if(!p)return;const u=await urlOf(p.id);
+  ov.innerHTML=`<div class="ov"><div class="bar"><button class="btn" id="vClose">✕ Kapat</button><button class="btn" id="vDraw">✏️ İşaretle</button>${p.orig?'<button class="btn" id="vOrig">Orijinale dön</button>':""}<button class="btn" id="vDel" style="margin-left:auto;color:#f07a62">Sil</button></div>
+   <div class="stage"><img src="${u}" alt=""></div>
+   <div class="bar"><input class="cap" id="vCap" value="${esc(p.cap)}" placeholder="Açıklama (raporda fotoğrafın altında çıkar)"></div></div>`;
+  const close=()=>{p.cap=ov.querySelector("#vCap").value.trim();dirty();ov.innerHTML="";refreshStrip(g)};
+  ov.querySelector("#vClose").onclick=close;
+  ov.querySelector("#vDraw").onclick=()=>{p.cap=ov.querySelector("#vCap").value.trim();openAnnotator(g,i)};
+  ov.querySelector("#vOrig")?.addEventListener("click",async()=>{await idbDel(p.id);p.id=p.orig;delete p.orig;dirty();ov.innerHTML="";refreshStrip(g);toast("Orijinal fotoğrafa dönüldü")});
+  ov.querySelector("#vDel").onclick=e=>{const b=e.target;if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Silinsin mi?";return}
+    idbDel(p.id);if(p.orig)idbDel(p.orig);cur.photos[g].splice(i,1);dirty();ov.innerHTML="";refreshStrip(g);toast("Fotoğraf silindi")};
+}
+/* annotation editor: pen, arrow, circle, rectangle, text */
+async function openAnnotator(g,i){
+  const p=photos(cur,g)[i];const base=await blobToImg(await idbGet(p.orig||p.id));
+  const k=Math.min(1,1600/Math.max(base.width,base.height));const W=Math.round(base.width*k),H=Math.round(base.height*k);
+  ov.innerHTML=`<div class="ov"><div class="bar">
+    ${[["pen","✏️ Kalem"],["arrow","➜ Ok"],["circle","◯ Daire"],["rect","▭ Kutu"],["text","T Yazı"]].map(([t,l])=>`<button class="btn${t==="arrow"?" on":""}" data-tool="${t}">${l}</button>`).join("")}
+   </div><div class="stage" id="stage"><canvas id="cv" width="${W}" height="${H}"></canvas></div>
+   <div class="bar">${["#e8262a","#ffd400","#ffffff","#1e90ff"].map((c,j)=>`<button class="sw${j===0?" on":""}" data-col="${c}" style="background:${c}" aria-label="Renk"></button>`).join("")}
+    <button class="btn" id="aUndo">↶ Geri al</button><button class="btn" id="aCancel">Vazgeç</button><button class="btn on" id="aSave" style="margin-left:auto">✓ Kaydet</button></div></div>`;
+  const cv=ov.querySelector("#cv"),ctx=cv.getContext("2d");let tool="arrow",col="#e8262a";const shapes=[];let curS=null;
+  const lw=Math.max(4,Math.round(Math.max(W,H)/220));
+  function draw(){ctx.drawImage(base,0,0,W,H);for(const s of shapes.concat(curS?[curS]:[]))drawShape(s)}
+  function drawShape(s){ctx.strokeStyle=s.c;ctx.fillStyle=s.c;ctx.lineWidth=lw;ctx.lineCap="round";ctx.lineJoin="round";
+    if(s.t==="pen"){ctx.beginPath();s.pts.forEach((q,j)=>j?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke()}
+    else if(s.t==="arrow"){const {x1,y1,x2,y2}=s,a=Math.atan2(y2-y1,x2-x1),h=lw*4.5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-h*Math.cos(a-0.45),y2-h*Math.sin(a-0.45));ctx.lineTo(x2-h*Math.cos(a+0.45),y2-h*Math.sin(a+0.45));ctx.closePath();ctx.fill()}
+    else if(s.t==="circle"){ctx.beginPath();ctx.ellipse((s.x1+s.x2)/2,(s.y1+s.y2)/2,Math.abs(s.x2-s.x1)/2,Math.abs(s.y2-s.y1)/2,0,0,Math.PI*2);ctx.stroke()}
+    else if(s.t==="rect"){ctx.strokeRect(Math.min(s.x1,s.x2),Math.min(s.y1,s.y2),Math.abs(s.x2-s.x1),Math.abs(s.y2-s.y1))}
+    else if(s.t==="text"){const fs=Math.round(Math.max(W,H)/28);ctx.font=`bold ${fs}px -apple-system,system-ui,Arial,sans-serif`;ctx.lineWidth=Math.max(3,fs/7);ctx.strokeStyle=s.c==="#ffffff"||s.c==="#ffd400"?"#000":"#fff";ctx.strokeText(s.txt,s.x1,s.y1);ctx.fillText(s.txt,s.x1,s.y1)}}
+  const pos=ev=>{const r=cv.getBoundingClientRect();return[(ev.clientX-r.left)*W/r.width,(ev.clientY-r.top)*H/r.height]};
+  cv.addEventListener("pointerdown",ev=>{ev.preventDefault();const [x,y]=pos(ev);
+    if(tool==="text"){askText(x,y);return}
+    cv.setPointerCapture(ev.pointerId);curS=tool==="pen"?{t:"pen",c:col,pts:[[x,y]]}:{t:tool,c:col,x1:x,y1:y,x2:x,y2:y};draw()});
+  cv.addEventListener("pointermove",ev=>{if(!curS)return;const [x,y]=pos(ev);if(curS.t==="pen")curS.pts.push([x,y]);else{curS.x2=x;curS.y2=y}draw()});
+  const up=()=>{if(!curS)return;if(curS.t==="pen"?curS.pts.length>1:Math.hypot(curS.x2-curS.x1,curS.y2-curS.y1)>8)shapes.push(curS);curS=null;draw()};
+  cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+  function askText(x,y){const bar=document.createElement("div");bar.className="bar";bar.innerHTML=`<input class="cap" id="tIn" placeholder="Yazı (ör. Bize verilecek alan)"><button class="btn on" id="tOk">Ekle</button>`;
+    ov.querySelector(".ov").insertBefore(bar,ov.querySelector("#stage"));const inp=bar.querySelector("#tIn");inp.focus();
+    bar.querySelector("#tOk").onclick=()=>{if(inp.value.trim())shapes.push({t:"text",c:col,x1:x,y1:y,txt:inp.value.trim()});bar.remove();draw()}}
+  ov.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>{tool=b.dataset.tool;ov.querySelectorAll("[data-tool]").forEach(x=>x.classList.toggle("on",x===b));if(tool==="text")toast("Yazının başlayacağı yere dokun")});
+  ov.querySelectorAll("[data-col]").forEach(b=>b.onclick=()=>{col=b.dataset.col;ov.querySelectorAll("[data-col]").forEach(x=>x.classList.toggle("on",x===b))});
+  ov.querySelector("#aUndo").onclick=()=>{shapes.pop();draw()};
+  ov.querySelector("#aCancel").onclick=()=>openViewer(g,i);
+  ov.querySelector("#aSave").onclick=async()=>{if(!shapes.length){openViewer(g,i);return}
+    const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",.85));const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);
+    if(p.orig)idbDel(p.id);else p.orig=p.id;p.id=id;dirty();toast("İşaretli fotoğraf kaydedildi");openViewer(g,i)};
+  draw();
+}
+
+/* GPS + map */
+function getGps(){
+  if(!navigator.geolocation){toast("Bu tarayıcı konum vermiyor; koordinatı elle yaz");return}
+  toast("Konum alınıyor… açık havada daha hızlı");
+  navigator.geolocation.getCurrentPosition(p=>{if(!cur)return;const c=p.coords;cur.coord=`${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)}`;
+    const i=app.querySelector("#m-coord");if(i)i.value=cur.coord;const h=app.querySelector("#coordHint");if(h)h.innerHTML=coordHint()+` · ±${Math.round(c.accuracy)} m`;dirty();toast("Konum alındı");
+    if(navigator.onLine!==false)setTimeout(()=>addMap(true),400)},
+   e=>toast(e.code===1?"Konum izni yok: Ayarlar › Gizlilik › Konum Servisleri › Safari Web Siteleri":"Konum alınamadı, tekrar dene"),{enableHighAccuracy:true,timeout:30000,maximumAge:0});
+}
+async function makeMapImage(lat,lon,z,label){
+  const W=1000,H=700,n=2**z,lr=lat*Math.PI/180;
+  const cx=(lon+180)/360*n*256,cy=(1-Math.log(Math.tan(lr)+1/Math.cos(lr))/Math.PI)/2*n*256,x0=cx-W/2,y0=cy-H/2;
+  const c=document.createElement("canvas");c.width=W;c.height=H;const g=c.getContext("2d");g.fillStyle="#e8e6e1";g.fillRect(0,0,W,H);
+  const jobs=[];
+  for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n;
+    jobs.push(fetch(`https://tile.openstreetmap.org/${z}/${X}/${ty}.png`).then(r=>{if(!r.ok)throw new Error("tile");return r.blob()}).then(b=>createImageBitmap(b)).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
+  await Promise.all(jobs);
+  const mx=W/2,my=H/2;g.beginPath();g.arc(mx,my,46,0,2*Math.PI);g.strokeStyle="rgba(210,34,34,.55)";g.lineWidth=5;g.stroke();
+  g.beginPath();g.moveTo(mx,my);g.bezierCurveTo(mx-26,my-30,mx-22,my-60,mx,my-60);g.bezierCurveTo(mx+22,my-60,mx+26,my-30,mx,my);g.closePath();g.fillStyle="#d22";g.fill();g.lineWidth=4;g.strokeStyle="#fff";g.stroke();
+  g.beginPath();g.arc(mx,my-40,8,0,2*Math.PI);g.fillStyle="#fff";g.fill();
+  const t1=label||"",t2=`${lat.toFixed(6)}, ${lon.toFixed(6)}`;const F="-apple-system,system-ui,Arial,sans-serif";
+  g.font=`bold 26px ${F}`;const w1=g.measureText(t1).width;g.font=`20px ${F}`;const w2=g.measureText(t2).width;
+  g.fillStyle="rgba(255,255,255,.92)";g.fillRect(12,12,Math.max(w1,w2)+28,t1?76:44);g.fillStyle="#1c2730";if(t1){g.font=`bold 26px ${F}`;g.fillText(t1,26,46)}g.font=`20px ${F}`;g.fillText(t2,26,t1?76:42);
+  const at="© OpenStreetMap contributors";g.font=`15px ${F}`;const aw=g.measureText(at).width;g.fillStyle="rgba(255,255,255,.85)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
+  return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.85));
+}
+async function addMap(auto){
+  if(!cur)return;const c=parseCoord(cur.coord);if(!c){if(!auto)toast("Önce koordinatı gir ya da Konumumu al'a bas");return}
+  toast("Harita hazırlanıyor…");
+  try{const near=await makeMapImage(c[0],c[1],17,cur.name),wide=await makeMapImage(c[0],c[1],15,cur.name);
+    for(const p of photos(cur,"harita")){if(!p.shot){idbDel(p.id);if(p.orig)idbDel(p.orig)}}
+    const keep=photos(cur,"harita").filter(p=>p.shot);cur.photos.harita=[];
+    for(const [b,cap] of [[near,"Yakın harita"],[wide,"Geniş harita (yollar)"]]){const id=uid();await idbPut(id,b);urlCache[id]=URL.createObjectURL(b);cur.photos.harita.push({id,cap})}
+    cur.photos.harita.push(...keep);refreshStrip("harita");const mb=app.querySelector("#mapBtn");if(mb)mb.textContent="🗺 Haritayı yenile";dirty();toast("Harita eklendi")}
+  catch(e){toast(auto?"Harita eklenemedi (internet yok?). Sonra “Harita oluştur”a bas.":"Harita eklenemedi. İnternet bağlantısını kontrol et.")}
+}
+
+/* =========================================================
+   7. REPORT SCREEN (daily / multi-day)
+   ========================================================= */
+let R={mode:"day",d1:null,d2:null,sel:{},photos:true,energy:true,summary:"",summaryEdited:false};
+function inRange(s){return R.mode==="day"?s.date===R.d1:(s.date>=R.d1&&s.date<=R.d2)}
+function repList(){return Object.values(surveys).filter(s=>inRange(s)&&R.sel[s.id]!==false).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||String(a.name).localeCompare(String(b.name),"tr"))}
+function rangeLabel(){if(R.mode==="day")return `${fmtDate(R.d1)} tarihinde`;return R.d1===R.d2?`${fmtDate(R.d1)} tarihinde`:`${fmtDate(R.d1)} – ${fmtDate(R.d2)} tarihleri arasında`}
+function renderReport(){
+  view="report";cur=null;
+  const dates=[...new Set(Object.values(surveys).map(s=>s.date).filter(Boolean))].sort();
+  if(!R.d1){R.d1=dates.includes(today())?today():dates[dates.length-1]||today();R.d2=R.d1}
+  if(R.mode==="multi"&&R.d2<R.d1)R.d2=R.d1;
+  const all=Object.values(surveys).filter(inRange).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(!R.summaryEdited)R.summary=overallSummary(repList(),rangeLabel());
+  app.innerHTML=`
+  <div class="topbar"><button class="btn ghost" id="back" aria-label="Geri">←</button><div class="title"><b>Rapor</b><span>PDF olarak hazırlanır</span></div></div>
+  <section class="panel">
+   <div class="seg"><button type="button" data-mode="day" aria-pressed="${R.mode==="day"}">Günlük rapor</button><button type="button" data-mode="multi" aria-pressed="${R.mode==="multi"}">Çok günlük rapor</button></div>
+   <div class="grid2">
+    <label class="f" for="r-d1">${R.mode==="day"?"Tarih":"Başlangıç"}<input type="date" id="r-d1" value="${esc(R.d1)}"></label>
+    ${R.mode==="multi"?`<label class="f" for="r-d2">Bitiş<input type="date" id="r-d2" value="${esc(R.d2)}"></label>`:""}
+   </div>
+   ${dates.length?`<div class="hint">Keşif olan günler: ${dates.slice(-8).map(fmtDate).join(", ")}</div>`:""}
+   ${all.length?`<div class="checks">${all.map(s=>`<label class="chk" for="rs-${s.id}"><input type="checkbox" id="rs-${s.id}" data-rsel="${s.id}" ${R.sel[s.id]!==false?"checked":""}><span><b>${esc(s.name||"Adsız saha")}</b><small>${fmtDate(s.date)} · ${s.type?TYPES[s.type]:"tip seçilmedi"}</small></span></label>`).join("")}</div>`:`<p class="muted" style="margin:0">Bu aralıkta keşif yok.</p>`}
+  </section>
+  <section class="panel">
+   <div class="grid2">
+    <label class="f" for="r-author">Hazırlayan<input id="r-author" value="${esc(prefs.author)}" placeholder="Ad Soyad"></label>
+    <label class="f" for="r-unit">Birim<input id="r-unit" value="${esc(prefs.unit??"Enerji Birimi")}"></label>
+   </div>
+   <label class="f" for="r-project">Proje<input id="r-project" value="${esc(prefs.project??"Irak Network Projesi")}"></label>
+   <label class="chk" for="r-ph"><input type="checkbox" id="r-ph" ${R.photos?"checked":""}><span><b>Fotoğrafları ekle</b><small>Harita her zaman eklenir</small></span></label>
+   <label class="chk" for="r-en"><input type="checkbox" id="r-en" ${R.energy?"checked":""}><span><b>Enerji hesabını ekle</b><small>Hesap yapılan sahalar için</small></span></label>
+  </section>
+  <section class="panel">
+   <h2 style="font-size:1.1rem">Rapor özeti</h2>
+   <div class="hint">Seçilen sahalardan otomatik yazılır; düzenleyebilirsin.</div>
+   <textarea id="r-sum" style="min-height:150px">${esc(R.summary)}</textarea>
+   <div class="row"><button type="button" class="btn sm" id="r-re">↻ Yeniden yaz</button></div>
+   <label class="f" for="r-next">Sonraki adımlar / notlar (isteğe bağlı)<textarea id="r-next" placeholder="ör. Yarın Kut ve Amara ziyaret edilecek.">${esc(prefs["next-"+R.d1]||"")}</textarea></label>
+  </section>
+  <div class="row"><button class="btn primary" id="r-pdf">📄 PDF oluştur</button><button class="btn" id="r-txt">Kısa metni kopyala</button><button class="btn" id="r-bk">Yedek al</button></div>
+  <pre id="r-pre" hidden style="white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:.85rem"></pre>`;
+  app.querySelector("#back").onclick=renderList;
+  app.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{R.mode=b.dataset.mode;R.summaryEdited=false;renderReport()});
+  app.querySelector("#r-re").onclick=()=>{R.summaryEdited=false;R.summary=overallSummary(repList(),rangeLabel());app.querySelector("#r-sum").value=R.summary};
+  app.querySelector("#r-pdf").onclick=makePdf;
+  app.querySelector("#r-txt").onclick=copyShort;
+  app.querySelector("#r-bk").onclick=backup;
+}
+function reportInput(e){const el=e.target;
+  if((el.id==="r-d1"||el.id==="r-d2")&&e.type==="change"&&el.value){R[el.id==="r-d1"?"d1":"d2"]=el.value;if(R.mode==="day")R.d2=R.d1;R.summaryEdited=false;renderReport();return}
+  if(el.dataset.rsel){R.sel[el.dataset.rsel]=el.checked;if(!R.summaryEdited){R.summary=overallSummary(repList(),rangeLabel());app.querySelector("#r-sum").value=R.summary}return}
+  if(el.id==="r-author"){prefs.author=el.value;savePrefs()}if(el.id==="r-unit"){prefs.unit=el.value;savePrefs()}if(el.id==="r-project"){prefs.project=el.value;savePrefs()}
+  if(el.id==="r-ph")R.photos=el.checked;if(el.id==="r-en")R.energy=el.checked;
+  if(el.id==="r-sum"){R.summary=el.value;R.summaryEdited=true}
+  if(el.id==="r-next"){prefs["next-"+R.d1]=el.value;savePrefs()}
+}
+function shortText(){
+  const list=repList(),L=[];
+  L.push(`SAHA KEŞİF RAPORU – ENERJİ · ${R.mode==="day"||R.d1===R.d2?fmtDate(R.d1):fmtDate(R.d1)+" – "+fmtDate(R.d2)}`);
+  if(prefs.author)L.push(`Hazırlayan: ${prefs.author}`);
+  L.push("",R.summary);
+  list.forEach((s,i)=>{const g=genStats(s);L.push("",`${i+1}) ${s.name||"Adsız saha"} – ${TYPES[s.type]||""}`);
+    const k=A(s,"kesinti");if(k!=="")L.push(`• Kesinti: günde ~${k} saat${A(s,"duzen")?` (${A(s,"duzen").toLowerCase()})`:""}`);
+    if(A(s,"salonBos"))L.push(`• Salonda bize alan: ${({yes:"Var",no:"Yok",unk:"Belirsiz"})[A(s,"salonBos")]}${A(s,"oda")==="yes"?" · Ayrı boş oda var":""}`);
+    if(A(s,"sogutma"))L.push(`• Soğutma: ${A(s,"sogutma")}`);
+    if(A(s,"jen")==="yes")L.push(`• Jeneratör: ${g.count?g.gens.map(x=>`${x.kvaN??"?"} kVA ${x.role==="Yedek"?"yedek":"asıl"}${x.pctN!=null?` %${x.pctN}`:""}`).join(", "):"var"}${g.free!=null?` · boş ≈ ${fmt(g.free,0)} kVA`:""}`);else if(A(s,"jen")==="no")L.push("• Jeneratör: yok");
+    if(s.load?.on&&R.energy){const e=energy(s);L.push(`• İhtiyaç: ${fmt(e.peakW/1000)} kW · ${fmt(e.A220,0)} A → talep ${e.breaker} A (220 V)`)}});
+  const nx=(prefs["next-"+R.d1]||"").trim();if(nx)L.push("",`Sonraki adımlar: ${nx}`);
+  return L.join("\n");
+}
+async function copyShort(){const t=shortText(),pre=app.querySelector("#r-pre");try{await navigator.clipboard.writeText(t);toast("Kopyalandı · WhatsApp'a yapıştır")}catch(e){pre.textContent=t;pre.hidden=false;const sel=getSelection(),rg=document.createRange();rg.selectNodeContents(pre);sel.removeAllRanges();sel.addRange(rg);toast("Metni seçtim, Kopyala'ya bas")}}
+
+/* =========================================================
+   8. PDF (drawn on canvas pages, written as PDF – works offline)
+   ========================================================= */
+const PW=1240,PH=1754,PM=96,CW=PW-2*PM,FONT="-apple-system,system-ui,'Segoe UI',Arial,sans-serif";
+const C={navy:"#1c3d5a",ink:"#1c2730",muted:"#5b6b78",line:"#c9d2d9",zebra:"#f4f6f8",head:"#e8eef3",bad:"#fbe9e5",ok:"#e4f3ea",soft:"#f5f7f9"};
+class Doc{
+  constructor(title){this.title=title;this.jpegs=[];this.n=0;this.page()}
+  page(){if(this.cv)this.finish();this.n++;const c=document.createElement("canvas");c.width=PW;c.height=PH;this.cv=c;this.g=c.getContext("2d");this.g.fillStyle="#fff";this.g.fillRect(0,0,PW,PH);this.y=PM;this.g.textBaseline="alphabetic"}
+  finish(){const g=this.g;g.fillStyle=C.muted;g.font=`20px ${FONT}`;g.textAlign="left";g.fillText(this.title,PM,PH-52);g.textAlign="right";g.fillText(`Sayfa ${this.n}`,PW-PM,PH-52);g.textAlign="left";
+    g.strokeStyle=C.line;g.lineWidth=1.5;g.beginPath();g.moveTo(PM,PH-80);g.lineTo(PW-PM,PH-80);g.stroke();
+    const cv=this.cv;this.jpegs.push(new Promise(r=>cv.toBlob(b=>r(b),"image/jpeg",.84)));this.cv=null}
+  room(h){return this.y+h<=PH-PM-10}
+  need(h){if(!this.room(h))this.page()}
+  font(sz,bold){return `${bold?"bold ":""}${sz}px ${FONT}`}
+  wrap(text,sz,bold,w){const g=this.g;g.font=this.font(sz,bold);const out=[];for(const para of String(text??"").split("\n")){let line="";for(const word of para.split(/\s+/)){const t=line?line+" "+word:word;if(g.measureText(t).width>w&&line){out.push(line);line=word}else line=t}out.push(line)}return out}
+  text(t,{sz=24,bold=false,color=C.ink,lh=1.45,gap=14,x=PM,w=CW}={}){const lines=this.wrap(t,sz,bold,w),h=sz*lh;for(const l of lines){this.need(h);this.g.font=this.font(sz,bold);this.g.fillStyle=color;this.g.fillText(l,x,this.y+sz);this.y+=h}this.y+=gap}
+  h1(t){this.need(90);this.text(t,{sz:44,bold:true,color:C.navy,gap:10})}
+  h2(t,{keep=160}={}){this.need(keep);this.y+=10;this.text(t,{sz:30,bold:true,color:C.navy,gap:6});this.g.strokeStyle=C.navy;this.g.lineWidth=3;this.g.beginPath();this.g.moveTo(PM,this.y);this.g.lineTo(PM+120,this.y);this.g.stroke();this.y+=18}
+  h3(t){this.need(110);this.text(t,{sz:25,bold:true,color:C.navy,gap:8})}
+  rule(){this.g.strokeStyle=C.navy;this.g.lineWidth=5;this.g.beginPath();this.g.moveTo(PM,this.y);this.g.lineTo(PW-PM,this.y);this.g.stroke();this.y+=24}
+  box(t,{fill=C.soft,bar=C.navy,sz=23}={}){const lines=this.wrap(t,sz,false,CW-44),h=lines.length*sz*1.45+28;
+    if(h>PH-2*PM-40){this.text(t,{sz});return}
+    this.need(h);const g=this.g;g.fillStyle=fill;g.fillRect(PM,this.y,CW,h);g.fillStyle=bar;g.fillRect(PM,this.y,6,h);g.font=this.font(sz);g.fillStyle=C.ink;let y=this.y+14;for(const l of lines){g.fillText(l,PM+24,y+sz);y+=sz*1.45}this.y+=h+16}
+  table(cols,rows,{head=true,sz=21,zebra=true,fills=[]}={}){
+    const tot=cols.reduce((a,c)=>a+c.w,0),ws=cols.map(c=>c.w/tot*CW),pad=12,lh=sz*1.38;
+    const lay=(r,bold)=>r.map((cell,j)=>{const c=typeof cell==="object"&&cell!==null?cell:{t:cell};return{...c,lines:this.wrap(c.t??"",c.sz||sz,c.bold??bold,ws[j]-2*pad).concat(c.sub?this.wrap(c.sub,sz-3,false,ws[j]-2*pad).map(x=>({sub:x})):[])}});
+    const hh=r=>Math.max(...r.map(c=>c.lines.reduce((a,l)=>a+(l.sub?(sz-3)*1.38:lh),0)))+2*pad-4;
+    const drawRow=(r,y,isHead,fill)=>{const g=this.g,h=hh(r);let x=PM;
+      g.fillStyle=isHead?C.navy:fill||"#fff";g.fillRect(PM,y,CW,h);
+      r.forEach((c,j)=>{let ty=y+pad;const al=cols[j].al||"left";for(const l of c.lines){const isSub=typeof l==="object";const s=isSub?sz-3:(c.sz||sz);g.font=this.font(s,!isSub&&(isHead||c.bold));g.fillStyle=isHead?"#fff":isSub?C.muted:(c.color||C.ink);const t=isSub?"↳ "+l.sub:l;
+          const tx=al==="right"?x+ws[j]-pad-g.measureText(t).width:al==="center"?x+(ws[j]-g.measureText(t).width)/2:x+pad;g.fillText(t,tx,ty+s);ty+=s*1.38}
+        x+=ws[j]});
+      g.strokeStyle=C.line;g.lineWidth=1.5;g.strokeRect(PM,y,CW,h);x=PM;for(let j=0;j<ws.length-1;j++){x+=ws[j];g.beginPath();g.moveTo(x,y);g.lineTo(x,y+h);g.stroke()}return h};
+    const H=head?lay(cols.map(c=>c.t),true):null;
+    if(H)this.need(hh(H)+lh*2+2*pad);
+    if(H)this.y+=drawRow(H,this.y,true);
+    rows.forEach((r,i)=>{const L=lay(r,false),h=hh(L);if(!this.room(h)){this.page();if(H)this.y+=drawRow(H,this.y,true)}this.y+=drawRow(L,this.y,false,fills[i]||(zebra&&i%2?C.zebra:"#fff"))});
+    this.y+=18}
+  async image(blob,{maxH=620,cap="",w=CW,x=PM,noAdvance=false}={}){const img=await blobToImg(blob);const k=Math.min(w/img.width,maxH/img.height);const iw=img.width*k,ih=img.height*k;const ch=cap?34:0;
+    if(!noAdvance)this.need(ih+ch+16);const ix=x+(w-iw)/2;this.g.drawImage(img,ix,this.y,iw,ih);this.g.strokeStyle=C.line;this.g.lineWidth=1;this.g.strokeRect(ix,this.y,iw,ih);URL.revokeObjectURL(img.src);
+    if(cap){this.g.font=this.font(19);this.g.fillStyle=C.muted;const t=this.wrap(cap,19,false,w)[0];this.g.fillText(t,x,this.y+ih+26)}
+    const h=ih+ch+16;if(!noAdvance)this.y+=h;return h}
+  async grid(items){/* 2 per row */const gw=(CW-24)/2,maxH=gw*0.75;for(let i=0;i<items.length;i+=2){this.need(maxH+50);let h=0;for(let j=0;j<2&&i+j<items.length;j++){const it=items[i+j];try{const hh=await this.image(it.blob,{maxH,cap:it.cap,w:gw,x:PM+j*(gw+24),noAdvance:true});h=Math.max(h,hh)}catch(e){}}this.y+=h+8}}
+  async done(){if(this.cv)this.finish();return await Promise.all(this.jpegs)}
+}
+async function pdfFromJpegs(blobs){
+  const enc=new TextEncoder(),parts=[];let off=0;const offs=[];
+  const push=x=>{const b=typeof x==="string"?enc.encode(x):x;parts.push(b);off+=b.length};
+  const obj=(id,body)=>{offs[id]=off;push(`${id} 0 obj\n`);if(typeof body==="string")push(body);else body();push("\nendobj\n")};
+  push("%PDF-1.4\n");push(new Uint8Array([37,226,227,207,211,10]));
+  const n=blobs.length,kids=[];for(let i=0;i<n;i++)kids.push(`${3+i*3} 0 R`);
+  obj(1,"<< /Type /Catalog /Pages 2 0 R >>");
+  obj(2,`<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${n} >>`);
+  for(let i=0;i<n;i++){const pid=3+i*3,cid=pid+1,iid=pid+2;const bytes=new Uint8Array(await blobs[i].arrayBuffer());
+    obj(pid,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 ${iid} 0 R >> >> /Contents ${cid} 0 R >>`);
+    const cs="q 595.28 0 0 841.89 0 0 cm /Im0 Do Q";obj(cid,`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`);
+    obj(iid,()=>{push(`<< /Type /XObject /Subtype /Image /Width ${PW} /Height ${PH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`);push(bytes);push("\nendstream")})}
+  const total=3+n*3,xo=off;let x=`xref\n0 ${total}\n0000000000 65535 f \n`;for(let i=1;i<total;i++)x+=String(offs[i]).padStart(10,"0")+" 00000 n \n";
+  push(x);push(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xo}\n%%EOF\n`);
+  return new Blob(parts,{type:"application/pdf"});
+}
+const YN={yes:"Var",no:"Yok",unk:"Bilinmiyor"};
+function infoRows(s){const rows=[],fills=[];
+  for(const sec of SEC){if(sec.only&&sec.only!==s.type)continue;for(const it of sec.items){if(!shown(s,it,sec)||it.gens)continue;const a=A(s,it.k);if(a===""||a==null)continue;
+    let t=it.kind==="yn"?YN[a]:it.kind==="num"?`${a} ${it.u||""}`.trim():a;
+    if(it.num&&a==="yes"&&V(s,it.k+"."+it.num.k))t+=` – ${it.num.l.toLowerCase()} ${V(s,it.k+"."+it.num.k)} ${it.num.u}`;
+    if(it.ms&&a==="yes"){const ar=areaOf(s,it.k);if(ar)t+=` – ${V(s,it.k+".en")} × ${V(s,it.k+".boy")} m ≈ ${fmt(ar,0)} m²`}
+    rows.push([{t:it.s,bold:true},{t,sub:s.n?.[it.k]||""}]);fills.push(a==="unk"||a==="Bilinmiyor"?C.soft:null)}}
+  if(A(s,"jen")){const a=A(s,"jen");rows.push([{t:"Jeneratör",bold:true},{t:YN[a]+(a==="yes"&&s.gens?.length?` – ${s.gens.length} adet`:""),sub:s.n?.jen||""}]);fills.push(null)}
+  return{rows,fills}}
+async function siteToPdf(D,s,idx){
+  D.page();
+  D.text(`${idx}. ${s.name||"Adsız saha"}`,{sz:38,bold:true,color:C.navy,gap:4});
+  D.text([TYPES[s.type]||"",s.gov,fmtDate(s.date)].filter(Boolean).join(" · "),{sz:23,color:C.muted,gap:6});
+  const c=parseCoord(s.coord);const meta=[c?`GPS: ${c[0]}, ${c[1]}`:"",s.contact?`İrtibat: ${s.contact}`:""].filter(Boolean).join("   ·   ");if(meta)D.text(meta,{sz:20,color:C.muted,gap:12});
+  D.rule();
+  const maps=photos(s,"harita");
+  if(maps.length){try{const b=await idbGet(maps[0].id);if(b)await D.image(b,{maxH:560,cap:maps[0].cap||"Konum"})}catch(e){}}
+  D.h3("Özet");D.box(s.summaryEdited?s.summary:siteSummary(s));
+  const {rows,fills}=infoRows(s);
+  if(rows.length){D.h3("Saha bilgileri");D.table([{t:"Konu",w:34},{t:"Durum / bilgi",w:66}],rows,{fills,zebra:false})}
+  const g=genStats(s);
+  if(g.count){D.h3("Jeneratörler");D.table([{t:"#",w:6,al:"center"},{t:"Güç",w:15,al:"right"},{t:"Kullanım",w:15,al:"right"},{t:"Boş kapasite",w:22,al:"right"},{t:"Rol",w:12,al:"center"},{t:"Not",w:30}],
+    g.gens.map((x,i)=>[String(i+1),x.kvaN!=null?`${fmt(x.kvaN,0)} kVA`:"–",x.pctN!=null?`%${fmt(x.pctN,0)}`:"–",x.free!=null?`${fmt(x.free,0)} kVA (≈${fmt(x.free*1000/230,0)} A)`:"–",x.role||"Asıl",x.note||""]));
+    D.text(genTotText(g),{sz:20,color:C.muted,gap:14})}
+  if(s.load?.on&&R.energy){const e=energy(s);D.h3("Enerji ihtiyacı");
+    D.table([{t:"Kalem",w:58},{t:"Değer",w:42,al:"right"}],[
+      [`Fiber kabin / DC yük (${fmt(e.dcA)} A × ${DCV} V)`,`${fmt(e.dcW,0)} W`],
+      ["Rectifier AC girişi (verim %95)",`${fmt(e.rectW,0)} W · ${fmt(e.rectW/220)} A`],
+      [`Akü şarjı (${fmt(e.batt,0)} Ah × 0,1C)`,`${fmt(e.chgW,0)} W · ${fmt(e.chgW/220)} A`],
+      [`Split klima${e.splitOn?` (${String(e.ton).replace(".",",")} ton)`:" (dahil değil)"}`,`${fmt(e.splitW,0)} W · ${fmt(e.splitW/220)} A`],
+      ["Normal çalışma (akü dolu)",`${fmt(e.normalW/1000)} kW · ${fmt(e.normalW/220)} A`],
+      [{t:"En kötü durum (şarj + klima)",bold:true},{t:`${fmt(e.peakW/1000)} kW · ${fmt(e.A220)} A · ${fmt(e.kVA)} kVA`,bold:true}],
+      [{t:"Talep (güvenlik payıyla, 220 V)",bold:true},{t:`${e.breaker} A`,bold:true}],
+      ["3 faz besleme olursa",`faz başı ≈ ${fmt(e.phase,0)} A`],
+      ["Rectifier kapasitesi (yük + şarj, N+1)",`≥ ${Math.ceil((e.dcA+e.chgA)/10)*10} A`],
+      [`Akü (${e.li?"lityum":"kurşun-asit"}) / yedekleme`,`${fmt(e.batt,0)} Ah · ≈ ${fmt(e.backupReal)} saat`]],
+      {fills:[null,null,null,null,null,C.ok,C.ok]});
+    const fl=[];if(e.backupOk===false)fl.push(`Kesinti (${fmt(e.worst)} saat) akü yedeklemesini (${fmt(e.hours,0)} saat) aşıyor; jeneratör desteği gerekli.`);if(e.genOk===false)fl.push(`Jeneratör boş kapasitesi (≈${fmt(e.genFree,0)} kVA) ihtiyaçtan (${fmt(e.kVA)} kVA) az.`);
+    for(const f of fl)D.box("⚠ "+f,{fill:C.bad,bar:"#b8432c"})}
+  if(s.genNote){D.h3("Genel not");D.text(s.genNote,{sz:22})}
+  if(R.photos){const items=[];
+    const groups=[["genel","Genel görünüm"],...ALL.filter(x=>x.it.ph&&shown(s,x.it,x.sec)).map(x=>[x.it.k,x.it.s]),...(s.gens||[]).map((x,i)=>["gen-"+x.id,`Jeneratör ${i+1}`]),["harita",""]];
+    for(const [gk,label] of groups){const ps=photos(s,gk);for(const [j,p] of ps.entries()){if(gk==="harita"&&j===0)continue;try{const b=await idbGet(p.id);if(b)items.push({blob:b,cap:[label,p.cap].filter(Boolean).join(" – ")||"Harita"})}catch(e){}}}
+    if(items.length){D.h2("Fotoğraflar",{keep:560});await D.grid(items)}}
+}
+async function makePdf(){
+  const list=repList();if(!list.length){toast("Raporda gösterilecek saha seçilmedi");return}
+  const btn=app.querySelector("#r-pdf");btn.disabled=true;btn.textContent="PDF hazırlanıyor…";
+  try{
+    const multi=R.mode==="multi"&&R.d1!==R.d2,title=multi?"Saha Keşif Raporu – Enerji":"Günlük Saha Keşif Raporu – Enerji";
+    const D=new Doc(`${title} · ${multi?fmtDate(R.d1)+" – "+fmtDate(R.d2):fmtDate(R.d1)}`);
+    D.text(`ENERJİ BİRİMİ · ${(prefs.project??"Irak Network Projesi").toLocaleUpperCase("tr")}`,{sz:20,color:C.muted,gap:8});
+    D.h1(title);D.rule();
+    D.table([{t:"",w:28},{t:"",w:72}],[
+      [{t:"Hazırlayan",color:C.muted},{t:prefs.author||"–",bold:true}],[{t:"Birim",color:C.muted},{t:prefs.unit??"Enerji Birimi",bold:true}],
+      [{t:"Proje",color:C.muted},{t:prefs.project??"Irak Network Projesi",bold:true}],[{t:multi?"Tarih aralığı":"Tarih",color:C.muted},{t:multi?`${fmtDate(R.d1)} – ${fmtDate(R.d2)}`:fmtDate(R.d1),bold:true}],
+      [{t:"Ziyaret edilen sahalar",color:C.muted},{t:list.map(s=>s.name||"Adsız saha").join(", "),bold:true}]],{head:false,zebra:false});
+    D.h2("Genel özet");D.box(R.summaryEdited?R.summary:overallSummary(list,rangeLabel()),{sz:24});
+    D.h2("Sahalara genel bakış");
+    D.table([{t:"#",w:5,al:"center"},{t:"Saha",w:20},...(multi?[{t:"Tarih",w:12}]:[]),{t:"Tip",w:12},{t:"Kesinti",w:13},{t:"Salonda alan",w:13},{t:"Soğutma",w:15},{t:"Jeneratör",w:17},...(R.energy?[{t:"Talep",w:10,al:"right"}]:[])],
+      list.map((s,i)=>{const g=genStats(s),so=A(s,"sogutma");return [String(i+1),{t:s.name||"–",bold:true},...(multi?[fmtDate(s.date)]:[]),s.type==="tt"?"Yeni TT":s.type==="itpc"?"İTPC":"–",
+        A(s,"kesinti")!==""?`${A(s,"kesinti")} sa/gün`:"–",YN[A(s,"salonBos")]||"–",so==="Mevcut soğutma kullanılabilir"?"Mevcut":so==="Yeni split klima gerekli"?"Yeni split":so||"–",
+        A(s,"jen")==="yes"?(g.count?`${g.count} adet${g.free!=null?` · boş ${fmt(g.free,0)} kVA`:""}`:"Var"):YN[A(s,"jen")]||"–",...(R.energy?[s.load?.on?`${energy(s).breaker} A`:"–"]:[])]}),{sz:19});
+    const nx=(prefs["next-"+R.d1]||"").trim();if(nx){D.h2("Sonraki adımlar");D.text(nx)}
+    for(const [i,s] of list.entries())await siteToPdf(D,s,i+1);
+    const blobs=await D.done();const pdf=await pdfFromJpegs(blobs);
+    const fn=`${multi?"saha-raporu":"gunluk-rapor"}_${R.d1}${multi?"_"+R.d2:""}.pdf`;
+    await saveFile({filename:fn,blob:pdf,type:"application/pdf"});
+  }catch(e){console.error(e);toast("PDF hazırlanamadı: "+(e.message||e))}
+  finally{btn.disabled=false;btn.textContent="📄 PDF oluştur"}
+}
+
+/* =========================================================
+   9. FILES, BACKUP, PERSISTENCE
+   ========================================================= */
+function anchorSave(b,filename){const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)}
+async function saveFile({filename,data,blob,type,onDone}){
+  const mime=type||"text/plain",b=blob||new Blob([data],{type:mime+";charset=utf-8"});
+  let file=null;try{file=new File([b],filename,{type:mime})}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){const sh=document.getElementById("sheet");document.getElementById("shName").textContent=`${filename} (${fmt(b.size/1048576)} MB)`;sh.hidden=false;
+    document.getElementById("shX").onclick=()=>sh.hidden=true;
+    document.getElementById("shGo").onclick=()=>{navigator.share({files:[file],title:filename}).then(()=>{sh.hidden=true;onDone&&onDone()}).catch(e=>{if(e&&e.name!=="AbortError")anchorSave(b,filename)})};return}
+  anchorSave(b,filename);toast("Dosya hazır");onDone&&onDone()}
+async function backup(){
+  toast("Yedek hazırlanıyor…");const ph={};
+  for(const s of Object.values(surveys))for(const arr of Object.values(s.photos||{}))for(const p of arr)for(const id of [p.id,p.orig].filter(Boolean)){try{const b=await idbGet(id);if(b)ph[id]=await blobToData(b)}catch(e){}}
+  const data=JSON.stringify({app:"saha-kesif-2",v:1,at:new Date().toISOString(),surveys,prefs,photos:ph});
+  await saveFile({filename:`saha-kesif-2-yedek_${today()}.json`,data,type:"application/json",onDone:()=>{prefs.lastBackup=Date.now();prefs.unsaved=0;savePrefs();toast("Yedek alındı ✓");if(view==="list")renderList()}});
+}
+async function restore(file){
+  try{const d=JSON.parse(await file.text());if(d.app!=="saha-kesif-2")throw 0;
+    for(const [id,url] of Object.entries(d.photos||{})){const b=await (await fetch(url)).blob();await idbPut(id,b)}
+    let n=0;for(const [id,s] of Object.entries(d.surveys||{})){if(!surveys[id]||(s.updatedAt||0)>(surveys[id].updatedAt||0)){surveys[id]=s;n++}}
+    saveAll();renderList();toast(`${n} keşif yüklendi`)}
+  catch(e){toast("Bu dosya Saha Keşfi 2 yedeği değil")}
+}
+function dirty(){if(!cur)return;cur.updatedAt=Date.now();const sv=app.querySelector("#saved");if(sv)sv.textContent="Kaydediliyor…";clearTimeout(saveT);saveT=setTimeout(persist,400)}
+function persist(){saveT=null;if(cur)surveys[cur.id]=cur;if(saveAll()){prefs.unsaved=(prefs.unsaved||0)+1;savePrefs()}const sv=app.querySelector("#saved");if(sv)sv.textContent="Kaydedildi ✓"}
+function flush(){if(saveT){clearTimeout(saveT);persist()}}
+
+function init(){
+  app.addEventListener("input",onInput);app.addEventListener("change",onInput);app.addEventListener("click",onClick);
+  surveys=lsGet("sk2-surveys",{});prefs=lsGet("sk2-prefs",{});
+  try{navigator.storage?.persist?.()}catch(e){}
+  addEventListener("pagehide",flush);document.addEventListener("visibilitychange",()=>{if(document.hidden)flush()});
+  renderList();
+  if("serviceWorker" in navigator&&(location.protocol==="https:"||location.hostname==="localhost")){
+    const had=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!had)return;const u=document.getElementById("upd");u.hidden=false;document.getElementById("updGo").onclick=()=>{flush();location.reload()};document.getElementById("updX").onclick=()=>u.hidden=true});
+    navigator.serviceWorker.register("sw.js").then(r=>r.update()).catch(()=>{});
+  }
+}
+init();
+</script>
+</body></html>
