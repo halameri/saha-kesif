@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.2 · 25.10.2026";
+const VERSION="2.3 · 25.10.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -357,14 +357,15 @@ function renderList(){
   ${prefs.unsaved?`<div class="banner"><b>Yedeklenmemiş değişiklikler var</b><span style="font-size:.9rem">Son yedek: ${ago(prefs.lastBackup)}. Telefon kaybolursa veya uygulama silinirse kayıtlar gider.</span><div class="row"><button class="btn primary" id="bk">Şimdi yedek al</button></div></div>`:prefs.lastBackup?`<p class="hint" style="margin:0 0 10px">✓ Tüm kayıtlar yedekli · son yedek ${ago(prefs.lastBackup)}</p>`:""}
   <div class="row" style="margin-bottom:12px"><button class="btn primary" id="rep">📄 Rapor (PDF)</button></div>
   ${arr.length?`<div class="row" style="justify-content:space-between"><h2 style="font-size:1.1rem">Keşifler</h2><button class="btn ghost sm" id="editList">${listEdit?"Bitti":"Kayıt sil"}</button></div>
-   ${days.map(d=>`<div class="dayh">${fmtDate(d)||"Tarihsiz"}</div><div class="cards">${arr.filter(s=>s.date===d).map(s=>{const p=progress(s);return `<div class="cardrow"><button class="card" data-id="${esc(s.id)}"><b>${esc(s.name||"Adsız saha")} ${s.type?`<span class="pill ${s.type==="tt"?"tt":"it"}">${s.type==="tt"?"Yeni TT":"İTPC"}</span>`:""}</b><span>${esc([s.gov,`${p.d}/${p.t} soru`,photoCount(s)?`${photoCount(s)} fotoğraf`:""].filter(Boolean).join(" · "))}</span></button>${listEdit?`<button class="btn danger" data-del="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`).join("")}`
+   ${days.map(d=>`<div class="dayh">${fmtDate(d)||"Tarihsiz"}</div><div class="cards">${arr.filter(s=>s.date===d).map(s=>{const p=progress(s);return `<div class="cardrow"><button class="card" data-id="${esc(s.id)}"><b>${esc(s.name||"Adsız saha")} ${s.type?`<span class="pill ${s.type==="tt"?"tt":"it"}">${s.type==="tt"?"Yeni TT":"İTPC"}</span>`:'<span class="pill">Tip seçilmedi</span>'}${s.imported?' <span class="pill">Eski sürüm</span>':""}</b><span>${esc([s.gov,`${p.d}/${p.t} soru`,photoCount(s)?`${photoCount(s)} fotoğraf`:""].filter(Boolean).join(" · "))}</span></button>${listEdit?`<button class="btn danger" data-del="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`).join("")}`
   :`<div class="empty"><b>Henüz keşif yok</b><span class="muted" style="max-width:40ch">Sahaya varınca “+ Yeni saha”ya bas, saha tipini seç ve soruları doldur. Gün sonunda “Rapor (PDF)” ile raporu hazırla.</span></div>`}
-  <div class="row" style="margin-top:18px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label></div>
+  <div class="row" style="margin-top:18px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label><button class="btn" id="imp">Eski sürümden aktar</button></div>
   <p class="hint" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kur. "}İnternet gerekmez; kayıtlar ve fotoğraflar sadece bu telefonda. Her akşam yedek al.<br>Sürüm ${VERSION}</p>`;
   app.querySelector("#new").onclick=newSurvey;
   app.querySelector("#rep").onclick=()=>renderReport();
   app.querySelector("#bk")?.addEventListener("click",backup);
   app.querySelector("#bk2").onclick=backup;
+  app.querySelector("#imp").onclick=renderImport;
   app.querySelector("#rs").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)restore(f)};
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
   app.querySelectorAll(".card").forEach(b=>b.onclick=()=>openSurvey(b.dataset.id));
@@ -888,7 +889,9 @@ async function backup(){
   await saveFile({filename:`saha-kesif-2-yedek_${today()}.json`,data,type:"application/json",onDone:()=>{prefs.lastBackup=Date.now();prefs.unsaved=0;savePrefs();toast("Yedek alındı ✓");if(view==="list")renderList()}});
 }
 async function restore(file){
-  try{const d=JSON.parse(await file.text());if(d.app!=="saha-kesif-2")throw 0;
+  try{const d=JSON.parse(await file.text());
+    if(d.app==="saha-kesif"){const r=await importV1(d.surveys,async id=>{const u=d.photos?.[id];return u?await (await fetch(u)).blob():null});renderList();toast(r.n?`Eski sürümden ${r.n} keşif aktarıldı`:"Yeni aktarılacak kayıt yok");return}
+    if(d.app!=="saha-kesif-2")throw 0;
     for(const [id,url] of Object.entries(d.photos||{})){const b=await (await fetch(url)).blob();await idbPut(id,b)}
     let n=0;for(const [id,s] of Object.entries(d.surveys||{})){if(!surveys[id]||(s.updatedAt||0)>(surveys[id].updatedAt||0)){surveys[id]=s;n++}}
     saveAll();renderList();toast(`${n} keşif yüklendi`)}
@@ -898,6 +901,82 @@ function dirty(){if(!cur)return;cur.updatedAt=Date.now();const sv=app.querySelec
 function persist(){saveT=null;if(cur)surveys[cur.id]=cur;if(saveAll()){prefs.unsaved=(prefs.unsaved||0)+1;savePrefs()}const sv=app.querySelector("#saved");if(sv)sv.textContent="Kaydedildi ✓"}
 function flush(){if(saveT){clearTimeout(saveT);persist()}}
 
+
+/* =========================================================
+   10. IMPORT FROM OLD VERSION (Saha Keşfi 1)
+   ========================================================= */
+const V1_LABEL={"sebeke.direk":"Elektrik direği","sebeke.trafo":"Trafo","sebeke.engel":"Hat güzergâhı","sebeke.saat":"Elektrik kesintisi","mevcut.jen":"Mevcut jeneratör","mevcut.dc":"Mevcut doğrultucu / akü",
+ "alan.olcu":"Saha ölçüsü","alan.oda":"Hazır sistem odası","alan.bosoda":"Boş oda","alan.bosalan":"Sistem salonunda boş alan","alan.jen":"Jeneratör yeri","alan.yakit":"Yakıt kamyonu erişimi","alan.su":"Su / sel riski","alan.zemin":"Zemin",
+ "sogutma.dis":"Klima dış ünite yeri","sogutma.gunes":"Odanın güneş alması","sogutma.aku":"Akü yeri","ges.alan":"Panel alanı","ges.cati":"Çatı (GES)","ges.golge":"Gölge","ges.guney":"Güney yönü","ges.zemin":"GES zemini","ges.iklim":"Toz / rüzgâr","ges.guvenli":"Panel güvenliği",
+ "cevre.yol":"Yol","cevre.vinc":"Vinç erişimi","cevre.tuz":"Tuz / korozyon","cevre.risk":"Sel / kum fırtınası riski","cevre.guvenlik":"Güvenlik","cevre.kisi":"Görüşülen kişiler"};
+const V1_GROUP={"genel":["genel",""],"harita":["harita",""],"alan-oda":["salon",""],"alan-bosalan":["salonBos",""],"alan-bosoda":["oda",""],"sogutma-dis":["sogutma","Klima dış ünitesi"],"sogutma":["sogutma",""],
+ "sebeke":["genel","Şebeke"],"mevcut":["genel","Mevcut altyapı"],"mevcut-dc":["genel","Doğrultucu / akü"],"alan":["genel","Saha alanı"],"sogutma-aku":["genel","Akü yeri"],"ges":["genel","Güneş paneli"],"ges-cati":["genel","Çatı"],"cevre":["genel","Erişim ve çevre"],"foto":["genel",""]};
+function convertV1(o){
+  const I=o.items||{},it=k=>I[k]||{},ans=k=>{const a=it(k).a;return a==="yes"||a==="no"||a==="unk"?a:""};
+  const s={id:"v1-"+o.id,imported:true,name:o.name||"",type:/i[pt]{2}c/i.test((o.name||"")+" "+(o.desc||""))?"itpc":"",gov:o.gov||o.place||"",coord:o.coord||"",contact:o.contact||"",date:o.date||today(),
+    a:{},v:{},n:{},photos:{},gens:[],load:{on:false,dcA:"25",hours:"10",batType:"Lityum",batt:"300",coolMode:"auto",acType:"split",btu:"18000"},summary:"",summaryEdited:false,createdAt:o.createdAt||Date.now(),updatedAt:Date.now()};
+  const map=[["alan.oda","salon"],["alan.bosalan","salonBos"],["alan.bosoda","oda"],["sebeke.direk","direk"],["sebeke.trafo","trafo"]];
+  for(const [o1,k] of map){if(ans(o1))s.a[k]=ans(o1);if(it(o1).n)s.n[k]=it(o1).n}
+  if(it("sebeke.direk").v?.mesafe)s.v["direk.m"]=it("sebeke.direk").v.mesafe;
+  const sa=num(it("sebeke.saat").v?.saat);
+  if(sa!=null&&sa<=24){s.a.kesinti=String(24-sa);s.n.kesinti=appendNote(it("sebeke.saat").n,`Eski kayıttan: günde ~${fmt(sa)} saat elektrik var bilgisinden hesaplandı`)}
+  else if(it("sebeke.saat").n)s.n.kesinti=it("sebeke.saat").n;
+  const j=it("mevcut.jen");
+  if(ans("mevcut.jen")){s.a.jen=ans("mevcut.jen");if(j.n)s.n.jen=j.n;
+    if(s.a.jen==="yes"&&j.v&&(j.v.kva||j.v.cap)){const cap=num(j.v.cap),used=num(j.v.used);
+      s.gens.push({id:uid(),kva:j.v.kva||"",pct:cap&&used!=null?String(Math.round(used/cap*100)):"",role:"Asıl",
+        note:[j.v.sahip,j.v.saat?`günde ~${j.v.saat} saat çalışıyor`:"",cap?`toplam ${cap} A, kullanılan ${used??"?"} A`:""].filter(Boolean).join(" · ")})}}
+  const extra=[];
+  if(o.desc)extra.push(`Saha tanımı: ${o.desc}`);
+  for(const [k,label] of Object.entries(V1_LABEL)){if(["alan.oda","alan.bosalan","alan.bosoda","sebeke.direk","sebeke.trafo","sebeke.saat","mevcut.jen"].includes(k))continue;
+    const e=it(k);const a=ans(k),vals=Object.entries(e.v||{}).filter(([,x])=>String(x).trim()).map(([kk,x])=>kk==="tip"||kk==="ad"?String(x):`${({mesafe:"mesafe",kva:"güç (kVA)",en:"en",boy:"boy",saat:"saat",adet:"adet"})[kk]||kk} ${x}`);
+    if(!a&&!vals.length&&!e.n)continue;
+    extra.push(`${label}: ${[a?({yes:"Evet",no:"Hayır",unk:"Bilinmiyor"})[a]:"",vals.join(", "),e.n].filter(Boolean).join(" – ")}`)}
+  if(o.general)extra.push(o.general);
+  if(extra.length)s.genNote=["Eski sürümden aktarılan bilgiler:",...extra].join("\n");
+  return s;
+}
+async function importV1(data,photoSrc){
+  let n=0,ph=0;
+  for(const o of Object.values(data||{})){
+    if(!o||!o.id||surveys["v1-"+o.id])continue;
+    const s=convertV1(o);
+    for(const [g,arr] of Object.entries(o.photos||{})){
+      let [tg,label]=V1_GROUP[g]||["genel",V1_LABEL[g.replace("-",".")]||""];
+      if(g==="mevcut-jen"){if(s.gens[0])tg="gen-"+s.gens[0].id;else{tg="genel";label="Jeneratör"}}
+      for(const p of arr||[]){try{const b=await photoSrc(p.id);if(!b)continue;await idbPut(p.id,b);(s.photos[tg]=s.photos[tg]||[]).push({id:p.id,cap:label});ph++}catch(e){}}
+    }
+    surveys[s.id]=s;n++;
+  }
+  saveAll();return{n,ph};
+}
+function v1LocalPhoto(id){return new Promise(res=>{try{const r=indexedDB.open("saha-kesif-foto",1);r.onupgradeneeded=()=>{r.transaction.abort();res(null)};r.onerror=()=>res(null);
+  r.onsuccess=()=>{try{const t=r.result.transaction("p","readonly").objectStore("p").get(id);t.onsuccess=()=>res(t.result||null);t.onerror=()=>res(null)}catch(e){res(null)}}}catch(e){res(null)}})}
+async function migrateLocal(){
+  const old=lsGet("saha-kesif",null);
+  const list=Object.values(old||{}).filter(o=>o&&o.id&&!o.example);
+  if(!list.length)return null;
+  toast("Eski kayıtlar aktarılıyor…",6000);
+  return await importV1(Object.fromEntries(list.map(o=>[o.id,o])),v1LocalPhoto);
+}
+function renderImport(){
+  view="import";cur=null;
+  app.innerHTML=`<div class="topbar"><button class="btn ghost" id="back" aria-label="Geri">←</button><div class="title"><b>Eski sürümden aktar</b><span>Saha Keşfi 1 kayıtları</span></div></div>
+  <section class="panel"><b>1. Yol: Bu telefondan doğrudan</b><span class="hint">Eski uygulamanın kayıtları bu uygulamadan okunabiliyorsa tek dokunuşla aktarılır.</span><div class="row"><button class="btn primary" id="imLocal">Eski kayıtları ara ve aktar</button></div><div id="imRes" class="hint"></div></section>
+  <section class="panel"><b>2. Yol: Yedek dosyasıyla (her zaman çalışır)</b>
+   <ol style="margin:0;padding-left:20px;display:grid;gap:4px"><li>Eski uygulamayı (Saha Keşfi) aç, ana ekranın altındaki <b>Yedek al</b>'a bas.</li><li>Paylaş menüsünden <b>Dosyalara Kaydet</b>'i seç.</li><li>Buraya dön ve aşağıdaki düğmeyle o dosyayı seç.</li></ol>
+   <div class="row"><label class="btn primary upload" for="imFile">Eski yedek dosyasını seç<input type="file" id="imFile" accept=".json,application/json"></label></div></section>
+  <p class="hint">Aktarılan kayıtlarda saha tipi (İTPC / yeni TT) seçilmemiş olabilir; her kaydı açıp tipini seç. Yeni sistemde karşılığı olmayan cevaplar “Genel not” bölümüne eklenir. Aynı kayıt iki kez aktarılmaz.</p>`;
+  app.querySelector("#back").onclick=renderList;
+  app.querySelector("#imLocal").onclick=async()=>{const r=await migrateLocal();const out=app.querySelector("#imRes");
+    if(!r){out.textContent="Bu uygulamadan eski kayıtlar görünmüyor (iPhone her ana ekran uygulamasının verisini ayrı tutar). 2. yolu kullan.";return}
+    out.textContent=r.n?`${r.n} keşif ve ${r.ph} fotoğraf aktarıldı.`:"Yeni aktarılacak kayıt yok (hepsi daha önce aktarılmış).";if(r.n)toast(`${r.n} keşif aktarıldı`)};
+  app.querySelector("#imFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+    try{const d=JSON.parse(await f.text());if(d.app!=="saha-kesif")throw 0;toast("Aktarılıyor…",6000);
+      const r=await importV1(d.surveys,async id=>{const u=d.photos?.[id];return u?await (await fetch(u)).blob():null});
+      toast(r.n?`${r.n} keşif ve ${r.ph} fotoğraf aktarıldı`:"Yeni aktarılacak kayıt yok");if(r.n)renderList()}
+    catch(err){toast("Bu dosya eski Saha Keşfi yedeği değil")}};
+}
 function init(){
   app.addEventListener("input",onInput);app.addEventListener("change",onInput);app.addEventListener("click",onClick);
   surveys=lsGet("sk2-surveys",{});prefs=lsGet("sk2-prefs",{});
