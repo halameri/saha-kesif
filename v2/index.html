@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.1 · 25.10.2026";
+const VERSION="2.2 · 25.10.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -179,6 +179,9 @@ const GEN_QN=["Etiket fotoğrafı çekildi","Yakıt tankı ayrı","Jeneratör ka
 const GENERAL_QN=["Bina görevlisi eşlik etti","Sahada kısa süre kalınabildi","Bazı alanlara giriş izni verilmedi","Fotoğraf çekimi kısıtlıydı","Bilgiler tahminidir, teyit edilmeli"];
 /* energy constants */
 const DCV=54,EFF=0.95,PF=0.8,CH=0.1,BREAKERS=[16,20,25,32,40,50,63,80,100];
+/* akü tipleri: kullanılabilir oran (DoD) ve yaşlanma payı – yaklaşık değerler */
+const BAT_TYPES={"Lityum":{l:"Lityum (LiFePO4)",dod:0.9,aging:1.05},"Kuru akü":{l:"Kuru akü (AGM / VRLA)",dod:0.8,aging:1.25},"Jel":{l:"Jel akü (GEL)",dod:0.8,aging:1.2},"HT":{l:"HT akü (yüksek sıcaklık)",dod:0.8,aging:1.2},"Sulu":{l:"Sulu akü (OPzS / açık tip)",dod:0.8,aging:1.25}};
+const batKey=v=>BAT_TYPES[v]?v:v==="Kurşun-asit"?"Kuru akü":"Lityum";
 const AC_TYPES={split:{l:"Split (duvar tipi)",eer:9.5},salon:{l:"Salon tipi (dolap)",eer:9},kaset:{l:"Kaset tipi",eer:9},paket:{l:"Paket klima",eer:8.5},hassas:{l:"Hassas klima (precision)",eer:10}};
 const BTUS=[9000,12000,18000,24000,30000,36000,48000,60000];
 const COOL_MODES=[["auto","Soğutma cevabına göre"],["klima","Klima tipi ve kapasitesi"],["kat","Sistem yükünün katı"],["manuel","Elle gir (amper)"],["yok","Soğutma dahil değil"]];
@@ -236,11 +239,11 @@ function genStats(s){
 }
 function energy(s){
   const L=s.load||{};
-  const dcA=num(L.dcA)??25,hours=num(L.hours)??10,li=(L.batType||"Lityum")==="Lityum";
-  const dod=li?0.9:0.8,aging=li?1.05:1.25;
+  const dcA=num(L.dcA)??25,hours=num(L.hours)??10,bt=BAT_TYPES[batKey(L.batType)],li=bt===BAT_TYPES.Lityum;
+  const dod=bt.dod,aging=bt.aging,batLabel=bt.l;
   const battNeed=Math.ceil(dcA*hours/dod*aging/50)*50;
   const batt=num(L.batt)||battNeed;
-  const backupReal=batt*dod/dcA;
+  const backupReal=batt*dod/aging/dcA;
   const dcW=dcA*DCV,rectW=dcW/EFF,chgA=batt*CH,chgW=chgA*DCV/EFF;
   const cc=coolCfg(L);let mode=cc.mode;if(mode==="auto")mode=A(s,"sogutma")==="Yeni split klima gerekli"?"klima":"yok";
   let splitW=0,coolDesc="dahil değil";
@@ -255,7 +258,7 @@ function energy(s){
   const worst=num(A(s,"enuzun"))??num(A(s,"kesinti"));
   const worstSrc=num(A(s,"enuzun"))!=null?"en uzun tek kesinti":"günlük kesinti";
   const g=genStats(s);
-  return{dcA,hours,li,batt,battNeed,backupReal,splitOn,coolDesc,coolMode:mode,splitW,dcW,rectW,chgA,chgW,normalW,peakW,A220,kVA,phase,breaker,worst,worstSrc,
+  return{dcA,hours,li,batLabel,batt,battNeed,backupReal,splitOn,coolDesc,coolMode:mode,splitW,dcW,rectW,chgA,chgW,normalW,peakW,A220,kVA,phase,breaker,worst,worstSrc,
     backupOk:worst==null?null:worst<=hours,genOk:g.free==null?null:g.free>=kVA,genFree:g.free};
 }
 
@@ -449,7 +452,7 @@ function energyHtml(){
      <div class="grid2">
       <label class="f">DC yük (A, -48 V)<input class="num" inputmode="decimal" data-l="dcA" value="${esc(L.dcA)}"></label>
       <label class="f">Akü yedekleme süresi (saat)<input class="num" inputmode="decimal" data-l="hours" value="${esc(L.hours)}"></label>
-      <label class="f">Akü tipi<select data-l="batType">${["Lityum","Kurşun-asit"].map(o=>`<option${(L.batType||"Lityum")===o?" selected":""}>${o}</option>`).join("")}</select></label>
+      <label class="f">Akü tipi<select data-l="batType">${Object.entries(BAT_TYPES).map(([k,v])=>`<option value="${k}"${batKey(L.batType)===k?" selected":""}>${v.l}</option>`).join("")}</select></label>
       <label class="f">Akü kapasitesi (Ah, 48 V)<input class="num" inputmode="decimal" data-l="batt" value="${esc(L.batt)}" placeholder="boş = önerilen"></label>
      </div>
      <div class="sub" id="coolBox">${coolHtml()}</div>
@@ -468,8 +471,8 @@ function energyOutHtml(e){
    <tr class="tot"><td>Talep (güvenlik payıyla)</td><td>${e.breaker} A · 220 V</td></tr>
    <tr><td>3 faz besleme olursa</td><td>faz başı ≈ ${fmt(e.phase,0)} A</td></tr>
    <tr><td>Rectifier kapasitesi (yük + şarj, N+1)</td><td>≥ ${Math.ceil((e.dcA+e.chgA)/10)*10} A</td></tr>
-   <tr><td>Önerilen akü (${e.li?"lityum":"kurşun-asit"}, ${fmt(e.hours,0)} saat)</td><td>${fmt(e.battNeed,0)} Ah</td></tr>
-   <tr><td>Seçilen akü ile yedekleme</td><td>≈ ${fmt(e.backupReal)} saat</td></tr>
+   <tr><td>Önerilen akü – ${esc(e.batLabel)}, ${fmt(e.hours,0)} saat</td><td>${fmt(e.battNeed,0)} Ah</td></tr>
+   <tr><td>Seçilen akü ile yedekleme (yaşlanma payı dahil)</td><td>≈ ${fmt(e.backupReal)} saat</td></tr>
   </tbody></table>
   ${e.backupOk===false?`<div class="flag bad">⚠️ ${e.worstSrc==="en uzun tek kesinti"?"En uzun kesinti":"Günlük kesinti"} (${fmt(e.worst)} saat) akü yedeklemesini (${fmt(e.hours,0)} saat) aşıyor. Jeneratör desteği gerekli.</div>`:e.backupOk===true?`<div class="flag ok">✓ Kesinti süresi (${fmt(e.worst)} saat) akü yedeklemesi içinde.</div>`:""}
   ${e.genOk===false?`<div class="flag bad">⚠️ Jeneratör boş kapasitesi (≈ ${fmt(e.genFree,0)} kVA) ihtiyaçtan (${fmt(e.kVA)} kVA) az.</div>`:e.genOk===true?`<div class="flag ok">✓ Jeneratör boş kapasitesi (≈ ${fmt(e.genFree,0)} kVA) ihtiyaç için yeterli.</div>`:""}`;
@@ -830,7 +833,7 @@ async function siteToPdf(D,s,idx){
       [{t:"Talep (güvenlik payıyla, 220 V)",bold:true},{t:`${e.breaker} A`,bold:true}],
       ["3 faz besleme olursa",`faz başı ≈ ${fmt(e.phase,0)} A`],
       ["Rectifier kapasitesi (yük + şarj, N+1)",`≥ ${Math.ceil((e.dcA+e.chgA)/10)*10} A`],
-      [`Akü (${e.li?"lityum":"kurşun-asit"}) / yedekleme`,`${fmt(e.batt,0)} Ah · ≈ ${fmt(e.backupReal)} saat`]],
+      [`Akü – ${e.batLabel} / yedekleme`,`${fmt(e.batt,0)} Ah · ≈ ${fmt(e.backupReal)} saat`]],
       {fills:[null,null,null,null,null,C.ok,C.ok]});
     const fl=[];if(e.backupOk===false)fl.push(`Kesinti (${fmt(e.worst)} saat) akü yedeklemesini (${fmt(e.hours,0)} saat) aşıyor; jeneratör desteği gerekli.`);if(e.genOk===false)fl.push(`Jeneratör boş kapasitesi (≈${fmt(e.genFree,0)} kVA) ihtiyaçtan (${fmt(e.kVA)} kVA) az.`);
     for(const f of fl)D.box("⚠ "+f,{fill:C.bad,bar:"#b8432c"})}
