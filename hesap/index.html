@@ -102,8 +102,8 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 
 <script>
 "use strict";
-const DEF_A={dcv:54,eff:0.95,dod:0.9,aging:1.05,dodPb:0.8,agingPb:1.25,liSizes:"50; 100; 150; 200; 300",pb2Sizes:"200; 300; 400; 500; 600; 800; 1000; 1200; 1500; 2000; 2500; 3000",pb12Sizes:"100; 150; 190; 200",batMax:4,roomW:2000,coolM:1.2,chg:0.1,chgMax:0,rects:"7,2; 10,8; 14,4; 21,6; 28,8",eer:9.5,eerH:9,pf:0.8,gmax:0.8,derate:0.9,safety:1.25,hN:15,hN1:30,gens:"33,45,60,80,100,150,200,250,300,400,500"};
-const A_LABELS=[["hN","Yedekleme süresi – N (saat)"],["hN1","Yedekleme süresi – N+1 (saat)"],["batMax","Otomatik seçimde en fazla paralel grup"],["dod","Lityum: kullanılabilir oran"],["aging","Lityum: yaşlanma payı (×)"],["dodPb","Kurşun-asit/jel: kullanılabilir oran"],["agingPb","Kurşun-asit/jel: yaşlanma payı (×)"],
+const DEF_A={dcv:54,eff:0.95,dod:0.9,aging:1.05,dodPb:0.8,agingPb:1.25,liSizes:"50; 100; 150; 200; 300",pb2Sizes:"200; 300; 400; 500; 600; 800; 1000; 1200; 1500; 2000; 2500; 3000",pb12Sizes:"100; 150; 190; 200",batMax:4,liStd:150,liMax:8,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2,roomW:2000,coolM:1.2,chg:0.1,chgMax:0,rects:"7,2; 10,8; 14,4; 21,6; 28,8",eer:9.5,eerH:9,pf:0.8,gmax:0.8,derate:0.9,safety:1.25,hN:15,hN1:30,gens:"33,45,60,80,100,150,200,250,300,400,500"};
+const A_LABELS=[["hN","Yedekleme süresi – N (saat)"],["hN1","Yedekleme süresi – N+1 (saat)"],["liStd","Standart lityum grup boyu (Ah)"],["liMax","Otomatikte lityum en fazla grup (fazlası 2 V hücre)"],["batMax","2 V hücrede en fazla paralel grup"],["cabG","DC kabin altına sığan akü grubu"],["cabW","DC kabin eni (cm)"],["cabD","DC kabin derinliği (cm)"],["rackG","Akü rafına sığan grup"],["rackW","Akü rafı eni (cm)"],["rackD","Akü rafı derinliği (cm)"],["dod","Lityum: kullanılabilir oran"],["aging","Lityum: yaşlanma payı (×)"],["dodPb","Kurşun-asit/jel: kullanılabilir oran"],["agingPb","Kurşun-asit/jel: yaşlanma payı (×)"],
   ["chg","Akü şarj oranı (C)"],["chgMax","Şarj akımı sınırı (A, 0 = sınır yok)"],["dcv","DC çalışma gerilimi (V)"],["eff","Rectifier verimi"],["roomW","Odanın dışarıdan aldığı ısı (W, güneş/duvar)"],["coolM","Klima pay katsayısı (×)"],["eer","Split klima verimi (BTU/Wh)"],["eerH","Hassas klima verimi (BTU/Wh)"],
   ["pf","Güç faktörü"],["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],["safety","Sigorta güvenlik payı (×)"],
   ["rects","Rectifier sistem boyları (kW; noktalı virgülle: 7,2; 10,8; 14,4)",1],["liSizes","Lityum 48 V modül boyları (Ah; noktalı virgülle)",1],["pb2Sizes","2 V hücre boyları (Ah)",1],["pb12Sizes","12 V monoblok boyları (Ah)",1],["gens","Jeneratör boyları (kVA)",1]];
@@ -138,13 +138,22 @@ function batPick(r,dc,h){
   const want=BAT[r.bt]?r.bt:"";const types=want?[want]:["li","pb2"];let res=null;
   for(const t of types){const p=batPar(t,h),needAh=dc*h/p.dod/p.rate*p.aging,L=batSizes(t);
     const fixed=want&&num(r.mod)&&L.includes(num(r.mod))?num(r.mod):null;
-    const b=fixed?{m:fixed,n:Math.ceil(needAh/fixed-1e-9)}:autoMod(needAh,L);
+    let b;
+    if(fixed)b={m:fixed};
+    else if(t==="li"){const sd=num(st.a.liStd)||150,m=L.includes(sd)?sd:(autoMod(needAh,L)||{m:L[L.length-1]}).m,n=Math.ceil(needAh/m-1e-9);
+      b=(!want&&n>(num(st.a.liMax)||8))?null:{m}}
+    else b=autoMod(needAh,L);
     res={t,...p,needAh,mod:b?b.m:L[L.length-1],auto:!fixed};res.mods=Math.ceil(needAh/res.mod-1e-9);
     if(b)break}
   /* gerçek süre: kurşun-asitte oran süreye bağlı, birkaç turda yakınsar */
   const ah=res.mods*res.mod;let real=ah*res.dod*res.rate/res.aging/dc;
   if(BAT[res.t].pb)for(let k=0;k<6;k++)real=ah*res.dod*pbRate(real)/res.aging/dc;
   return{...res,ah,real}}
+/* yerleşim: her DC kabinin altına cabG grup sığar, kalan gruplar rackG'lik akü raflarına */
+function place(c){const a=st.a;if(BAT[c.B.t].per===24)return null;
+  const cab=c.units,inCab=Math.min(c.mods,cab*(num(a.cabG)||0)),rest=c.mods-inCab,rg=num(a.rackG)||2,racks=Math.ceil(rest/rg-1e-9);
+  const area=(cab*a.cabW*a.cabD+racks*a.rackW*a.rackD)/10000;
+  return{cab,inCab,rest,racks,area}}
 function modOptions(r){const ts=BAT[r.bt]?[r.bt]:Object.keys(BAT);
   return `<option value="">Otomatik</option>`+ts.map(t=>`<optgroup label="${BAT[t].label}">${batSizes(t).map(x=>`<option value="${t}:${x}"${r.bt===t&&num(r.mod)===x?" selected":""}>${f(x,0)} Ah · ${BAT[t].short}</option>`).join("")}</optgroup>`).join("")}
 function rectSizes(){return [...new Set(String(st.a.rects??"7,2").split(";").map(num).filter(x=>x>0))].sort((x,y)=>x-y)}
@@ -192,7 +201,7 @@ function flowHtml(c,r){
    <div class="slg"><span><i style="background:var(--c1)"></i>Cihazlar ${f(c.rectW,0)} W</span><span><i style="background:var(--c2)"></i>Akü şarjı ${f(c.chgW,0)} W</span><span><i style="background:var(--c3)"></i>Klima ${f(c.coolW,0)} W</span></div>`;
   return `<details class="det"><summary>Hesap akışı – nasıl hesaplandı?</summary><ol class="flow">
    ${step("dev","c1","Cihazların yükü (DC)",`${f(c.dc,0)} A × ${a.dcv} V`,`${f(c.dc*a.dcv,0)} W`)}
-   ${step("bat","c2","Akü – "+BAT[c.B.t].label,`${f(c.dc,0)} A × ${f(c.h,0)} saat ÷ ${f(c.B.dod,2)} (kullanılabilir)${BAT[c.B.t].pb?` ÷ ${f(c.B.rate,2)} (${f(c.h,0)} saatte alınabilen kapasite)`:""} × ${f(c.B.aging,2)} (yaşlanma) = ${f(c.needAh,0)} Ah<br>${c.mods} grup × ${f(c.mod,0)} Ah = ${f(c.ah,0)} Ah${BAT[c.B.t].per>1?` · her grup ${BAT[c.B.t].per} ${BAT[c.B.t].unit} seri = 48 V, toplam ${c.mods*BAT[c.B.t].per} ${BAT[c.B.t].unit}`:""}<br>Şarj akımı: ${f(c.ah,0)} Ah × ${f(a.chg,2)} = ${f(c.chA,0)} A`,`${c.mods} × ${f(c.mod,0)} Ah<small>${f(c.real)} saat</small>`)}
+   ${step("bat","c2","Akü – "+BAT[c.B.t].label,`${f(c.dc,0)} A × ${f(c.h,0)} saat ÷ ${f(c.B.dod,2)} (kullanılabilir)${BAT[c.B.t].pb?` ÷ ${f(c.B.rate,2)} (${f(c.h,0)} saatte alınabilen kapasite)`:""} × ${f(c.B.aging,2)} (yaşlanma) = ${f(c.needAh,0)} Ah<br>${c.mods} grup × ${f(c.mod,0)} Ah = ${f(c.ah,0)} Ah${BAT[c.B.t].per>1?` · her grup ${BAT[c.B.t].per} ${BAT[c.B.t].unit} seri = 48 V, toplam ${c.mods*BAT[c.B.t].per} ${BAT[c.B.t].unit}`:""}${(()=>{const P=place(c);return P?`<br>Yerleşim: ${P.cab} DC kabin × ${f(a.cabG,0)} grup = ${P.inCab} grup${P.rest?`; kalan ${P.rest} grup ÷ ${f(a.rackG,0)} = ${P.racks} raf`:""}`:""})()}<br>Şarj akımı: ${f(c.ah,0)} Ah × ${f(a.chg,2)} = ${f(c.chA,0)} A`,`${c.mods} × ${f(c.mod,0)} Ah<small>${f(c.real)} saat</small>`)}
    ${step("rec","c4","Rectifier",`(${f(c.dc,0)} A cihaz + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW,2)} kW<br>Kapasite kullanımı: ${f(c.dcKW,2)} ÷ ${f(cap)} kW = %${f(c.rLoad*100,0)}`,`${c.units} × ${f(c.rSize)} kW${c.n1?"<small>1 yedek</small>":""}`)}
    ${step("snow","c3","Klima",`Odadaki ısı: ${f(c.heatW,0)} W (cihazlar + rectifier kaybı) × ${f(num(a.coolM)||1.2,2)} + ${f(num(a.roomW)||0,0)} W dışarıdan = ${f(c.needBTU/3.412,0)} W → ${f(c.needBTU,0)} BTU<br>${c.acRun} çalışan × ${f(c.btu,0)} BTU${c.acRun>1?" = "+f(c.acRun*c.btu,0)+" BTU":""}${c.n1?" + 1 yedek":""}<br>Çektiği güç: ${c.acRun} × ${f(c.btu,0)} ÷ ${f(c.eerV)} = ${f(c.coolW,0)} W`,`${c.acN} × ${f(c.btu/1000,0)}k BTU<small>${f(c.coolW,0)} W</small>`)}
    ${step("plug","c5","Şebekeden çekilen güç (220 V)",`Normal (akü dolu): ${f(c.normal)} kW · ${f(c.normal*1000/220,0)} A<br>En kötü durum (akü şarj olurken): ${f(c.rectW,0)} + ${f(c.chgW,0)} + ${f(c.coolW,0)} W${bar}`,`${f(c.peak)} kW<small>${f(c.amps,0)} A · ${f(c.kva)} kVA</small>`)}
@@ -205,6 +214,7 @@ function cardHtml(r,i){
   const c=calc(r),n1=r.scheme==="N+1";
   const need=c?`<div class="need"><div class="t">Gerekenler</div><dl>
      <dt>Akü</dt><dd class="${c.short?"warn":""}">${c.mods} × ${f(c.mod,0)} Ah<small>${BAT[c.B.t].short}${BAT[c.B.t].per>1?` · toplam ${c.mods*BAT[c.B.t].per} ${BAT[c.B.t].unit}`:""} · ${f(c.ah,0)} Ah<br>yaklaşık ${f(c.real)} saat dayanır${BAT[c.B.t].pb&&c.mods>(num(st.a.batMax)||4)?`<br><b class="warn">${c.mods} paralel grup çok fazla (kurşun-asitte en fazla ${num(st.a.batMax)||4} önerilir) – daha büyük boy veya 2 V hücre seç</b>`:""}</small></dd>
+     ${(()=>{const P=place(c);return P?`<dt>Yerleşim</dt><dd>${P.cab} DC kabin${P.racks?` + ${P.racks} akü rafı`:""}<small>${P.inCab} grup kabin altında${P.racks?`, ${P.rest} grup rafta`:""} · her biri ${f(st.a.cabW,0)}×${f(st.a.cabD,0)} cm<br>taban ≈ ${f(P.area,2)} m²</small></dd>`:`<dt>Yerleşim</dt><dd>ayrı akü sehpası<small>2 V hücreler zemine sehpayla dizilir, ölçü katalogdan</small></dd>`})()}
      <dt>Rectifier (DC sistem)</dt><dd>${c.units} × ${f(c.rSize)} kW<small>${n1?"1 çalışan + 1 yedek":"yük + akü şarjı ≈ "+f(c.dcKW,1)+" kW"}</small></dd>
      <dt>Klima</dt><dd>${c.acN} × ${f(c.btu,0)} BTU<small>${c.hassas?"hassas klima":"split klima"} · ${c.acRun} çalışan${n1?" + 1 yedek":""}<br>gereken ≈ ${f(c.needBTU,0)} BTU</small></dd>
      <dt>Elektrik ihtiyacı</dt><dd>${f(c.peak)} kW · ${f(c.amps,0)} A<small>en kötü durumda (akü şarj olurken)</small></dd>
