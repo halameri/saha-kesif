@@ -135,7 +135,8 @@ function cardHtml(r,i){
     <details class="det"><summary>Hesap detayları</summary><table>
      <tr><td>Gerekli akü: ${f(c.dc,0)} A × ${f(c.h,0)} saat ÷ ${st.a.dod} × ${st.a.aging}</td><td>${f(c.needAh,0)} Ah</td></tr>
      <tr><td>Akü şarj akımı</td><td>${f(c.chA,0)} A</td></tr>
-     <tr><td>Rectifier yük + şarj (${f(c.dc+c.chA,0)} A × ${st.a.dcv} V)</td><td>${f(c.dcKW,2)} kW · %${f(c.rLoad*100,0)} dolu</td></tr>
+     <tr><td>Rectifier yük + şarj (${f(c.dc+c.chA,0)} A × ${st.a.dcv} V)</td><td>${f(c.dcKW,2)} kW</td></tr>
+     <tr><td>Rectifier kapasite kullanımı (en yoğun anda)</td><td>${f(c.dcKW,2)} / ${f(c.rSize*(c.units-(c.n1?1:0)))} kW = %${f(c.rLoad*100,0)}</td></tr>
      <tr><td>Cihazlar (rectifier girişi)</td><td>${f(c.rectW,0)} W</td></tr>
      <tr><td>Akü şarjı (AC tarafı)</td><td>${f(c.chgW,0)} W</td></tr>
      <tr><td>Klima (1 çalışan)</td><td>${f(c.coolW,0)} W</td></tr>
