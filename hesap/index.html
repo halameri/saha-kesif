@@ -418,4 +418,6 @@ function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hid
 renderAssume();render();
 </script>
 <script src="extra.js?v=4"></script>
+<script>/* eski servis çalışanı bu sayfanın dosyalarını önbellekten veriyordu: güncelle, değişince bir kez yenile */
+if("serviceWorker" in navigator){navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});let once=0;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!once){once=1;location.reload()}})}</script>
 </body></html>
