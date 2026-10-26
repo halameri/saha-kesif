@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Enerji Yük Hesabı</title>
+<style>
+/* Layout: wide calculation grid, one row per location; assumptions panel above */
+:root{--bg:#eef1f4;--surface:#fff;--sunk:#f4f6f8;--ink:#14212b;--muted:#5b6b78;--line:#d3dbe1;--navy:#1c3d5a;--accent:#e09b12;--accent-soft:#fdf3dc;--in:#fffbea;--ok:#1d7f47;--ok-soft:#e2f2e8;--bad:#b8432c;--bad-soft:#fbe7e2;
+ --font:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f151a;--surface:#182229;--sunk:#121b21;--ink:#e3eaef;--muted:#93a3ae;--line:#2b3943;--navy:#8fb6d6;--accent:#f0b12e;--accent-soft:#3a2d10;--in:#2a2612;--ok:#4cc17e;--ok-soft:#173826;--bad:#f07a62;--bad-soft:#40201a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
+.wrap{max-width:1500px;margin:0 auto;padding:18px max(16px,env(safe-area-inset-right,0px)) 60px max(16px,env(safe-area-inset-left,0px))}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:3px solid var(--navy);padding-bottom:10px;margin-bottom:14px}
+header small{display:block;font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{margin:2px 0 0;font-size:1.7rem;color:var(--navy)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;min-height:40px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1b1403}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+details.assume{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:14px}
+details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 16px;padding:0 14px 14px}
+.agrid label{display:grid;gap:3px;font-size:.82rem;color:var(--muted);font-weight:600}
+.agrid input,.agrid select{background:var(--in);border:1px solid var(--line);border-radius:6px;padding:7px 8px;font:inherit;color:var(--ink);font-family:var(--mono)}
+.agrid .full{grid-column:1/-1}
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:1200px;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:5px 5px;text-align:right;white-space:nowrap}
+th{font-size:.78rem;color:var(--muted);font-weight:700;vertical-align:bottom;background:var(--sunk)}
+thead tr.grp th{text-align:center;color:#fff;background:var(--navy);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;border-left:2px solid var(--surface)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) thead tr.grp th{color:#0f151a}}
+td.l,th.l{text-align:left}
+td.g,th.g{border-left:2px solid var(--line)}
+td input,td select{background:var(--in);border:1px solid var(--line);border-radius:5px;padding:5px 6px;font:inherit;color:var(--ink)}
+td select[data-k="scheme"]{min-width:64px}td select[data-k="btu"]{min-width:88px}
+td input.n{width:56px;text-align:right;font-family:var(--mono)}
+td input.name{width:100%;min-width:140px}
+td.out{font-family:var(--mono)}
+td.key{font-weight:800;background:var(--ok-soft)}
+td.warn{background:var(--bad-soft);color:var(--bad);font-weight:700}
+tfoot td{font-weight:800;background:var(--sunk);border-top:2px solid var(--navy)}
+.del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:2px 6px}
+.del:hover{color:var(--bad)}
+.legend{font-size:.82rem;color:var(--muted);margin:10px 2px}
+.legend span{display:inline-block;width:14px;height:14px;border:1px solid var(--line);vertical-align:-2px;margin-right:4px;border-radius:3px}
+.notes{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:14px;font-size:.88rem;color:var(--muted)}
+.notes b{color:var(--ink)}
+.notes ol{margin:6px 0 0;padding-left:20px;display:grid;gap:3px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:600}
+@media print{.noprint,details.assume summary::after{display:none!important}body{background:#fff}.tw{border:0;overflow:visible}table{min-width:0;font-size:10px}td input,td select{border:0;background:none;padding:0}th,td{padding:3px 4px}}
+</style></head><body>
+<div class="wrap">
+<header><div><small>Enerji birimi · Irak Network Projesi</small><h1>Enerji Yük Hesabı</h1></div>
+ <div class="row noprint"><button class="btn primary" id="add">+ Lokasyon ekle</button><button class="btn" id="copy">Excel'e kopyala</button><button class="btn" id="csv">CSV indir</button><button class="btn" id="print">Yazdır / PDF</button></div></header>
+
+<details class="assume" id="assumeBox"><summary>Varsayımlar (tüm satırlar için) – değiştirince tablo kendiliğinden güncellenir</summary>
+ <div class="agrid" id="agrid"></div></details>
+
+<div class="tw"><table id="t">
+ <thead>
+  <tr class="grp"><th colspan="5">Girdi</th><th colspan="4">Akü (lityum)</th><th colspan="2">Rectifier (DC)</th><th colspan="2">Soğutma</th><th colspan="5">AC yük (220 V)</th><th colspan="2">Jeneratör</th><th class="noprint"></th></tr>
+  <tr>
+   <th class="l">Lokasyon</th><th>DC yük<br>(A, -48 V)</th><th>Şema</th><th>Yedekleme<br>(saat)</th><th>Klima<br>(BTU)</th>
+   <th class="g">Gerekli<br>(Ah)</th><th>Modül<br>(adet)</th><th>Kurulu<br>(Ah)</th><th>Gerçek<br>yedekleme</th>
+   <th class="g">Yük+şarj<br>(kW)</th><th>Ünite<br>(adet)</th>
+   <th class="g">Klima<br>(adet)</th><th>Klima<br>(kW)</th>
+   <th class="g">Normal<br>(kW)</th><th>En kötü<br>(kW)</th><th>En kötü<br>(A)</th><th>kVA</th><th>Talep<br>(A)</th>
+   <th class="g">Gerekli<br>(kVA)</th><th>Önerilen<br>(kVA)</th><th class="noprint"></th>
+  </tr></thead>
+ <tbody id="tb"></tbody><tfoot id="tf"></tfoot></table></div>
+<p class="legend"><span style="background:var(--in)"></span>Girilecek hücre &nbsp; <span style="background:var(--ok-soft)"></span>Talep edilecek değer &nbsp; <span style="background:var(--bad-soft)"></span>Dikkat (hedef karşılanmıyor)</p>
+
+<div class="notes"><b>Hesap adımları (her satır için)</b>
+ <ol>
+  <li><b>Akü:</b> DC yük × yedekleme saati ÷ kullanılabilir oran × yaşlanma payı → modül boyuna yukarı yuvarlanır. Gerçek yedekleme = kurulu Ah × kullanılabilir oran ÷ yaşlanma payı ÷ DC yük.</li>
+  <li><b>Rectifier:</b> (DC yük + akü şarj akımı) × DC gerilim. Şarj akımı = kurulu Ah × şarj oranı (C), en fazla şarj sınırı kadar. Ünite sayısı = yükü taşıyacak adet; N+1'de bir yedek eklenir.</li>
+  <li><b>Soğutma:</b> N'de 1, N+1'de 2 klima (biri yedek, yüke eklenmez). Klima gücü = BTU ÷ verim (EER) + FCB.</li>
+  <li><b>AC yük:</b> Normal = DC yük ÷ verim + klima + FCB. En kötü = normal + akü şarjı ÷ verim. Amper = W ÷ 220, kVA = kW ÷ güç faktörü.</li>
+  <li><b>Talep:</b> En kötü akım × güvenlik payı → standart sigorta boyu (16, 20, 25, 32, 40, 50, 63, 80, 100 A).</li>
+  <li><b>Jeneratör:</b> kVA ÷ (en fazla yüklenme × sıcaklık düşümü) → standart boya yukarı yuvarlanır.</li>
+ </ol></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+const DEF_A={dcv:54,eff:0.95,dod:0.9,aging:1.05,mod:150,chg:0.1,chgMax:0,rect:7.2,eer:9.5,fcb:200,pf:0.8,gmax:0.8,derate:0.9,safety:1.25,hN:15,hN1:30,
+  gens:"33,45,60,80,100,150"};
+const A_LABELS=[["dcv","DC çalışma gerilimi (V)"],["eff","Rectifier verimi"],["dod","Akü kullanılabilir oran (DoD)"],["aging","Akü yaşlanma payı (×)"],["mod","Akü modül boyu (Ah)"],
+  ["chg","Akü şarj oranı (C)"],["chgMax","Şarj akımı sınırı (A, 0 = sınırsız)"],["rect","Rectifier ünite gücü (kW)"],["eer","Klima verimi EER (BTU/Wh)"],["fcb","FCB gücü (W)"],
+  ["pf","Güç faktörü"],["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],["safety","Sigorta güvenlik payı (×)"],["hN","Varsayılan yedekleme – N (saat)"],["hN1","Varsayılan yedekleme – N+1 (saat)"],
+  ["gens","Standart jeneratör boyları (kVA)",1]];
+const BREAKERS=[16,20,25,32,40,50,63,80,100,125];
+const BTUS=[12000,18000,24000,30000,36000,48000,60000];
+const DEF_ROWS=["Bağdat (Dubbat)","Aziziye","Kut","Ali Al-Garbi","Amara","Kurna","Al-Andalus (Basra)","Al-Faw"].map(n=>({name:n,dc:"25",scheme:"N",hours:"",btu:"24000"}));
+const KEY="enerji-yuk-hesabi-v1";
+let st=load();
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.rows)return{a:{...DEF_A,...s.a},rows:s.rows}}catch(e){}return{a:{...DEF_A},rows:DEF_ROWS.map(r=>({...r}))}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+const num=v=>{const n=parseFloat(String(v??"").replace(",","."));return isNaN(n)?null:n};
+const f=(n,d=1)=>n==null||!isFinite(n)?"–":n.toLocaleString("tr-TR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function calc(r){
+  const a=st.a,dc=num(r.dc);if(dc==null||dc<=0)return null;
+  const n1=r.scheme==="N+1",h=num(r.hours)??(n1?a.hN1:a.hN),btu=num(r.btu)||24000;
+  const needAh=dc*h/a.dod*a.aging,mods=Math.ceil(needAh/a.mod-1e-9),ah=mods*a.mod,real=ah*a.dod/a.aging/dc;
+  let chA=ah*a.chg;if(a.chgMax>0)chA=Math.min(chA,a.chgMax);
+  const dcKW=(dc+chA)*a.dcv/1000,units=Math.ceil(dcKW/a.rect-1e-9)+(n1?1:0);
+  const acN=n1?2:1,acKW=btu/a.eer/1000;
+  const rectW=dc*a.dcv/a.eff,chgW=chA*a.dcv/a.eff,coolW=acKW*1000+a.fcb;
+  const normal=(rectW+coolW)/1000,peak=(rectW+chgW+coolW)/1000,amps=peak*1000/220,kva=peak/a.pf;
+  const req=amps*a.safety,brk=BREAKERS.find(b=>b>=req)||Math.ceil(req);
+  const gNeed=kva/(a.gmax*a.derate),sizes=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=sizes.find(s=>s>=gNeed)||null;
+  return{h,needAh,mods,ah,real,short:real<h-0.05,dcKW,units,acN,acKW,normal,peak,amps,kva,brk,gNeed,gen,n1};
+}
+function rowHtml(r,i){
+  const c=calc(r),o=(v,cls="")=>`<td class="out ${cls}">${v}</td>`;
+  return `<tr data-i="${i}">
+   <td class="l"><input class="name" data-k="name" value="${esc(r.name)}" aria-label="Lokasyon"></td>
+   <td><input class="n" inputmode="decimal" data-k="dc" value="${esc(r.dc)}" aria-label="DC yük"></td>
+   <td><select data-k="scheme" aria-label="Şema"><option${r.scheme==="N"?" selected":""}>N</option><option${r.scheme==="N+1"?" selected":""}>N+1</option></select></td>
+   <td><input class="n" inputmode="decimal" data-k="hours" value="${esc(r.hours)}" placeholder="${r.scheme==="N+1"?st.a.hN1:st.a.hN}" aria-label="Yedekleme"></td>
+   <td><select data-k="btu" aria-label="Klima BTU">${BTUS.map(b=>`<option value="${b}"${String(r.btu)===String(b)?" selected":""}>${b.toLocaleString("tr-TR")}</option>`).join("")}</select></td>
+   ${c?`${o(f(c.needAh,0),"g")}${o(c.mods+" × "+st.a.mod)}${o(f(c.ah,0))}${o(f(c.real)+" sa",c.short?"warn":"")}
+    ${o(f(c.dcKW,2),"g")}${o(c.units+" × "+f(st.a.rect))}
+    ${o(c.n1?"1+1":"1","g")}${o(f(c.acKW,2))}
+    ${o(f(c.normal,2),"g")}${o(f(c.peak,2))}${o(f(c.amps))}${o(f(c.kva))}${o(c.brk+" A","key")}
+    ${o(f(c.gNeed),"g")}${o(c.gen?c.gen+" kVA":"listeden büyük",c.gen?"key":"warn")}`:`<td class="g" colspan="15" style="text-align:left;color:var(--muted)">DC yükü girin</td>`}
+   <td class="noprint"><button class="del" data-del="${i}" aria-label="Satırı sil" title="Satırı sil">✕</button></td></tr>`;
+}
+function render(){document.getElementById("tb").innerHTML=st.rows.map(rowHtml).join("");renderFoot()}
+function renderFoot(){
+  const cs=st.rows.map(calc).filter(Boolean);
+  const sum=k=>cs.reduce((s,c)=>s+c[k],0);
+  document.getElementById("tf").innerHTML=cs.length?`<tr><td class="l">Toplam (${cs.length} lokasyon)</td><td class="out">${f(st.rows.reduce((s,r)=>s+(num(r.dc)||0),0),0)} A</td><td colspan="3"></td>
+   <td class="g"></td><td class="out">${sum("mods")}</td><td class="out">${f(sum("ah"),0)}</td><td></td><td class="g"></td><td class="out">${sum("units")}</td><td class="g out">${sum("acN")}</td><td></td>
+   <td class="g out">${f(sum("normal"),1)}</td><td class="out">${f(sum("peak"),1)}</td><td class="out">${f(sum("amps"),0)}</td><td class="out">${f(sum("kva"),1)}</td><td></td><td class="g"></td><td></td><td class="noprint"></td></tr>`:"";
+}
+function renderAssume(){
+  document.getElementById("agrid").innerHTML=A_LABELS.map(([k,l,full])=>`<label class="${full?"full":""}">${l}<input data-a="${k}" ${full?"":'inputmode="decimal"'} value="${esc(st.a[k])}"></label>`).join("")+
+   `<div class="full row"><button class="btn" id="resetA">Varsayımları sıfırla</button><button class="btn" id="resetR">Örnek lokasyonlara dön</button></div>`;
+}
+document.addEventListener("input",e=>{const el=e.target;
+  if(el.dataset.a){const k=el.dataset.a;st.a[k]=k==="gens"?el.value:(num(el.value)??st.a[k]);save();if(e.type==="change"||k!=="gens")render();return}
+  if(el.dataset.k){const i=+el.closest("tr").dataset.i;st.rows[i][el.dataset.k]=el.value;save();
+    const tr=el.closest("tr"),focusK=el.dataset.k,pos=el.selectionStart;
+    const tmp=document.createElement("tbody");tmp.innerHTML=rowHtml(st.rows[i],i);
+    // update only computed cells so typing is not interrupted
+    const cells=[...tmp.firstElementChild.children];[...tr.children].forEach((td,j)=>{if(j>4&&cells[j])td.outerHTML=cells[j].outerHTML});
+    if(tr.children.length!==cells.length){render();const ni=document.querySelector(`tr[data-i="${i}"] [data-k="${focusK}"]`);if(ni){ni.focus();try{ni.setSelectionRange(pos,pos)}catch(_){}}}
+    if(focusK==="scheme"){const hi=tr.querySelector('[data-k="hours"]');hi.placeholder=st.rows[i].scheme==="N+1"?st.a.hN1:st.a.hN}
+    renderFoot()}});
+document.addEventListener("change",e=>{if(e.target.dataset.a==="gens"){render()}});
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.del!==undefined){const i=+b.dataset.del;if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Sil?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="✕"}},2500);return}st.rows.splice(i,1);save();render();return}
+  if(b.id==="add"){st.rows.push({name:"",dc:"25",scheme:"N",hours:"",btu:"24000"});save();render();const ins=document.querySelectorAll('[data-k="name"]');ins[ins.length-1]?.focus();return}
+  if(b.id==="resetA"){st.a={...DEF_A};save();renderAssume();render();toast("Varsayımlar sıfırlandı");return}
+  if(b.id==="resetR"){if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Emin misin? Tekrar bas";return}st.rows=DEF_ROWS.map(r=>({...r}));save();render();renderAssume();toast("Örnek lokasyonlar yüklendi");return}
+  if(b.id==="copy")copyTSV();if(b.id==="csv")downloadCSV();if(b.id==="print")window.print();});
+function matrix(){
+  const head=["Lokasyon","DC yük (A)","Şema","Yedekleme (saat)","Klima (BTU)","Gerekli akü (Ah)","Akü modül","Kurulu akü (Ah)","Gerçek yedekleme (saat)","Rectifier yük+şarj (kW)","Rectifier ünite","Klima adet","Klima (kW)","Normal (kW)","En kötü (kW)","En kötü (A)","kVA","Talep (A)","Jeneratör gerekli (kVA)","Jeneratör önerilen (kVA)"];
+  const rows=st.rows.map(r=>{const c=calc(r);const d=(n,k=1)=>n==null?"":n.toFixed(k).replace(".",",");
+    return [r.name,r.dc,r.scheme,c?c.h:"",r.btu,c?d(c.needAh,0):"",c?c.mods:"",c?c.ah:"",c?d(c.real):"",c?d(c.dcKW,2):"",c?c.units:"",c?c.acN:"",c?d(c.acKW,2):"",c?d(c.normal,2):"",c?d(c.peak,2):"",c?d(c.amps):"",c?d(c.kva):"",c?c.brk:"",c?d(c.gNeed):"",c?(c.gen||""):""]});
+  return [head,...rows];
+}
+async function copyTSV(){const t=matrix().map(r=>r.join("\t")).join("\n");try{await navigator.clipboard.writeText(t);toast("Kopyalandı – Excel'de bir hücreye yapıştır")}catch(e){toast("Kopyalanamadı; CSV indir'i kullan")}}
+function downloadCSV(){const t="﻿"+matrix().map(r=>r.map(x=>/[;"\n]/.test(String(x))?`"${String(x).replace(/"/g,'""')}"`:x).join(";")).join("\r\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv;charset=utf-8"}));a.download="enerji-yuk-hesabi.csv";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2500)}
+renderAssume();render();
+</script>
+</body></html>
