@@ -1,4 +1,4 @@
-const V="saha-kesif-v21";
+const V="saha-kesif-v22";
 const FILES=["./","index.html","manifest.webmanifest","icon-180.png","icon-192.png","icon-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(FILES.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
@@ -8,6 +8,9 @@ self.addEventListener("fetch",e=>{
   if(req.method!=="GET")return;
   const url=new URL(req.url);
   if(url.origin!==location.origin)return;
+  /* Bu servis çalışanı sadece kök klasördeki ilk uygulamaya ait. hesap/ ve v2/ sayfalarına karışmaz. */
+  const base=new URL("./",location.href).pathname,rest=url.pathname.slice(base.length);
+  if(!url.pathname.startsWith(base)||rest.includes("/"))return;
   const isDoc=req.mode==="navigate"||/(^|\/)(index\.html)?$/.test(url.pathname);
   if(isDoc){
     /* Uygulama sayfası: önce ağ (en fazla 2,5 sn), olmazsa önbellek.
