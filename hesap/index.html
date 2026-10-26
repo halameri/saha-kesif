@@ -190,8 +190,8 @@ function calc(r){
   /* 63 A üstü tek fazda istenmez: 3 faz 380 V'a geç */
   const ph3=peak*1000/(1.732*380),three=brk1>63,brk=three?(BREAKERS.find(b=>b>=ph3*a.safety)||Math.ceil(ph3*a.safety)):brk1;
   const talep=three?`${brk} A · 3 faz`:`${brk} A · 220 V`;
-  const gNeed=kva/(a.gmax*a.derate),sizes=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=sizes.find(s=>s>=gNeed)||null;
-  return{B,hassas,dc,h,btu,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acRun,acKW,heatW,needBTU,btuAuto,eerV,rectW,chgW,coolW,normal,peak,amps,kva,brk,three,ph3,talep,gNeed,gen,n1};
+  const gNeed=kva/(a.gmax*a.derate),sizes=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=sizes.find(s=>s>=gNeed)||null,genMin=gen!=null&&gen===sizes[0]&&gNeed<gen*0.8;
+  return{B,hassas,dc,h,btu,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acRun,acKW,heatW,needBTU,btuAuto,eerV,rectW,chgW,coolW,normal,peak,amps,kva,brk,three,ph3,talep,gNeed,gen,genMin,n1};
 }
 
 /* ---- calculation flow with icons ---- */
@@ -221,7 +221,7 @@ function flowHtml(c,r){
    ${step("snow","c3","Klima",`Odadaki ısı: ${f(c.heatW,0)} W (cihazlar + rectifier kaybı) × ${f(num(a.coolM)||1.2,2)} + ${f(num(a.roomW)||0,0)} W dışarıdan = ${f(c.needBTU/3.412,0)} W → ${f(c.needBTU,0)} BTU<br>${c.acRun} çalışan × ${f(c.btu,0)} BTU${c.acRun>1?" = "+f(c.acRun*c.btu,0)+" BTU":""}${c.n1?" + 1 yedek":""}<br>Çektiği güç: ${c.acRun} × ${f(c.btu,0)} ÷ ${f(c.eerV)} = ${f(c.coolW,0)} W`,`${c.acN} × ${f(c.btu/1000,0)}k BTU<small>${f(c.coolW,0)} W</small>`)}
    ${step("plug","c5","Şebekeden çekilen güç (220 V)",`Normal (akü dolu): ${f(c.normal)} kW · ${f(c.normal*1000/220,0)} A<br>En kötü durum (akü şarj olurken): ${f(c.rectW,0)} + ${f(c.chgW,0)} + ${f(c.coolW,0)} W${bar}`,`${f(c.peak)} kW<small>${f(c.amps,0)} A · ${f(c.kva)} kVA</small>`)}
    ${step("fuse","c6","Talep edilecek sigorta",c.three?`Tek faz: ${f(c.amps,0)} A – 63 A üstü, tek faz uygun değil<br>3 faz: ${f(c.peak,1)} kW ÷ (1,73 × 380 V) = ${f(c.ph3,0)} A/faz × ${f(a.safety,2)} = ${f(c.ph3*a.safety,0)} A → bir üst standart boy`:`${f(c.amps,0)} A × ${f(a.safety,2)} güvenlik payı = ${f(c.amps*a.safety,0)} A → bir üst standart boy<br>3 faz olursa faz başı ≈ ${f(c.ph3,0)} A`,`<b>${c.brk} A</b>${c.three?"<small>3 faz</small>":""}`)}
-   <li class="fs">${ico("gen","c7")}<div class="fb"><div class="ft">Jeneratör</div><div class="fc">${f(c.kva)} kVA ÷ (${f(a.gmax,2)} en fazla yük × ${f(a.derate,2)} sıcaklık) = ${f(c.gNeed)} kVA → standart boy</div></div><div class="fr">${c.gen?c.gen+" kVA":"–"}</div></li>
+   <li class="fs">${ico("gen","c7")}<div class="fb"><div class="ft">Jeneratör</div><div class="fc">${f(c.kva)} kVA ÷ (${f(a.gmax,2)} en fazla yük × ${f(a.derate,2)} sıcaklık) = ${f(c.gNeed)} kVA → ${c.genMin?"listedeki en küçük boy ("+c.gen+" kVA); daha küçükleri Gelişmiş ayarlar → Jeneratör boylarına ekleyin":"bir üst standart boy"}</div></div><div class="fr">${c.gen?c.gen+" kVA":"–"}</div></li>
   </ol></details>`;
 }
 /* ---- cards ---- */
@@ -234,7 +234,7 @@ function cardHtml(r,i){
      <dt>Klima</dt><dd>${c.acN} × ${f(c.btu,0)} BTU<small>${c.hassas?"hassas klima":"split klima"} · ${c.acRun} çalışan${n1?" + 1 yedek":""}<br>gereken ≈ ${f(c.needBTU,0)} BTU</small></dd>
      <dt>Elektrik ihtiyacı</dt><dd>${f(c.peak)} kW · ${f(c.amps,0)} A<small>en kötü durumda (akü şarj olurken)</small></dd>
      <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.talep}${c.three?"<small>380 V, faz başı · tek fazda "+f(c.amps,0)+" A olurdu</small>":""}</dd></div>
-     <dt>Jeneratör</dt><dd class="${c.gen?"":"warn"}">${c.gen?c.gen+" kVA":"listedekilerden büyük"}<small>gerekli en az ${f(c.gNeed)} kVA</small></dd>
+     <dt>Jeneratör</dt><dd class="${c.gen?"":"warn"}">${c.gen?c.gen+" kVA":"listedekilerden büyük"}<small>hesaplanan ihtiyaç ${f(c.gNeed)} kVA${c.genMin?" · listedeki en küçük boy "+c.gen+" kVA":""}</small></dd>
     </dl></div>
     ${flowHtml(c,r)}`:`<div class="need"><p class="warn" style="margin:8px 0">DC yükü girin.</p></div>`;
   return `<section class="card" data-i="${i}">
