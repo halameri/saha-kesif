@@ -114,7 +114,7 @@ const DEF_A={dcv:54,eff:0.95,chg:0.1,chgMax:0,
  liSizes:"50; 100; 150; 200; 300",pb2Sizes:"200; 300; 400; 500; 600; 800; 1000; 1200; 1500; 2000; 2500; 3000",pb12Sizes:"100; 150; 190; 200",
  hSmall:15,hBig:10,hLimit:100,
  roomW:2000,coolM:1.2,splitMin:24000,splitA:20,dxA:33.2,acAll:1,
- rects:"7,2; 72",v1:220,v3:380,monoMax:63,safety:1.25,gmax:0.8,derate:0.9,gens:"33,45,60,80,100,150,200,250,300,400,500",
+ rects:"7,2; 72",v1:220,v3:380,monoMax:63,dcMonoMax:10,safety:1.25,gmax:0.8,derate:0.9,gens:"33,45,60,80,100,150,200,250,300,400,500",
  dxW:130,dxD:75,dxFront:1,dcBigW:60,dcBigD:60,lineGap:20,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2};
 const A_LABELS=[
  ["hSmall","Yedekleme – küçük yük (saat)"],["hBig","Yedekleme – büyük yük (saat)"],["hLimit","Büyük yük sınırı (A DC, bu ve üstü)"],
@@ -123,7 +123,7 @@ const A_LABELS=[
  ["chg","Akü şarj oranı (C)"],["chgMax","Şarj akımı sınırı (A, 0 = sınır yok)"],["dcv","DC çalışma gerilimi (V)"],["eff","Rectifier verimi"],
  ["roomW","Klima: odanın dışarıdan aldığı ısı (W)"],["coolM","Klima pay katsayısı (×)"],["splitMin","En küçük split klima (BTU)"],
  ["splitA","Split klima akımı (A, 24.000 BTU başına, monofaze)"],["dxA","DX klima akımı (A/faz, 20.000 kcal/h başına)"],["acAll","Max yükte yedek klima da sayılsın (1 = evet, 0 = hayır)"],
- ["v1","Monofaze gerilim (V)"],["v3","Trifaze gerilim (V)"],["monoMax","Monofaze en fazla akım (A, üstü trifaze)"],["safety","Sigorta güvenlik payı (×)"],
+ ["v1","Monofaze gerilim (V)"],["v3","Trifaze gerilim (V)"],["monoMax","Monofaze en fazla akım (A, üstü trifaze)"],["dcMonoMax","DC sistem tek faz en fazla (kW, üstü 3 faz girişli)"],["safety","Sigorta güvenlik payı (×)"],
  ["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],
  ["cabG","DC kabin altına sığan akü grubu"],["cabW","DC kabin eni (cm)"],["cabD","DC kabin derinliği (cm)"],["rackG","Akü rafına sığan grup"],["rackW","Akü rafı eni (cm)"],["rackD","Akü rafı derinliği (cm)"],
  ["dxW","DX klima iç ünite eni (cm)"],["dxD","DX klima iç ünite derinliği (cm)"],["dxFront","DX klima önü boşluk (m)"],["dcBigW","Ayrı DC dolabı eni (cm, jel akülü sitelerde)"],["dcBigD","Ayrı DC dolabı derinliği (cm)"],["lineGap","DC+Akü sırasında aralık (cm)"],
@@ -216,14 +216,14 @@ function calc(r){
   const unitA=acT==="split"?acs/24000*(num(a.splitA)||0):acs/20000*(num(a.dxA)||0);
   /* besleme: DX varsa veya monofaze toplam sınırı aşarsa trifaze */
   const monoTot=dcW/a.v1+(acT==="split"?acCount*unitA:Infinity);
-  const tri=!(monoTot<=(num(a.monoMax)||63));
+  const dcTri=units*rSize>(num(a.dcMonoMax)||10),tri=dcTri||!(monoTot<=(num(a.monoMax)||63));
   let acA,dcA;
   if(!tri){acA=acCount*unitA;dcA=dcW/a.v1}
   else{acA=acT==="dx"?acCount*unitA:Math.ceil(acCount/3)*unitA;dcA=dcW/(1.732*a.v3)}
   const tot=acA+dcA,kva=(tri?1.732*a.v3:a.v1)*tot/1000;
   const brk=BREAKERS.find(b=>b>=tot*a.safety-1e-9)||Math.ceil(tot*a.safety);
   const gNeed=kva/(a.gmax*a.derate),gs=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=gs.find(x=>x>=gNeed)||null,genMin=gen!=null&&gen===gs[0]&&gNeed<gen*0.8;
-  return{B,bag,dc,h,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,dcW,heatW,needW,need,acT,acs,acRun,acN,acCount,unitA,tri,acA,dcA,tot,kva,brk,gNeed,gen,genMin,acShort,acUser,autoS,autoN};
+  return{B,bag,dc,h,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,dcW,heatW,needW,need,acT,acs,acRun,acN,acCount,unitA,tri,acA,dcA,tot,kva,brk,gNeed,gen,genMin,dcTri,acShort,acUser,autoS,autoN};
 }
 function rectSizes(){const l=list("rects");return l.length?l:[7.2]}
 const mimari=c=>`DC, ${c.bag?"1+1 ":""}Klima, Akü, Jeneratör`;
@@ -276,7 +276,7 @@ function cardHtml(r,i){
     <div class="t" style="margin-top:12px">Max AC yük (Amp)</div><dl>
      <dt>Klima</dt><dd>${f(c.acA,1)} A</dd>
      <dt>Enerji besleme</dt><dd>${besl(c)}<small>${c.tri?`3 faz ${st.a.v3} V, değerler faz başı`:`${st.a.v1} V`}</small></dd>
-     <dt>DC</dt><dd>${f(c.dcA,1)} A<small>rectifier girişi (yük + akü şarjı)</small></dd>
+     <dt>DC</dt><dd>${f(c.dcA,1)} A<small>rectifier girişi (yük + akü şarjı) · ${c.dcTri?"DC sistem 3 faz girişli":"DC sistem tek faza da bağlanabilir"}</small></dd>
      <dt>Toplam</dt><dd>${f(c.tot,1)} A<small>${f(c.kva,1)} kVA</small></dd>
      <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.brk} A · ${besl(c)}</dd></div>
     </dl>
