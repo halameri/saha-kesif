@@ -102,35 +102,58 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 
 <script>
 "use strict";
-const DEF_A={dcv:54,eff:0.95,dod:0.9,aging:1.05,mod:150,mods:"50; 100; 150; 200; 300; 500; 800; 1000; 1500; 2000; 2500; 3000",batMax:4,chg:0.1,chgMax:0,rects:"7,2; 10,8; 14,4; 21,6; 28,8",eer:9.5,eerH:9,pf:0.8,gmax:0.8,derate:0.9,safety:1.25,hN:15,hN1:30,gens:"33,45,60,80,100,150,200,250,300,400,500"};
-const A_LABELS=[["hN","Yedekleme süresi – N (saat)"],["hN1","Yedekleme süresi – N+1 (saat)"],["batMax","Otomatik seçimde en fazla paralel grup"],["dod","Akü kullanılabilir oran"],["aging","Akü yaşlanma payı (×)"],
+const DEF_A={dcv:54,eff:0.95,dod:0.9,aging:1.05,dodPb:0.8,agingPb:1.25,liSizes:"50; 100; 150; 200; 300",pb2Sizes:"200; 300; 400; 500; 600; 800; 1000; 1200; 1500; 2000; 2500; 3000",pb12Sizes:"100; 150; 190; 200",batMax:4,chg:0.1,chgMax:0,rects:"7,2; 10,8; 14,4; 21,6; 28,8",eer:9.5,eerH:9,pf:0.8,gmax:0.8,derate:0.9,safety:1.25,hN:15,hN1:30,gens:"33,45,60,80,100,150,200,250,300,400,500"};
+const A_LABELS=[["hN","Yedekleme süresi – N (saat)"],["hN1","Yedekleme süresi – N+1 (saat)"],["batMax","Otomatik seçimde en fazla paralel grup"],["dod","Lityum: kullanılabilir oran"],["aging","Lityum: yaşlanma payı (×)"],["dodPb","Kurşun-asit/jel: kullanılabilir oran"],["agingPb","Kurşun-asit/jel: yaşlanma payı (×)"],
   ["chg","Akü şarj oranı (C)"],["chgMax","Şarj akımı sınırı (A, 0 = sınır yok)"],["dcv","DC çalışma gerilimi (V)"],["eff","Rectifier verimi"],["eer","Split klima verimi (BTU/Wh)"],["eerH","Hassas klima verimi (BTU/Wh)"],
   ["pf","Güç faktörü"],["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],["safety","Sigorta güvenlik payı (×)"],
-  ["rects","Rectifier sistem boyları (kW; noktalı virgülle: 7,2; 10,8; 14,4)",1],["mods","Akü modül boyları (Ah; noktalı virgülle: 50; 100; 150; 200)",1],["gens","Jeneratör boyları (kVA)",1]];
-const TXT=["rects","gens","mods"];
+  ["rects","Rectifier sistem boyları (kW; noktalı virgülle: 7,2; 10,8; 14,4)",1],["liSizes","Lityum 48 V modül boyları (Ah; noktalı virgülle)",1],["pb2Sizes","2 V hücre boyları (Ah)",1],["pb12Sizes","12 V monoblok boyları (Ah)",1],["gens","Jeneratör boyları (kVA)",1]];
+const TXT=["rects","gens","liSizes","pb2Sizes","pb12Sizes"];
 const BREAKERS=[16,20,25,32,40,50,63,80,100,125,160,200,250,315,400,500,630];
 const BTUS=[12000,18000,24000,30000,36000,48000,60000];
 const DEF_ROWS=[{name:"Test1",dc:"25",scheme:"N",hours:"",btu:"24000",rect:""},{name:"Test2",dc:"25",scheme:"N+1",hours:"",btu:"24000",rect:""}];
 const KEY="enerji-yuk-hesabi-v3";const OLD_MODS=["50; 100; 150; 200; 300"];/* same key: new fields have defaults */
 let st=load();
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.rows){const a={...DEF_A,...s.a};if(OLD_MODS.includes(a.mods))a.mods=DEF_A.mods;if(a.gens==="33,45,60,80,100,150")a.gens=DEF_A.gens;return{a,rows:s.rows}}}catch(e){}return{a:{...DEF_A},rows:DEF_ROWS.map(r=>({...r}))}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.rows){const a={...DEF_A,...s.a};delete a.mods;delete a.mod;s.rows.forEach(r=>{if(r.mod&&!r.bt)r.bt=parseFloat(r.mod)>300?"pb2":"li"});if(a.gens==="33,45,60,80,100,150")a.gens=DEF_A.gens;return{a,rows:s.rows}}}catch(e){}return{a:{...DEF_A},rows:DEF_ROWS.map(r=>({...r}))}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
 const num=v=>{const n=parseFloat(String(v??"").replace(",","."));return isNaN(n)?null:n};
 const f=(n,d=1)=>n==null||!isFinite(n)?"–":n.toLocaleString("tr-TR",{minimumFractionDigits:d,maximumFractionDigits:d});
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function batSizes(){const l=[...new Set(String(st.a.mods??"").split(";").map(num).filter(x=>x>0))].sort((x,y)=>x-y);return l.length?l:[150]}
-/* Otomatik: en fazla batMax grupla karşılayan boylar içinden toplam Ah en az olan; eşitse daha az grup */
-function autoMod(needAh){const L=batSizes(),mx=Math.max(1,num(st.a.batMax)||4);let best=null;
+/* ---- akü tipleri ----
+ lityum: 48 V modül, kapasite deşarj süresinden bağımsız kabul edilir.
+ kurşun-asit/jel: etiket kapasitesi C10 (10 saatte, 1,80 V/hücre). Daha kısa sürede boşalırsa
+ alınabilen kapasite düşer (aşağıdaki tablo, tipik OPzV/AGM katalog değerleri). */
+const PB_RATE=[[1,0.55],[2,0.68],[3,0.76],[5,0.86],[8,0.95],[10,1]];
+function pbRate(h){if(h>=10)return 1;if(h<=1)return PB_RATE[0][1];for(let i=1;i<PB_RATE.length;i++){const[h1,r1]=PB_RATE[i-1],[h2,r2]=PB_RATE[i];if(h<=h2)return r1+(r2-r1)*(h-h1)/(h2-h1)}return 1}
+const BAT={
+ li:{label:"Lityum 48 V modül",short:"lityum",per:1,unit:"modül",key:"liSizes",pb:false},
+ pb2:{label:"2 V hücre (OPzV/OPzS)",short:"2 V hücre",per:24,unit:"hücre",key:"pb2Sizes",pb:true},
+ pb12:{label:"12 V monoblok (jel/AGM)",short:"12 V monoblok",per:4,unit:"akü",key:"pb12Sizes",pb:true}};
+function batSizes(t){const l=[...new Set(String(st.a[BAT[t].key]??"").split(";").map(num).filter(x=>x>0))].sort((x,y)=>x-y);return l.length?l:[150]}
+function batPar(t,h){const a=st.a;return BAT[t].pb?{dod:num(a.dodPb)||0.8,aging:num(a.agingPb)||1.25,rate:pbRate(h)}:{dod:num(a.dod)||0.9,aging:num(a.aging)||1.05,rate:1}}
+/* Otomatik boy: en fazla batMax grupla karşılayanlar içinden toplam Ah en az olan; eşitse daha az grup */
+function autoMod(needAh,L){const mx=Math.max(1,num(st.a.batMax)||4);let best=null;
   for(const m of L){const n=Math.ceil(needAh/m-1e-9);if(n>mx)continue;const t=n*m;if(!best||t<best.t-1e-9||(Math.abs(t-best.t)<1e-9&&n<best.n))best={m,n,t}}
-  return best?best.m:L[L.length-1]}
-const batKind=m=>m>300?"2 V hücre grubu (24 hücre = 48 V)":"48 V modül";
+  return best}
+function batPick(r,dc,h){
+  const want=BAT[r.bt]?r.bt:"";const types=want?[want]:["li","pb2"];let res=null;
+  for(const t of types){const p=batPar(t,h),needAh=dc*h/p.dod/p.rate*p.aging,L=batSizes(t);
+    const fixed=want&&num(r.mod)&&L.includes(num(r.mod))?num(r.mod):null;
+    const b=fixed?{m:fixed,n:Math.ceil(needAh/fixed-1e-9)}:autoMod(needAh,L);
+    res={t,...p,needAh,mod:b?b.m:L[L.length-1],auto:!fixed};res.mods=Math.ceil(needAh/res.mod-1e-9);
+    if(b)break}
+  /* gerçek süre: kurşun-asitte oran süreye bağlı, birkaç turda yakınsar */
+  const ah=res.mods*res.mod;let real=ah*res.dod*res.rate/res.aging/dc;
+  if(BAT[res.t].pb)for(let k=0;k<6;k++)real=ah*res.dod*pbRate(real)/res.aging/dc;
+  return{...res,ah,real}}
+function modOptions(r){const t=BAT[r.bt]?r.bt:"";if(!t)return`<option value="">Otomatik</option>`;
+  return `<option value="">Otomatik</option>`+batSizes(t).map(x=>`<option value="${x}"${num(r.mod)===x?" selected":""}>${f(x,0)} Ah</option>`).join("")}
 function rectSizes(){return [...new Set(String(st.a.rects??"7,2").split(";").map(num).filter(x=>x>0))].sort((x,y)=>x-y)}
 
 /* ---- calculation (same rules as before) ---- */
 function calc(r){
   const a=st.a,dc=num(r.dc);if(dc==null||dc<=0)return null;
   const n1=r.scheme==="N+1",h=num(r.hours)??(n1?a.hN1:a.hN),btu=num(r.btu)||24000;
-  const needAh=dc*h/a.dod*a.aging,mod=num(r.mod)||autoMod(needAh),mods=Math.ceil(needAh/mod-1e-9),ah=mods*mod,real=ah*a.dod/a.aging/dc;
+  const B=batPick(r,dc,h),{needAh,mod,mods,ah,real}=B;
   let chA=ah*a.chg;if(a.chgMax>0)chA=Math.min(chA,a.chgMax);
   const dcKW=(dc+chA)*a.dcv/1000,rs=rectSizes();
   let rSize=num(r.rect);const rAuto=!rSize;if(rAuto)rSize=rs.find(x=>x>=dcKW-1e-9)||rs[rs.length-1];
@@ -143,7 +166,7 @@ function calc(r){
   const ph3=peak*1000/(1.732*380),three=brk1>63,brk=three?(BREAKERS.find(b=>b>=ph3*a.safety)||Math.ceil(ph3*a.safety)):brk1;
   const talep=three?`${brk} A · 3 faz`:`${brk} A · 220 V`;
   const gNeed=kva/(a.gmax*a.derate),sizes=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=sizes.find(s=>s>=gNeed)||null;
-  return{hassas,dc,h,btu,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acKW,rectW,chgW,coolW,normal,peak,amps,kva,brk,three,ph3,talep,gNeed,gen,n1};
+  return{B,hassas,dc,h,btu,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acKW,rectW,chgW,coolW,normal,peak,amps,kva,brk,three,ph3,talep,gNeed,gen,n1};
 }
 
 /* ---- calculation flow with icons ---- */
@@ -164,7 +187,7 @@ function flowHtml(c,r){
    <div class="slg"><span><i style="background:var(--c1)"></i>Cihazlar ${f(c.rectW,0)} W</span><span><i style="background:var(--c2)"></i>Akü şarjı ${f(c.chgW,0)} W</span><span><i style="background:var(--c3)"></i>Klima ${f(c.coolW,0)} W</span></div>`;
   return `<details class="det"><summary>Hesap akışı – nasıl hesaplandı?</summary><ol class="flow">
    ${step("dev","c1","Cihazların yükü (DC)",`${f(c.dc,0)} A × ${a.dcv} V`,`${f(c.dc*a.dcv,0)} W`)}
-   ${step("bat","c2","Akü",`${f(c.dc,0)} A × ${f(c.h,0)} saat ÷ ${f(a.dod,2)} (kullanılabilir) × ${f(a.aging,2)} (yaşlanma) = ${f(c.needAh,0)} Ah<br>Şarj akımı: ${f(c.ah,0)} Ah × ${f(a.chg,2)} = ${f(c.chA,0)} A`,`${c.mods} × ${f(c.mod,0)} Ah<small>${f(c.real)} saat</small>`)}
+   ${step("bat","c2","Akü – "+BAT[c.B.t].label,`${f(c.dc,0)} A × ${f(c.h,0)} saat ÷ ${f(c.B.dod,2)} (kullanılabilir)${BAT[c.B.t].pb?` ÷ ${f(c.B.rate,2)} (${f(c.h,0)} saatte alınabilen kapasite)`:""} × ${f(c.B.aging,2)} (yaşlanma) = ${f(c.needAh,0)} Ah<br>${c.mods} grup × ${f(c.mod,0)} Ah = ${f(c.ah,0)} Ah${BAT[c.B.t].per>1?` · her grup ${BAT[c.B.t].per} ${BAT[c.B.t].unit} seri = 48 V, toplam ${c.mods*BAT[c.B.t].per} ${BAT[c.B.t].unit}`:""}<br>Şarj akımı: ${f(c.ah,0)} Ah × ${f(a.chg,2)} = ${f(c.chA,0)} A`,`${c.mods} × ${f(c.mod,0)} Ah<small>${f(c.real)} saat</small>`)}
    ${step("rec","c4","Rectifier",`(${f(c.dc,0)} A cihaz + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW,2)} kW<br>Kapasite kullanımı: ${f(c.dcKW,2)} ÷ ${f(cap)} kW = %${f(c.rLoad*100,0)}`,`${c.units} × ${f(c.rSize)} kW${c.n1?"<small>1 yedek</small>":""}`)}
    ${step("snow","c3","Klima",`${f(c.btu,0)} BTU ÷ ${f(c.hassas?(a.eerH||9):a.eer)} (verim)${c.n1?" · ikinci klima yedek":""}`,`${f(c.coolW,0)} W`)}
    ${step("plug","c5","Şebekeden çekilen güç (220 V)",`Normal (akü dolu): ${f(c.normal)} kW · ${f(c.normal*1000/220,0)} A<br>En kötü durum (akü şarj olurken): ${f(c.rectW,0)} + ${f(c.chgW,0)} + ${f(c.coolW,0)} W${bar}`,`${f(c.peak)} kW<small>${f(c.amps,0)} A · ${f(c.kva)} kVA</small>`)}
@@ -176,7 +199,7 @@ function flowHtml(c,r){
 function cardHtml(r,i){
   const c=calc(r),n1=r.scheme==="N+1";
   const need=c?`<div class="need"><div class="t">Gerekenler</div><dl>
-     <dt>Akü</dt><dd class="${c.short?"warn":""}">${c.mods} × ${f(c.mod,0)} Ah<small>toplam ${f(c.ah,0)} Ah · ${batKind(c.mod)}<br>yaklaşık ${f(c.real)} saat dayanır</small></dd>
+     <dt>Akü</dt><dd class="${c.short?"warn":""}">${c.mods} × ${f(c.mod,0)} Ah<small>${BAT[c.B.t].short}${BAT[c.B.t].per>1?` · toplam ${c.mods*BAT[c.B.t].per} ${BAT[c.B.t].unit}`:""} · ${f(c.ah,0)} Ah<br>yaklaşık ${f(c.real)} saat dayanır${BAT[c.B.t].pb&&c.mods>(num(st.a.batMax)||4)?`<br><b class="warn">${c.mods} paralel grup çok fazla (kurşun-asitte en fazla ${num(st.a.batMax)||4} önerilir) – daha büyük boy veya 2 V hücre seç</b>`:""}</small></dd>
      <dt>Rectifier (DC sistem)</dt><dd>${c.units} × ${f(c.rSize)} kW<small>${n1?"1 çalışan + 1 yedek":"yük + akü şarjı ≈ "+f(c.dcKW,1)+" kW"}</small></dd>
      <dt>Klima</dt><dd>${c.acN} × ${f(c.btu,0)} BTU<small>${c.hassas?"hassas klima":"split klima"}${n1?" · 1 çalışan + 1 yedek":""}</small></dd>
      <dt>Elektrik ihtiyacı</dt><dd>${f(c.peak)} kW · ${f(c.amps,0)} A<small>en kötü durumda (akü şarj olurken)</small></dd>
@@ -192,15 +215,16 @@ function cardHtml(r,i){
     <label>Yedekleme (saat)<input inputmode="decimal" data-k="hours" value="${esc(r.hours)}" placeholder="${n1?st.a.hN1:st.a.hN}"></label>
     <label>Klima tipi<div class="seg">${[["split","Split"],["hassas","Hassas"]].map(([k,l])=>`<button type="button" data-ac="${k}" aria-pressed="${(r.ac||"split")===k}">${l}</button>`).join("")}</div></label>
     <label>Klima (BTU)<select data-k="btu">${BTUS.map(b=>`<option value="${b}"${String(r.btu)===String(b)?" selected":""}>${f(b,0)}</option>`).join("")}</select></label>
-    <label>Akü boyu<select data-k="mod"><option value="">Otomatik</option>${batSizes().map(x=>`<option value="${x}"${num(r.mod)===x?" selected":""}>${f(x,0)} Ah</option>`).join("")}</select></label>
+    <label>Akü tipi<select data-k="bt"><option value="">Otomatik</option>${Object.entries(BAT).map(([k,b])=>`<option value="${k}"${r.bt===k?" selected":""}>${b.label}</option>`).join("")}</select></label>
+    <label>Akü boyu<select data-k="mod"${BAT[r.bt]?"":" disabled"}>${modOptions(r)}</select></label>
     <label>Rectifier boyu<select data-k="rect"><option value="">Otomatik</option>${rectSizes().map(x=>`<option value="${x}"${num(r.rect)===x?" selected":""}>${f(x)} kW</option>`).join("")}</select></label>
    </div><div class="res">${need}</div></section>`;
 }
 function summary(){
   const rows=st.rows.map(r=>({r,c:calc(r)}));
-  document.getElementById("sumB").innerHTML=rows.map(({r,c})=>c?`<tr><td><b>${esc(r.name||"–")}</b></td><td>${f(c.dc,0)} A</td><td>${r.scheme}</td><td>${c.mods} × ${f(c.mod,0)} Ah (${f(c.real,0)} sa)</td><td>${c.units} × ${f(c.rSize)} kW</td><td>${c.acN} × ${f(c.btu,0)} BTU ${c.hassas?"hassas":"split"}</td><td>${f(c.peak)} kW</td><td class="k">${c.brk} A${c.three?" (3 faz)":""}</td><td>${c.gen?c.gen+" kVA":"–"}</td></tr>`:`<tr><td><b>${esc(r.name||"–")}</b></td><td colspan="8" class="warn">DC yükü girilmedi</td></tr>`).join("");
+  document.getElementById("sumB").innerHTML=rows.map(({r,c})=>c?`<tr><td><b>${esc(r.name||"–")}</b></td><td>${f(c.dc,0)} A</td><td>${r.scheme}</td><td>${c.mods} × ${f(c.mod,0)} Ah ${BAT[c.B.t].short} (${f(c.real,0)} sa)</td><td>${c.units} × ${f(c.rSize)} kW</td><td>${c.acN} × ${f(c.btu,0)} BTU ${c.hassas?"hassas":"split"}</td><td>${f(c.peak)} kW</td><td class="k">${c.brk} A${c.three?" (3 faz)":""}</td><td>${c.gen?c.gen+" kVA":"–"}</td></tr>`:`<tr><td><b>${esc(r.name||"–")}</b></td><td colspan="8" class="warn">DC yükü girilmedi</td></tr>`).join("");
   const cs=rows.map(x=>x.c).filter(Boolean);
-  document.getElementById("sumF").innerHTML=cs.length>1?`<tr><td>Toplam (${cs.length} site)</td><td>${f(cs.reduce((s,c)=>s+c.dc,0),0)} A</td><td></td><td>${cs.reduce((s,c)=>s+c.mods,0)} modül</td><td>${cs.reduce((s,c)=>s+c.units,0)} sistem</td><td>${cs.reduce((s,c)=>s+c.acN,0)} klima</td><td>${f(cs.reduce((s,c)=>s+c.peak,0))} kW</td><td></td><td></td></tr>`:"";
+  document.getElementById("sumF").innerHTML=cs.length>1?`<tr><td>Toplam (${cs.length} site)</td><td>${f(cs.reduce((s,c)=>s+c.dc,0),0)} A</td><td></td><td>${cs.reduce((s,c)=>s+c.mods,0)} grup</td><td>${cs.reduce((s,c)=>s+c.units,0)} sistem</td><td>${cs.reduce((s,c)=>s+c.acN,0)} klima</td><td>${f(cs.reduce((s,c)=>s+c.peak,0))} kW</td><td></td><td></td></tr>`:"";
 }
 function renderCard(i){const el=document.querySelector(`.card[data-i="${i}"] .res`);if(!el)return render();const t=document.createElement("div");t.innerHTML=cardHtml(st.rows[i],i);const op=el.querySelector("details.det")?.open;el.innerHTML=t.querySelector(".res").innerHTML;if(op)el.querySelector("details.det").open=true;summary()}
 function render(){document.getElementById("cards").innerHTML=st.rows.map(cardHtml).join("")+`<button class="addcard noprint" id="add2">+ Site ekle</button>`;summary()}
@@ -208,7 +232,7 @@ function renderAssume(){document.getElementById("agrid").innerHTML=`<p>Bu değer
 
 document.addEventListener("input",e=>{const el=e.target;
   if(el.dataset.a){const k=el.dataset.a;st.a[k]=TXT.includes(k)?el.value:(num(el.value)??st.a[k]);save();if(!TXT.includes(k)||e.type==="change")render();return}
-  if(el.dataset.k){const i=+el.closest(".card").dataset.i;st.rows[i][el.dataset.k]=el.type==="checkbox"?el.checked:el.value;save();renderCard(i)}});
+  if(el.dataset.k){const card=el.closest(".card"),i=+card.dataset.i,r=st.rows[i];r[el.dataset.k]=el.type==="checkbox"?el.checked:el.value;if(el.dataset.k==="bt"){r.mod="";const m=card.querySelector('[data-k="mod"]');m.innerHTML=modOptions(r);m.disabled=!BAT[r.bt]}save();renderCard(i)}});
 document.addEventListener("change",e=>{if(TXT.includes(e.target.dataset.a))render()});
 document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.scheme){const card=b.closest(".card"),i=+card.dataset.i;st.rows[i].scheme=b.dataset.scheme;save();card.querySelectorAll("[data-scheme]").forEach(x=>x.setAttribute("aria-pressed",x===b));card.querySelector('[data-k="hours"]').placeholder=b.dataset.scheme==="N+1"?st.a.hN1:st.a.hN;renderCard(i);return}
@@ -221,7 +245,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)r
 async function copyTSV(){
   const d=(n,k=1)=>n==null?"":n.toFixed(k).replace(".",",");
   const head=["Site","DC yük (A)","Şema","Yedekleme (saat)","Akü (adet × Ah)","Akü toplam (Ah)","Gerçek yedekleme (saat)","Rectifier","Klima","Elektrik ihtiyacı (kW)","En kötü akım (A)","kVA","Talep (A)","Jeneratör (kVA)"];
-  const rows=st.rows.map(r=>{const c=calc(r);return c?[r.name,c.dc,r.scheme,c.h,`${c.mods} x ${c.mod}`,c.ah,d(c.real),`${c.units} x ${d(c.rSize)} kW`,`${c.acN} x ${c.btu} BTU ${c.hassas?"hassas":"split"}`,d(c.peak,2),d(c.amps),d(c.kva),c.three?c.brk+" (3 faz)":c.brk,c.gen||""]:[r.name,r.dc,r.scheme]});
+  const rows=st.rows.map(r=>{const c=calc(r);return c?[r.name,c.dc,r.scheme,c.h,`${c.mods} x ${c.mod} Ah ${BAT[c.B.t].short}`,c.ah,d(c.real),`${c.units} x ${d(c.rSize)} kW`,`${c.acN} x ${c.btu} BTU ${c.hassas?"hassas":"split"}`,d(c.peak,2),d(c.amps),d(c.kva),c.three?c.brk+" (3 faz)":c.brk,c.gen||""]:[r.name,r.dc,r.scheme]});
   const t=[head,...rows].map(x=>x.join("\t")).join("\n");
   try{await navigator.clipboard.writeText(t);toast("Kopyalandı – Excel'de bir hücreye yapıştır")}catch(e){toast("Kopyalanamadı")}}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2500)}
