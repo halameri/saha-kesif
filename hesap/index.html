@@ -254,7 +254,7 @@ function cellDim(ah){const k=Object.keys(CELL).map(Number).sort((x,y)=>x-y);retu
 /* Bu salonun ekipman ölçüleri: varsayılanlar Gelişmiş ayarlardan, salona özel değişiklikler r.eq içinde
    (akü/DC ölçüsü jel ve lion için ayrı tutulur: dcJ/akuJ ve dc/aku) */
 function eqOf(r,c){const a=st.a,o=(r&&r.eq)||{},pb=c.B.t==="pb2";let sw=0,sd=0,sh=0;
-  if(pb){const[w,d,hh]=cellDim(c.mod);sw=Math.round(6*(w/10+1)+8);sd=Math.round(2*d/10+35);sh=Math.round(2*hh/10+30)}
+  if(pb){const[w,d,hh]=cellDim(c.mod);sw=Math.round(6*(w/10+1)+8);sd=Math.round(hh/10+10);sh=Math.round(4*(d/10+8)+20)}
   const D={tr:{n:num(a.trN)||2,w:num(a.trW)||70,d:num(a.trD)||70,h:num(a.trH)||200},
     dc:pb?{w:a.dcBigW,d:a.dcBigD,h:a.dcH}:{w:a.cabW,d:a.cabD,h:a.dcH},aku:pb?{w:sw,d:sd,h:sh}:{w:a.rackW,d:a.rackD,h:a.rackH},ac:{w:a.dxW,d:a.dxD,h:a.dxH}};
   const key={tr:"tr",ac:"ac",dc:pb?"dcJ":"dc",aku:pb?"akuJ":"aku"},E={};
@@ -265,9 +265,9 @@ function area(c){const a=st.a,g=num(a.lineGap)||0,E=eqOf(c.row,c);
   const tr=`${E.tr.n} ad ${E.tr.w}x${E.tr.d}`;
   if(c.B.t==="pb2"){const[w,d,hh,kg]=cellDim(c.mod),L=E.aku.w,D=E.aku.d;
     const n=c.units+c.mods,len=c.units*E.dc.w+c.mods*L+n*g,dep=Math.max(E.dc.d,D);
-    return{kl,tr,dc:`${c.units>1?c.units+" ad ":""}${E.dc.w}x${E.dc.d}`,aku:`${c.mods} ad ${D}x${L}`,akuNote:`sehpa: 2 kat × 2 sıra × 6 hücre (hücre ${w}×${d} mm)`,
+    return{kl,tr,dc:`${c.units>1?c.units+" ad ":""}${E.dc.w}x${E.dc.d}`,aku:`${c.mods} ad ${D}x${L}`,akuNote:`sehpa: 4 kat × 6 hücre, yatay (hücre ${w}×${d}×${hh} mm)`,
       line:`${dep}x${len}`,lineNote:`${c.units} DC + ${c.mods} sehpa yan yana, aralar ${g} cm`,m2:dep*len/1e4,kg:c.mods*24*kg,
-      calc:`Sehpa: ${L} cm uzunluk × ${D} cm derinlik${L===E.aku.def.w&&D===E.aku.def.d?` (6 × (${f(w/10,1)}+1) + 8; 2 × ${f(d/10,1)} + 35)`:" (salona özel ölçü)"}<br>DC+Akü: ${c.units} × ${E.dc.w} + ${c.mods} × ${L} + ${n} × ${g} aralık = ${len} cm`}}
+      calc:`Sehpa: ${L} cm uzunluk × ${D} cm derinlik${L===E.aku.def.w&&D===E.aku.def.d?` (6 × (${f(w/10,1)}+1) + 8; ${f(hh/10,1)} + 10)`:" (salona özel ölçü)"}<br>DC+Akü: ${c.units} × ${E.dc.w} + ${c.mods} × ${L} + ${n} × ${g} aralık = ${len} cm`}}
   const cab=c.units,inCab=Math.min(c.mods,cab*(num(a.cabG)||0)),rest=c.mods-inCab,racks=Math.ceil(rest/(num(a.rackG)||2)-1e-9),n=cab+racks,len=cab*E.dc.w+racks*E.aku.w+n*g,dep=Math.max(E.dc.d,racks?E.aku.d:0);
   return{kl,tr,dc:`${cab>1?cab+" ad ":""}${E.dc.w}x${E.dc.d}`,aku:racks?`${racks} raf ${E.aku.w}x${E.aku.d}`:"DC kabin altında",akuNote:`${inCab} grup kabin altında${racks?`, ${rest} grup rafta`:""}`,
     line:`${dep}x${len}`,lineNote:`${cab} kabin${racks?` + ${racks} raf`:""} yan yana, aralar ${g} cm`,m2:dep*len/1e4,kg:0,
@@ -417,5 +417,5 @@ async function copyTSV(){const t=teamRows().map(([k,v])=>[k,...v].join("\t")).jo
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2500)}
 renderAssume();render();
 </script>
-<script src="extra.js?v=3"></script>
+<script src="extra.js?v=4"></script>
 </body></html>
