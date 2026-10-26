@@ -19,19 +19,19 @@ function siteIdx(){if(!st.rows.length)return -1;if(UI.site>=st.rows.length)UI.si
 function siteSelect(id){return `<label>Site<select id="${id}">${st.rows.map((r,i)=>`<option value="${i}"${i===UI.site?" selected":""}>${esc(r.name||"Site "+(i+1))}${num(r.dc)?" · "+num(r.dc)+" A":""}</option>`).join("")}</select></label>`}
 
 /* ---------- salon: ekipman listesi ---------- */
-const COL={dc:"#1c3d5a",aku:"#2f8a57",ac:"#2a9bb5",split:"#2a9bb5"};
-function planItems(c){const a=st.a,it=[];let k=0,svc=num(a.svc)||0;
-  const add=(type,name,w,d,h,front,extra)=>it.push({key:type+"_"+(k++),type,name,w,d,h,front,...(extra||{})});
+const COL={dc:"#1c3d5a",aku:"#2f8a57",ac:"#2a9bb5",split:"#2a9bb5",tr:"#6b5aa6"};
+function planItems(c){const a=st.a,it=[],cnt={},svc=num(a.svc)||0,E=eqOf(c.row,c);
+  const add=(type,name,w,d,h,front,extra)=>{cnt[type]=(cnt[type]||0)+1;it.push({key:type+"_"+cnt[type],type,name,w,d,h,front,...(extra||{})})};
   if(c.B.t==="pb2"){
-    for(let u=0;u<c.units;u++)add("dc","DC dolabı",a.dcBigW,a.dcBigD,a.dcH,svc);
-    const[w,d,hh]=cellDim(c.mod),L=Math.round(6*(w/10+1)+8),D=Math.round(2*d/10+35),H=Math.round(2*hh/10+30);
-    for(let m=0;m<c.mods;m++)add("aku",`Jel akü sehpası ${c.mod} Ah`,L,D,H,svc);
+    for(let u=0;u<c.units;u++)add("dc","DC dolabı",E.dc.w,E.dc.d,E.dc.h,svc);
+    for(let m=0;m<c.mods;m++)add("aku",`Jel akü sehpası ${c.mod} Ah`,E.aku.w,E.aku.d,E.aku.h,svc);
   }else{
     const cab=c.units,inCab=Math.min(c.mods,cab*(num(a.cabG)||0)),rest=c.mods-inCab,rg=num(a.rackG)||2,racks=Math.ceil(rest/rg-1e-9);
-    let left=inCab;for(let u=0;u<cab;u++){const g=Math.min(left,num(a.cabG)||0);left-=g;add("dc",`DC kabin${g?` + ${g} grup akü`:""}`,a.cabW,a.cabD,a.dcH,svc)}
-    left=rest;for(let q=0;q<racks;q++){const g=Math.min(left,rg);left-=g;add("aku",`Akü rafı (${g} grup)`,a.rackW,a.rackD,a.rackH,svc)}
+    let left=inCab;for(let u=0;u<cab;u++){const g=Math.min(left,num(a.cabG)||0);left-=g;add("dc",`DC kabin${g?` + ${g} grup akü`:""}`,E.dc.w,E.dc.d,E.dc.h,svc)}
+    left=rest;for(let q=0;q<racks;q++){const g=Math.min(left,rg);left-=g;add("aku",`Akü rafı (${g} grup)`,E.aku.w,E.aku.d,E.aku.h,svc)}
   }
-  if(c.acT==="dx")for(let q=0;q<c.acN;q++)add("ac",`DX klima ${f(c.acs,0)} kcal/h`,a.dxW,a.dxD,a.dxH,Math.round((num(a.dxFront)||0)*100));
+  for(let q=0;q<E.tr.n;q++)add("tr",`Transmisyon/fiber kabin ${q+1}`,E.tr.w,E.tr.d,E.tr.h,svc);
+  if(c.acT==="dx")for(let q=0;q<c.acN;q++)add("ac",`DX klima ${f(c.acs,0)} kcal/h`,E.ac.w,E.ac.d,E.ac.h,Math.round((num(a.dxFront)||0)*100));
   else for(let q=0;q<c.acN;q++)add("split",`Split ${f(c.acs/1000,0)}k BTU (duvar)`,100,25,32,0,{wall:true});
   return it}
 const sigOf=it=>it.map(i=>`${i.type}:${i.w}x${i.d}x${i.h}:${i.front}`).join("|");
@@ -43,7 +43,7 @@ const ov=(r,s)=>r.x<s.x+s.w-0.5&&s.x<r.x+r.w-0.5&&r.y<s.y+s.h-0.5&&s.y<r.y+r.h-0
 const inside=(r,R)=>r.x>=-0.5&&r.y>=-0.5&&r.x+r.w<=R.w+0.5&&r.y+r.h<=R.d+0.5;
 
 function autoLayout(items){const a=st.a,g=num(a.lineGap)||0,wg=10;
-  const row=items.filter(i=>i.type==="dc"||i.type==="aku"),acs=items.filter(i=>i.type==="ac"),sp=items.filter(i=>i.type==="split");
+  const row=items.filter(i=>i.type==="dc"||i.type==="aku"),acs=items.filter(i=>i.type==="tr"||i.type==="ac"),sp=items.filter(i=>i.type==="split");
   let x=wg;row.forEach(i=>{i.pos={x,y:wg,rot:0};x+=i.w+g});const rowLen=row.length?x-g+wg:0,rowD=Math.max(0,...row.map(i=>i.d)),rowF=Math.max(0,...row.map(i=>i.front));
   let W=Math.max(rowLen,200),D;
   if(acs.length){const aisle=Math.max(rowF,...acs.map(i=>i.front)),y=wg+rowD+aisle;let xa=wg;acs.forEach(i=>{i.pos={x:xa,y,rot:180};xa+=i.w+g});
@@ -53,7 +53,10 @@ function autoLayout(items){const a=st.a,g=num(a.lineGap)||0,wg=10;
   return{w:Math.ceil(W/10)*10,d:Math.ceil(D/10)*10}}
 
 function getPlan(i){const r=st.rows[i],c=calc(r);if(!c)return null;const items=planItems(c),sig=sigOf(items);
-  if(!r.plan||r.plan.sig!==sig){const room=autoLayout(items);r.plan={sig,room,pos:Object.fromEntries(items.map(x=>[x.key,x.pos]))};save()}
+  if(!r.plan||r.plan.sig!==sig){const room=autoLayout(items),old=r.plan;
+    /* ekipman değiştiyse: yerinde duranları koru, sadece yenilerini otomatik yerleştir */
+    const pos=Object.fromEntries(items.map(x=>[x.key,old&&old.pos[x.key]?old.pos[x.key]:x.pos]));
+    r.plan={sig,room:old?{w:Math.max(old.room.w,room.w),d:Math.max(old.room.d,room.d)}:room,pos};save()}
   items.forEach(x=>{x.pos=r.plan.pos[x.key]||{x:10,y:10,rot:0}});
   return{r,c,items,room:r.plan.room}}
 
@@ -82,12 +85,26 @@ function renderSalon(){const host=$("#tab-salon"),i=siteIdx();
     <div class="seg2" role="group" aria-label="Görünüm"><button data-view="top" aria-pressed="${UI.view==="top"}">Üstten</button><button data-view="3d" aria-pressed="${UI.view==="3d"}">3D</button></div>
     <button class="btn" id="pRot">Seçileni döndür</button><button class="btn" id="pAuto">Otomatik yerleştir</button><button class="btn" id="pFit">Odayı sığdır</button>
    </div>
+   <details class="eqd" id="pEqD"${UI.eqOpen?" open":""}><summary>Ekipman ölçüleri (bu salon için)</summary><div id="pEq"></div></details>
    <div class="stage" id="pStage"></div>
    <div class="kpis" id="pK"></div>
    <ul class="msgs" id="pM"></ul>
    <ul class="items" id="pL"></ul>
   </div>`;
-  bindSalonCtl();drawSalon()}
+  bindSalonCtl();renderEq(P);drawSalon()}
+function renderEq(P){const el=$("#pEq");if(!el)return;const c=P.c,E=eqOf(P.r,c),pb=c.B.t==="pb2";
+  const rows=[["tr","Transmisyon / fiber kabin",true],["dc",pb?"DC dolabı":"DC kabin",false],["aku",pb?"Jel akü sehpası":"Akü rafı",false]];if(c.acT==="dx")rows.push(["ac","DX klima",false]);
+  const cnt={dc:c.units,aku:P.items.filter(x=>x.type==="aku").length,ac:c.acN};
+  const inp=(k,p,v,def,min)=>`<input data-eq="${E[k].key}.${p}" inputmode="numeric" value="${v!==def?v:""}" placeholder="${def}"${min?` min="${min}"`:""} aria-label="${p}">`;
+  el.innerHTML=`<table class="eqt"><colgroup><col class="nm"><col><col><col><col></colgroup><thead><tr><th></th><th>Adet</th><th>En</th><th>Der.</th><th>Yüks.</th></tr></thead><tbody>
+   ${rows.map(([k,l,canN])=>`<tr><td><i style="background:${COL[k]}"></i>${l}</td><td>${canN?inp(k,"n",E[k].n,E[k].def.n,2):`<span class="ro">${cnt[k]}</span>`}</td><td>${inp(k,"w",E[k].w,E[k].def.w)}</td><td>${inp(k,"d",E[k].d,E[k].def.d)}</td><td>${inp(k,"h",E[k].h,E[k].def.h)}</td></tr>`).join("")}
+   </tbody></table><p class="hint">Ölçüler cm. Boş bırakılan kutu varsayılanı kullanır (Gelişmiş ayarlar). Transmisyon/fiber kabin en az 2. Adetleri DC ve akü için hesap belirler.</p>
+   <button class="btn" id="pEqR">Bu salonun ölçülerini sıfırla</button>`;
+  el.querySelectorAll("[data-eq]").forEach(i=>i.addEventListener("change",()=>{const[k,p]=i.dataset.eq.split("."),r=P.r;r.eq=r.eq||{};r.eq[k]=r.eq[k]||{};
+    let v=num(i.value);if(p==="n"&&v!=null&&v<2){v=2;toast("Her salonda en az 2 transmisyon/fiber kabin olmalı")}
+    if(v>0)r.eq[k][p]=v;else delete r.eq[k][p];save();UI.eqOpen=true;render();renderSalon()}));
+  $("#pEqR").onclick=()=>{delete P.r.eq;save();UI.eqOpen=true;render();renderSalon()};
+  $("#pEqD").ontoggle=e=>{UI.eqOpen=e.target.open}}
 function bindSalonCtl(){const s=$("#pSite");if(s)s.onchange=()=>{UI.site=+s.value;UI.sel=null;saveUI();renderSalon()};
   const P=()=>getPlan(siteIdx());
   const setRoom=(k,el)=>{const v=num(el.value);if(v>50){const p=P();p.r.plan.room[k]=Math.round(v);save();drawSalon()}};
@@ -127,7 +144,7 @@ function drawTop(P,A){const R=P.room,pad=Math.max(45,Math.max(R.w,R.d)*0.08),fs=
   const bb=A.bb?`<rect x="${A.bb.x0}" y="${A.bb.y0}" width="${A.bb.x1-A.bb.x0}" height="${A.bb.y1-A.bb.y0}" fill="none" stroke="#e09b12" stroke-width="2.5" stroke-dasharray="12 8"/>`:"";
   const hatch=t=>`<pattern id="hatch-${t}" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="${COL[t]}" fill-opacity=".08"/><line x1="0" y1="0" x2="0" y2="12" stroke="${COL[t]}" stroke-opacity=".35" stroke-width="3"/></pattern>`;
   stage.innerHTML=`<svg class="plan" viewBox="${-pad} ${-pad} ${R.w+pad*2} ${R.d+pad*2}" role="img" aria-label="Salon üstten görünüm">
-   <defs>${["dc","aku","ac","split"].map(hatch).join("")}</defs>
+   <defs>${["dc","aku","ac","split","tr"].map(hatch).join("")}</defs>
    <rect x="-12" y="-12" width="${R.w+24}" height="${R.d+24}" fill="#5b6b78"/>
    <rect x="0" y="0" width="${R.w}" height="${R.d}" style="fill:var(--surface)"/>
    <g style="stroke:var(--line)" stroke-width="1">${grid.join("")}</g>
