@@ -67,6 +67,59 @@ details.det td:last-child{text-align:right;font-family:var(--mono)}
 .slg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.75rem}
 .slg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:0}
 details.det summary{color:var(--navy)!important;font-size:.9rem!important}
+
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0 16px;max-width:620px}
+.tabs button{display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:inherit;font-weight:700;border-radius:999px;padding:8px 10px;cursor:pointer;white-space:nowrap;min-height:44px;font-size:.9rem}
+@media (max-width:420px){.tabs button{font-size:.8rem;padding:8px 6px;gap:4px}.tabs button svg{width:15px;height:15px}}
+.tabs button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-selected="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tabs button[aria-selected="true"]{color:#0f151a}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.panel h3{margin:0 0 4px;font-size:1.05rem;color:var(--navy)}
+.panel .sub{margin:0 0 12px;color:var(--muted);font-size:.88rem}
+.ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.ctl label{display:grid;gap:3px;font-size:.8rem;color:var(--muted);font-weight:600}
+.ctl input,.ctl select{background:var(--in);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font:inherit;color:var(--ink);min-height:42px}
+.ctl input{width:92px;font-family:var(--mono)}
+.seg2{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg2 button{border:0;background:var(--surface);font:inherit;font-weight:700;color:var(--muted);padding:9px 14px;cursor:pointer;min-height:42px}
+.seg2 button[aria-pressed="true"]{background:var(--navy);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .seg2 button[aria-pressed="true"]{color:#0f151a}}
+.ctl .btn{min-height:42px;padding:8px 12px}
+.stage{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:12px;touch-action:none}
+.stage svg.plan{display:block;width:100%;height:auto;max-height:72vh;user-select:none;-webkit-user-select:none}
+.stage canvas{display:block;width:100%;height:min(62vh,520px);cursor:grab}
+.stage .hint3{position:absolute;left:10px;bottom:8px;font-size:.75rem;color:var(--muted);background:var(--surface);padding:3px 8px;border-radius:6px;opacity:.9}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.kpi{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.kpi b{display:block;font-size:1.25rem;font-variant-numeric:tabular-nums}
+.kpi span{font-size:.78rem;color:var(--muted);font-weight:600}
+.kpi.ok{background:var(--ok-soft);border-color:transparent}.kpi.bad{background:var(--bad-soft);border-color:transparent}
+.items{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.items li{display:grid;grid-template-columns:14px 1fr auto;gap:10px;align-items:center;font-size:.86rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--surface)}
+.items li[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.items li i{width:14px;height:14px;border-radius:3px}
+.items li small{color:var(--muted);font-family:var(--mono)}
+.msgs{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:4px;font-size:.85rem}
+.msgs li{padding:6px 10px;border-radius:7px}
+.msgs .e{background:var(--bad-soft);color:var(--bad)}.msgs .w{background:#fff4d6;color:#7a5800}.msgs .o{background:var(--ok-soft);color:var(--ok)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .msgs .w{background:#3a3010;color:#f0c75e}}
+/* rehber */
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vs div{border-radius:10px;padding:12px;background:var(--sunk);border:1px solid var(--line)}
+.vs b{font-size:1.15rem;display:block}.vs p{margin:4px 0 0;font-size:.85rem;color:var(--muted)}
+.chain{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.chain li{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--sunk)}
+.chain li.arrow{border:0;background:none;padding:2px 0;display:block;text-align:center;color:var(--muted)}
+.chain .n{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;background:var(--navy);font-size:.85rem}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chain .n{color:#0f151a}}
+.chain .t{font-weight:700;font-size:.92rem}.chain .d{font-size:.8rem;color:var(--muted);font-family:var(--mono)}
+.chain .v{font-family:var(--mono);font-weight:800;text-align:right;white-space:nowrap}
+.chain li.fin{background:var(--ok-soft);border-color:transparent}
+.rule{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:baseline;font-size:.9rem}
+.rule b{font-family:var(--mono);font-size:1.05rem;color:var(--navy)}
+.verdict{margin-top:10px;padding:10px 12px;border-radius:9px;font-weight:700}
 .addcard{border:2px dashed var(--line);background:transparent;border-radius:12px;min-height:160px;font:inherit;font-weight:700;color:var(--muted);cursor:pointer}
 .addcard:hover{border-color:var(--accent);color:var(--ink)}
 .tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
@@ -91,6 +144,12 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 <div class="wrap">
 <header><div><small>Enerji birimi · Irak Network Projesi</small><h1>Enerji Yük Hesabı</h1></div>
  <div class="row noprint"><button class="btn primary" id="add">+ Site ekle</button><button class="btn" id="copy">Excel'e kopyala</button><button class="btn" id="print">Yazdır / PDF</button></div></header>
+<nav class="tabs noprint" role="tablist" aria-label="Bölümler">
+ <button role="tab" data-tab="hesap" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"/></svg>Hesap</button>
+ <button role="tab" data-tab="salon" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>Salon</button>
+ <button role="tab" data-tab="rehber" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>kW · kVA</button>
+</nav>
+<section id="tab-hesap" class="tabp">
 <p class="lead">Her site için <b>DC yükü</b> ve <b>salon</b> bilgisini gir. Akü, klima, DC sistem, jeneratör ve Max AC yük ekibin Saha Yük Profili tablosundaki yönteme göre kendiliğinden çıkar.</p>
 
 <div class="cards" id="cards"></div>
@@ -99,6 +158,9 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 <div class="tw"><table class="sum"><thead id="sumH"></thead><tbody id="sumB"></tbody></table></div>
 
 <details class="assume noprint"><summary>Gelişmiş ayarlar (hesapta kullanılan kabuller)</summary><div class="agrid" id="agrid"></div></details>
+</section>
+<section id="tab-salon" class="tabp" hidden></section>
+<section id="tab-rehber" class="tabp" hidden></section>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -115,7 +177,7 @@ const DEF_A={dcv:54,eff:0.95,chg:0.1,chgMax:0,
  hSmall:15,hBig:10,hLimit:100,
  roomW:2000,coolM:1.2,splitMin:24000,splitA:20,dxA:33.2,acAll:1,
  rects:"7,2; 72",v1:220,v3:380,monoMax:63,dcMonoMax:10,safety:1.25,gmax:0.8,derate:0.9,gens:"33,45,60,80,100,150,200,250,300,400,500",
- dxW:130,dxD:75,dxFront:1,dcBigW:60,dcBigD:60,lineGap:20,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2};
+ svc:80,dcH:200,rackH:100,dxH:195,dxW:130,dxD:75,dxFront:1,dcBigW:60,dcBigD:60,lineGap:20,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2};
 const A_LABELS=[
  ["hSmall","Yedekleme – küçük yük (saat)"],["hBig","Yedekleme – büyük yük (saat)"],["hLimit","Büyük yük sınırı (A DC, bu ve üstü)"],
  ["dod","Lityum: kullanılabilir oran (1 = ekip yöntemi)"],["aging","Lityum: yaşlanma payı (×)"],["dodPb","Jel/kurşun-asit: kullanılabilir oran"],["agingPb","Jel/kurşun-asit: yaşlanma payı (×)"],
@@ -126,7 +188,7 @@ const A_LABELS=[
  ["v1","Monofaze gerilim (V)"],["v3","Trifaze gerilim (V)"],["monoMax","Monofaze en fazla akım (A, üstü trifaze)"],["dcMonoMax","DC sistem tek faz en fazla (kW, üstü 3 faz girişli)"],["safety","Sigorta güvenlik payı (×)"],
  ["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],
  ["cabG","DC kabin altına sığan akü grubu"],["cabW","DC kabin eni (cm)"],["cabD","DC kabin derinliği (cm)"],["rackG","Akü rafına sığan grup"],["rackW","Akü rafı eni (cm)"],["rackD","Akü rafı derinliği (cm)"],
- ["dxW","DX klima iç ünite eni (cm)"],["dxD","DX klima iç ünite derinliği (cm)"],["dxFront","DX klima önü boşluk (m)"],["dcBigW","Ayrı DC dolabı eni (cm, jel akülü sitelerde)"],["dcBigD","Ayrı DC dolabı derinliği (cm)"],["lineGap","DC+Akü sırasında aralık (cm)"],
+ ["svc","DC/akü önü servis boşluğu (cm)"],["dcH","DC kabin/dolap yüksekliği (cm)"],["rackH","Akü rafı yüksekliği (cm)"],["dxH","DX klima yüksekliği (cm)"],["dxW","DX klima iç ünite eni (cm)"],["dxD","DX klima iç ünite derinliği (cm)"],["dxFront","DX klima önü boşluk (m)"],["dcBigW","Ayrı DC dolabı eni (cm, jel akülü sitelerde)"],["dcBigD","Ayrı DC dolabı derinliği (cm)"],["lineGap","DC+Akü sırasında aralık (cm)"],
  ["rects","DC sistem boyları (kW; noktalı virgülle: 7,2; 72)",1],["liSizes","Lityum grup boyları (Ah; noktalı virgülle)",1],["pb2Sizes","2 V jel hücre boyları (Ah)",1],["pb12Sizes","12 V jel monoblok boyları (Ah)",1],["gens","Jeneratör boyları (kVA)",1]];
 const TXT=["rects","gens","liSizes","pb2Sizes","pb12Sizes"];
 const BREAKERS=[16,20,25,32,40,50,63,80,100,125,160,200,250,315,400,500,630];
@@ -305,7 +367,7 @@ function teamRows(){const cs=st.rows.map(r=>({r,c:calc(r)}));const v=(fn)=>cs.ma
   return [["Site",cs.map(x=>x.r.name||"")],["Saha Yük Profili",v(c=>`${f(c.dc,0)} ADC`)],["Salon Bilgisi",v(c=>c.bag?"Bağımsız Salon":"Mevcut Salona kurulum")],["Mimari",v(mimari)],
    ["Akü",v(batTxt)],["Akü Backup süresi",v(c=>`${f(c.h,0)} saat`)],["Klima",v(acTxt)],["DC",v(c=>`${c.units}*${kw(c.rSize)} kw`)],["Jeneratör",v(c=>c.gen?`1x${c.gen} kva`:"–")],
    ["Max AC yük (Amp)",v(()=>"")],["Klima",v(c=>f(c.acA,1))],["Enerji besleme",v(besl)],["DC",v(c=>f(c.dcA,1))],["Toplam",v(c=>f(c.tot,1))],["Talep edilecek sigorta",v(c=>`${c.brk} A`)],["",v(()=>"")],["Salon içi Alan İhtiyacı",v(()=>"")],["Klima",v(c=>area(c).kl.txt)],["DC",v(c=>area(c).dc)],["Akü",v(c=>area(c).aku)],["DC+Akü",v(c=>area(c).line)]]}
-function summary(){const R=teamRows();
+function summary(){if(window.onCalcChange)try{onCalcChange()}catch(e){console.error(e)}const R=teamRows();
   document.getElementById("sumH").innerHTML=`<tr><th>${R[0][0]}</th>${R[0][1].map(n=>`<th>${esc(n)}</th>`).join("")}</tr>`;
   document.getElementById("sumB").innerHTML=R.slice(1).map(([k,vals])=>`<tr class="${k==="Max AC yük (Amp)"||k==="Salon içi Alan İhtiyacı"?"sec":""}${k==="Toplam"||k==="Talep edilecek sigorta"?" kk":""}"><td>${k}</td>${vals.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join("")}
 function renderCard(i){const el=document.querySelector(`.card[data-i="${i}"] .res`);if(!el)return render();const t=document.createElement("div");t.innerHTML=cardHtml(st.rows[i],i);const op=el.querySelector("details.det")?.open;el.innerHTML=t.querySelector(".res").innerHTML;if(op)el.querySelector("details.det").open=true;
@@ -333,4 +395,5 @@ async function copyTSV(){const t=teamRows().map(([k,v])=>[k,...v].join("\t")).jo
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2500)}
 renderAssume();render();
 </script>
+<script src="extra.js?v=1"></script>
 </body></html>
