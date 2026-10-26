@@ -51,6 +51,22 @@ details.det table{width:100%;border-collapse:collapse;font-size:.85rem}
 details.det td{padding:4px 0;border-bottom:1px dashed var(--line)}
 details.det td:last-child{text-align:right;font-family:var(--mono)}
 .hint{font-size:.8rem;color:var(--muted);line-height:1.4}
+.flow{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:0}
+.flow .fs{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:start;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:10px}
+.flow .fa{text-align:center;color:var(--muted);font-size:1rem;line-height:1.2;padding:1px 0}
+.flow .fa:last-child{display:none}
+.fi{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:#fff}
+.fi.c1{background:#3b6e99}.fi.c2{background:#2f8a57}.fi.c3{background:#2a9bb5}.fi.c4{background:#1c3d5a}.fi.c5{background:#b07a14}.fi.c6{background:#1d7f47}.fi.c7{background:#6b5aa6}
+.flow .ft{font-weight:700;font-size:.92rem}
+.flow .fc{font-size:.8rem;color:var(--muted);line-height:1.5;margin-top:2px}
+.flow .fr{font-family:var(--mono);font-weight:800;font-size:.92rem;text-align:right;white-space:nowrap}
+.flow .fr small{display:block;font-weight:400;color:var(--muted);font-size:.75rem}
+:root{--c1:#3b6e99;--c2:#2f8a57;--c3:#2a9bb5}
+.sbar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:8px 0 4px;background:var(--line)}
+.sbar span{display:block;height:100%}
+.slg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.75rem}
+.slg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:0}
+details.det summary{color:var(--navy)!important;font-size:.9rem!important}
 .addcard{border:2px dashed var(--line);background:transparent;border-radius:12px;min-height:160px;font:inherit;font-weight:700;color:var(--muted);cursor:pointer}
 .addcard:hover{border-color:var(--accent);color:var(--ink)}
 .tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
@@ -121,6 +137,32 @@ function calc(r){
   return{hassas,dc,h,btu,needAh,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acKW,rectW,chgW,coolW,normal,peak,amps,kva,brk,gNeed,gen,n1};
 }
 
+/* ---- calculation flow with icons ---- */
+const IC={
+ dev:'<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4"/><rect x="9" y="9" width="6" height="6"/>',
+ bat:'<rect x="2" y="7" width="18" height="12" rx="2"/><path d="M22 11v4M11 9l-3 5h5l-3 5"/>',
+ rec:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M5 10c1.2-2 2.8-2 4 0s2.8 2 4 0"/><path d="M15 14h5M15 17h5"/>',
+ plug:'<path d="M9 2v5M15 2v5"/><path d="M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v5"/>',
+ snow:'<path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/>',
+ fuse:'<path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/>',
+ gen:'<rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="9" cy="12.5" r="3"/><path d="M15 10h4M15 13h4M15 16h4M6 19v2M18 19v2"/>'};
+const ico=(k,cls)=>`<span class="fi ${cls}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg></span>`;
+function flowHtml(c,r){
+  const a=st.a,cap=c.rSize*(c.units-(c.n1?1:0));
+  const step=(k,cls,title,body,res)=>`<li class="fs">${ico(k,cls)}<div class="fb"><div class="ft">${title}</div><div class="fc">${body}</div></div><div class="fr">${res}</div></li><li class="fa" aria-hidden="true">↓</li>`;
+  const pct=x=>(x/(c.peak*1000)*100).toFixed(1);
+  const bar=`<div class="sbar" role="img" aria-label="Şebekeden çekilen gücün dağılımı"><span style="width:${pct(c.rectW)}%;background:var(--c1)"></span><span style="width:${pct(c.chgW)}%;background:var(--c2)"></span><span style="width:${pct(c.coolW)}%;background:var(--c3)"></span></div>
+   <div class="slg"><span><i style="background:var(--c1)"></i>Cihazlar ${f(c.rectW,0)} W</span><span><i style="background:var(--c2)"></i>Akü şarjı ${f(c.chgW,0)} W</span><span><i style="background:var(--c3)"></i>Klima ${f(c.coolW,0)} W</span></div>`;
+  return `<details class="det"><summary>Hesap akışı – nasıl hesaplandı?</summary><ol class="flow">
+   ${step("dev","c1","Cihazların yükü (DC)",`${f(c.dc,0)} A × ${a.dcv} V`,`${f(c.dc*a.dcv,0)} W`)}
+   ${step("bat","c2","Akü",`${f(c.dc,0)} A × ${f(c.h,0)} saat ÷ ${f(a.dod,2)} (kullanılabilir) × ${f(a.aging,2)} (yaşlanma) = ${f(c.needAh,0)} Ah<br>Şarj akımı: ${f(c.ah,0)} Ah × ${f(a.chg,2)} = ${f(c.chA,0)} A`,`${c.mods} × ${f(a.mod,0)} Ah<small>${f(c.real)} saat</small>`)}
+   ${step("rec","c4","Rectifier",`(${f(c.dc,0)} A cihaz + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW,2)} kW<br>Kapasite kullanımı: ${f(c.dcKW,2)} ÷ ${f(cap)} kW = %${f(c.rLoad*100,0)}`,`${c.units} × ${f(c.rSize)} kW${c.n1?"<small>1 yedek</small>":""}`)}
+   ${step("snow","c3","Klima",`${f(c.btu,0)} BTU ÷ ${f(c.hassas?(a.eerH||9):a.eer)} (verim)${c.n1?" · ikinci klima yedek":""}`,`${f(c.coolW,0)} W`)}
+   ${step("plug","c5","Şebekeden çekilen güç (220 V)",`Normal (akü dolu): ${f(c.normal)} kW · ${f(c.normal*1000/220,0)} A<br>En kötü durum (akü şarj olurken): ${f(c.rectW,0)} + ${f(c.chgW,0)} + ${f(c.coolW,0)} W${bar}`,`${f(c.peak)} kW<small>${f(c.amps,0)} A · ${f(c.kva)} kVA</small>`)}
+   ${step("fuse","c6","Talep edilecek sigorta",`${f(c.amps,0)} A × ${f(a.safety,2)} güvenlik payı = ${f(c.amps*a.safety,0)} A → bir üst standart boy<br>3 faz olursa faz başı ≈ ${f(c.peak*1000/(1.732*380),0)} A`,`<b>${c.brk} A</b>`)}
+   <li class="fs">${ico("gen","c7")}<div class="fb"><div class="ft">Jeneratör</div><div class="fc">${f(c.kva)} kVA ÷ (${f(a.gmax,2)} en fazla yük × ${f(a.derate,2)} sıcaklık) = ${f(c.gNeed)} kVA → standart boy</div></div><div class="fr">${c.gen?c.gen+" kVA":"–"}</div></li>
+  </ol></details>`;
+}
 /* ---- cards ---- */
 function cardHtml(r,i){
   const c=calc(r),n1=r.scheme==="N+1";
@@ -132,18 +174,7 @@ function cardHtml(r,i){
      <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.brk} A · 220 V</dd></div>
      <dt>Jeneratör</dt><dd class="${c.gen?"":"warn"}">${c.gen?c.gen+" kVA":"listedekilerden büyük"}<small>gerekli en az ${f(c.gNeed)} kVA</small></dd>
     </dl></div>
-    <details class="det"><summary>Hesap detayları</summary><table>
-     <tr><td>Gerekli akü: ${f(c.dc,0)} A × ${f(c.h,0)} saat ÷ ${st.a.dod} × ${st.a.aging}</td><td>${f(c.needAh,0)} Ah</td></tr>
-     <tr><td>Akü şarj akımı</td><td>${f(c.chA,0)} A</td></tr>
-     <tr><td>Rectifier yük + şarj (${f(c.dc+c.chA,0)} A × ${st.a.dcv} V)</td><td>${f(c.dcKW,2)} kW</td></tr>
-     <tr><td>Rectifier kapasite kullanımı (en yoğun anda)</td><td>${f(c.dcKW,2)} / ${f(c.rSize*(c.units-(c.n1?1:0)))} kW = %${f(c.rLoad*100,0)}</td></tr>
-     <tr><td>Cihazlar (rectifier girişi)</td><td>${f(c.rectW,0)} W</td></tr>
-     <tr><td>Akü şarjı (AC tarafı)</td><td>${f(c.chgW,0)} W</td></tr>
-     <tr><td>Klima (1 çalışan)</td><td>${f(c.coolW,0)} W</td></tr>
-     <tr><td>Normal çalışma (akü dolu)</td><td>${f(c.normal)} kW · ${f(c.normal*1000/220,0)} A</td></tr>
-     <tr><td>En kötü durum</td><td>${f(c.peak)} kW · ${f(c.amps,0)} A · ${f(c.kva)} kVA</td></tr>
-     <tr><td>3 faz olursa (faz başı)</td><td>≈ ${f(c.peak*1000/(1.732*380),0)} A</td></tr>
-    </table></details>`:`<div class="need"><p class="warn" style="margin:8px 0">DC yükü girin.</p></div>`;
+    ${flowHtml(c,r)}`:`<div class="need"><p class="warn" style="margin:8px 0">DC yükü girin.</p></div>`;
   return `<section class="card" data-i="${i}">
    <div class="top"><input data-k="name" value="${esc(r.name)}" aria-label="Site adı" placeholder="Site adı"><button class="del noprint" data-del="${i}" title="Siteyi sil">Sil</button></div>
    <div class="inputs">
@@ -161,7 +192,7 @@ function summary(){
   const cs=rows.map(x=>x.c).filter(Boolean);
   document.getElementById("sumF").innerHTML=cs.length>1?`<tr><td>Toplam (${cs.length} site)</td><td>${f(cs.reduce((s,c)=>s+c.dc,0),0)} A</td><td></td><td>${cs.reduce((s,c)=>s+c.mods,0)} modül</td><td>${cs.reduce((s,c)=>s+c.units,0)} sistem</td><td>${cs.reduce((s,c)=>s+c.acN,0)} klima</td><td>${f(cs.reduce((s,c)=>s+c.peak,0))} kW</td><td></td><td></td></tr>`:"";
 }
-function renderCard(i){const el=document.querySelector(`.card[data-i="${i}"] .res`);if(!el)return render();const t=document.createElement("div");t.innerHTML=cardHtml(st.rows[i],i);el.innerHTML=t.querySelector(".res").innerHTML;summary()}
+function renderCard(i){const el=document.querySelector(`.card[data-i="${i}"] .res`);if(!el)return render();const t=document.createElement("div");t.innerHTML=cardHtml(st.rows[i],i);const op=el.querySelector("details.det")?.open;el.innerHTML=t.querySelector(".res").innerHTML;if(op)el.querySelector("details.det").open=true;summary()}
 function render(){document.getElementById("cards").innerHTML=st.rows.map(cardHtml).join("")+`<button class="addcard noprint" id="add2">+ Site ekle</button>`;summary()}
 function renderAssume(){document.getElementById("agrid").innerHTML=`<p>Bu değerler tüm siteler için geçerlidir. Ekibin kabulleri farklıysa buradan değiştir.</p>`+A_LABELS.map(([k,l,full])=>`<label class="${full?"full":""}">${l}<input data-a="${k}" ${full?"":'inputmode="decimal"'} value="${esc(st.a[k])}"></label>`).join("")+`<div class="full row"><button class="btn" id="resetA">Ayarları sıfırla</button><button class="btn" id="resetR">Siteleri sıfırla (Test1, Test2)</button></div>`}
 
