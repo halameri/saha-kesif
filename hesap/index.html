@@ -50,6 +50,7 @@ details.det summary{cursor:pointer;font-size:.85rem;color:var(--muted);font-weig
 details.det table{width:100%;border-collapse:collapse;font-size:.85rem}
 details.det td{padding:4px 0;border-bottom:1px dashed var(--line)}
 details.det td:last-child{text-align:right;font-family:var(--mono)}
+.hint{font-size:.8rem;color:var(--muted);line-height:1.4}
 .addcard{border:2px dashed var(--line);background:transparent;border-radius:12px;min-height:160px;font:inherit;font-weight:700;color:var(--muted);cursor:pointer}
 .addcard:hover{border-color:var(--accent);color:var(--ink)}
 .tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
@@ -72,12 +73,12 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 <div class="wrap">
 <header><div><small>Enerji birimi · Irak Network Projesi</small><h1>Enerji Yük Hesabı</h1></div>
  <div class="row noprint"><button class="btn primary" id="add">+ Site ekle</button><button class="btn" id="copy">Excel'e kopyala</button><button class="btn" id="print">Yazdır / PDF</button></div></header>
-<p class="lead">Her site için sadece <b>DC yükü</b> ve <b>şemayı</b> (N veya N+1) gir. Gereken akü, rectifier, klima, elektrik ihtiyacı ve jeneratör kartın altında kendiliğinden çıkar.</p>
+<p class="lead">Her site için sadece <b>DC yükü</b> ve <b>şemayı</b> (N veya N+1) gir. Gereken akü, rectifier, klima, elektrik ihtiyacı, jeneratör ve kabinlerin kaplayacağı alan kartın altında kendiliğinden çıkar.</p>
 
 <div class="cards" id="cards"></div>
 
 <h2>Özet tablo</h2>
-<div class="tw"><table class="sum"><thead><tr><th>Site</th><th>DC yük</th><th>Şema</th><th>Akü</th><th>Rectifier</th><th>Klima</th><th>Elektrik ihtiyacı</th><th>Talep (220 V)</th><th>Jeneratör</th></tr></thead><tbody id="sumB"></tbody><tfoot id="sumF"></tfoot></table></div>
+<div class="tw"><table class="sum"><thead><tr><th>Site</th><th>DC yük</th><th>Şema</th><th>Akü</th><th>Rectifier</th><th>Klima</th><th>Elektrik ihtiyacı</th><th>Talep (220 V)</th><th>Jeneratör</th><th>Alan</th></tr></thead><tbody id="sumB"></tbody><tfoot id="sumF"></tfoot></table></div>
 
 <details class="assume noprint"><summary>Gelişmiş ayarlar (hesapta kullanılan kabuller)</summary><div class="agrid" id="agrid"></div></details>
 </div>
@@ -85,16 +86,18 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 
 <script>
 "use strict";
-const DEF_A={dcv:54,eff:0.95,dod:0.9,aging:1.05,mod:150,chg:0.1,chgMax:0,rects:"7,2; 10,8; 14,4; 21,6; 28,8",eer:9.5,eerH:9,fcb:200,pf:0.8,gmax:0.8,derate:0.9,safety:1.25,hN:15,hN1:30,gens:"33,45,60,80,100,150"};
+const DEF_A={dcv:54,eff:0.95,dod:0.9,aging:1.05,mod:150,chg:0.1,chgMax:0,rects:"7,2; 10,8; 14,4; 21,6; 28,8",eer:9.5,eerH:9,pf:0.8,gmax:0.8,derate:0.9,safety:1.25,hN:15,hN1:30,gens:"33,45,60,80,100,150",cabW:0.6,cabD:0.6,aisle:1.0,rear:0.1,side:0.3,modPerCab:8,modW:0.45,modD:0.5,hkW:0.9,hkD:0.6,maxRow:4.0};
 const A_LABELS=[["hN","Yedekleme süresi – N (saat)"],["hN1","Yedekleme süresi – N+1 (saat)"],["mod","Akü modül boyu (Ah)"],["dod","Akü kullanılabilir oran"],["aging","Akü yaşlanma payı (×)"],
-  ["chg","Akü şarj oranı (C)"],["chgMax","Şarj akımı sınırı (A, 0 = sınır yok)"],["dcv","DC çalışma gerilimi (V)"],["eff","Rectifier verimi"],["eer","Split klima verimi (BTU/Wh)"],["eerH","Hassas klima verimi (BTU/Wh)"],["fcb","FCB gücü (W)"],
+  ["chg","Akü şarj oranı (C)"],["chgMax","Şarj akımı sınırı (A, 0 = sınır yok)"],["dcv","DC çalışma gerilimi (V)"],["eff","Rectifier verimi"],["eer","Split klima verimi (BTU/Wh)"],["eerH","Hassas klima verimi (BTU/Wh)"],
   ["pf","Güç faktörü"],["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],["safety","Sigorta güvenlik payı (×)"],
+  ["cabW","Kabin genişliği (m)"],["cabD","Kabin derinliği (m)"],["aisle","Ön servis koridoru (m)"],["rear","Arka boşluk (m)"],["side","Yan boşluk, her iki taraf (m)"],
+  ["modPerCab","Bir akü kabinine sığan modül"],["modW","Akü modülü genişliği – yan yana dizilirse (m)"],["modD","Akü modülü derinliği (m)"],["hkW","Hassas klima genişliği (m)"],["hkD","Hassas klima derinliği (m)"],["maxRow","Tek sıra en fazla uzunluk (m)"],
   ["rects","Rectifier sistem boyları (kW; noktalı virgülle: 7,2; 10,8; 14,4)",1],["gens","Jeneratör boyları (kVA)",1]];
 const TXT=["rects","gens"];
 const BREAKERS=[16,20,25,32,40,50,63,80,100,125];
 const BTUS=[12000,18000,24000,30000,36000,48000,60000];
 const DEF_ROWS=[{name:"Test1",dc:"25",scheme:"N",hours:"",btu:"24000",rect:""},{name:"Test2",dc:"25",scheme:"N+1",hours:"",btu:"24000",rect:""}];
-const KEY="enerji-yuk-hesabi-v3";
+const KEY="enerji-yuk-hesabi-v3";/* same key: new fields have defaults */
 let st=load();
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.rows)return{a:{...DEF_A,...s.a},rows:s.rows}}catch(e){}return{a:{...DEF_A},rows:DEF_ROWS.map(r=>({...r}))}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
@@ -113,20 +116,61 @@ function calc(r){
   let rSize=num(r.rect);const rAuto=!rSize;if(rAuto)rSize=rs.find(x=>x>=dcKW-1e-9)||rs[rs.length-1];
   const rBase=Math.max(1,Math.ceil(dcKW/rSize-1e-9)),units=rBase+(n1?1:0),rLoad=dcKW/(rBase*rSize);
   const hassas=r.ac==="hassas",acN=n1?2:1,acKW=btu/(hassas?(a.eerH||9):a.eer)/1000;
-  const rectW=dc*a.dcv/a.eff,chgW=chA*a.dcv/a.eff,coolW=acKW*1000+(r.fcb?a.fcb:0);
+  const rectW=dc*a.dcv/a.eff,chgW=chA*a.dcv/a.eff,coolW=acKW*1000;
   const normal=(rectW+coolW)/1000,peak=(rectW+chgW+coolW)/1000,amps=peak*1000/220,kva=peak/a.pf;
   const brk=BREAKERS.find(b=>b>=amps*a.safety)||Math.ceil(amps*a.safety);
   const gNeed=kva/(a.gmax*a.derate),sizes=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=sizes.find(s=>s>=gNeed)||null;
-  return{hassas,fcb:!!r.fcb,dc,h,btu,needAh,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acKW,rectW,chgW,coolW,normal,peak,amps,kva,brk,gNeed,gen,n1};
+  return{hassas,dc,h,btu,needAh,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acKW,rectW,chgW,coolW,normal,peak,amps,kva,brk,gNeed,gen,n1};
 }
 
+/* ---- layout / area ---- */
+function layout(r,c){
+  const a=st.a,fib=Math.max(0,Math.round(num(r.fib)??1)),onFloor=r.place==="yan";
+  const items=[];const add=(n,t,w,d,lab,extra)=>{for(let i=0;i<n;i++)items.push({t,w,d,lab,extra})};
+  add(fib,"fib",a.cabW,a.cabD,"Fiber");
+  add(c.units,"rec",a.cabW,a.cabD,"Rect.");
+  let batCab=0;
+  if(onFloor)add(c.mods,"bat",a.modW,a.modD,"A");
+  else{batCab=Math.ceil(c.mods/a.modPerCab);for(let i=0;i<batCab;i++){const n=Math.min(a.modPerCab,c.mods-i*a.modPerCab);items.push({t:"batc",w:a.cabW,d:a.cabD,lab:"Akü",extra:n})}}
+  if(c.hassas)add(c.acN,"hk",a.hkW,a.hkD,"H.Kl.");
+  /* split into rows of max length */
+  const rows=[[]];let len=0;for(const it of items){if(len+it.w>a.maxRow+1e-9&&rows[rows.length-1].length){rows.push([]);len=0}rows[rows.length-1].push(it);len+=it.w}
+  const two=rows.length>1;const rowLen=rows.map(x=>x.reduce((s,i)=>s+i.w,0)),L=Math.max(...rowLen,0);
+  const dMax=k=>Math.max(...(rows[k]||[]).map(i=>i.d),0);
+  const depth=two?(a.rear+dMax(0)+a.aisle+dMax(1)+a.rear):(a.rear+dMax(0)+a.aisle);
+  const roomL=L+2*a.side,area=roomL*depth,avail=num(r.area);
+  return{fib,onFloor,batCab,items,rows,two,L,depth,roomL,area,avail,fits:avail==null?null:avail>=area-1e-9};
+}
+function layoutSvg(lo){
+  const a=st.a,W=320,pad=26,k=(W-2*pad)/Math.max(lo.roomL,lo.depth*1.2,1),H=Math.round(lo.depth*k+2*pad+14);
+  const col={fib:"#3b6e99",rec:"#1c3d5a",batc:"#2f8a57",bat:"#2f8a57",hk:"#b07a14"};
+  let g=`<rect x="${pad}" y="${pad}" width="${lo.roomL*k}" height="${lo.depth*k}" fill="none" stroke="currentColor" stroke-dasharray="5 4" opacity=".6"/>`;
+  const drawRow=(row,y0,flip)=>{let x=pad+a.side*k;for(const it of row){const w=it.w*k,d=it.d*k,y=flip?y0-d:y0;
+      g+=`<rect x="${x+1}" y="${y}" width="${w-2}" height="${d}" rx="3" fill="${col[it.t]}"/>`;
+      const lab=it.t==="batc"?`Akü ×${it.extra}`:it.lab;const fs=Math.min(11,w/Math.max(2.6,lab.length*0.55));
+      g+=`<text x="${x+w/2}" y="${y+d/2+fs*0.35}" font-size="${fs.toFixed(1)}" fill="#fff" text-anchor="middle" font-weight="700">${lab}</text>`;x+=it.w*k}};
+  const yTop=pad+a.rear*k;drawRow(lo.rows[0],yTop,false);
+  const aisleY=yTop+Math.max(...lo.rows[0].map(i=>i.d))*k;
+  g+=`<rect x="${pad}" y="${aisleY}" width="${lo.roomL*k}" height="${a.aisle*k}" fill="currentColor" opacity=".07"/><text x="${pad+lo.roomL*k/2}" y="${aisleY+a.aisle*k/2+4}" font-size="11" text-anchor="middle" fill="currentColor" opacity=".7">servis koridoru ${f(a.aisle)} m</text>`;
+  if(lo.two)drawRow(lo.rows[1],aisleY+a.aisle*k+Math.max(...lo.rows[1].map(i=>i.d))*k,true);
+  g+=`<text x="${pad+lo.roomL*k/2}" y="${pad-8}" font-size="11" text-anchor="middle" fill="currentColor">${f(lo.roomL)} m</text>`;
+  g+=`<text x="${pad+lo.roomL*k+6}" y="${pad+lo.depth*k/2}" font-size="11" fill="currentColor" transform="rotate(90 ${pad+lo.roomL*k+6} ${pad+lo.depth*k/2})" text-anchor="middle">${f(lo.depth)} m</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Yerleşim planı (üstten görünüm)" style="color:var(--ink);max-width:420px;display:block;margin:4px auto 0">${g}</svg>`;
+}
+function stackSvg(lo){/* front view of battery cabinets with stacked modules */
+  if(lo.onFloor||!lo.batCab)return "";
+  const per=st.a.modPerCab,cw=46,ch=110,gap=10,W=lo.batCab*(cw+gap)+gap;let g="";
+  lo.items.filter(i=>i.t==="batc").forEach((it,i)=>{const x=gap+i*(cw+gap);g+=`<rect x="${x}" y="4" width="${cw}" height="${ch}" rx="3" fill="none" stroke="currentColor" opacity=".7"/>`;
+    const mh=(ch-8)/per;for(let m=0;m<it.extra;m++)g+=`<rect x="${x+4}" y="${4+ch-4-(m+1)*mh+1}" width="${cw-8}" height="${mh-2}" rx="1.5" fill="#2f8a57"/>`;});
+  return `<div class="hint" style="margin-top:6px">Akü kabinleri – önden görünüm (modüller üst üste)</div><svg viewBox="0 0 ${W} ${ch+8}" width="${Math.min(W*1.4,320)}" style="color:var(--ink);display:block" role="img" aria-label="Akü kabinleri önden görünüm">${g}</svg>`;
+}
 /* ---- cards ---- */
 function cardHtml(r,i){
   const c=calc(r),n1=r.scheme==="N+1";
   const need=c?`<div class="need"><div class="t">Gerekenler</div><dl>
      <dt>Akü (lityum)</dt><dd class="${c.short?"warn":""}">${c.mods} × ${f(st.a.mod,0)} Ah = ${f(c.ah,0)} Ah<small>yaklaşık ${f(c.real)} saat dayanır</small></dd>
      <dt>Rectifier (DC sistem)</dt><dd>${c.units} × ${f(c.rSize)} kW<small>${n1?"1 çalışan + 1 yedek":"yük + akü şarjı ≈ "+f(c.dcKW,1)+" kW"}</small></dd>
-     <dt>Klima</dt><dd>${c.acN} × ${f(c.btu,0)} BTU${c.fcb?" + FCB":""}<small>${c.hassas?"hassas klima":"split klima"}${n1?" · 1 çalışan + 1 yedek":""}</small></dd>
+     <dt>Klima</dt><dd>${c.acN} × ${f(c.btu,0)} BTU<small>${c.hassas?"hassas klima":"split klima"}${n1?" · 1 çalışan + 1 yedek":""}</small></dd>
      <dt>Elektrik ihtiyacı</dt><dd>${f(c.peak)} kW · ${f(c.amps,0)} A<small>en kötü durumda (akü şarj olurken)</small></dd>
      <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.brk} A · 220 V</dd></div>
      <dt>Jeneratör</dt><dd class="${c.gen?"":"warn"}">${c.gen?c.gen+" kVA":"listedekilerden büyük"}<small>gerekli en az ${f(c.gNeed)} kVA</small></dd>
@@ -137,11 +181,11 @@ function cardHtml(r,i){
      <tr><td>Rectifier yük + şarj (${f(c.dc+c.chA,0)} A × ${st.a.dcv} V)</td><td>${f(c.dcKW,2)} kW · %${f(c.rLoad*100,0)} dolu</td></tr>
      <tr><td>Cihazlar (rectifier girişi)</td><td>${f(c.rectW,0)} W</td></tr>
      <tr><td>Akü şarjı (AC tarafı)</td><td>${f(c.chgW,0)} W</td></tr>
-     <tr><td>Klima${c.fcb?" + FCB":""} (1 çalışan)</td><td>${f(c.coolW,0)} W</td></tr>
+     <tr><td>Klima (1 çalışan)</td><td>${f(c.coolW,0)} W</td></tr>
      <tr><td>Normal çalışma (akü dolu)</td><td>${f(c.normal)} kW · ${f(c.normal*1000/220,0)} A</td></tr>
      <tr><td>En kötü durum</td><td>${f(c.peak)} kW · ${f(c.amps,0)} A · ${f(c.kva)} kVA</td></tr>
      <tr><td>3 faz olursa (faz başı)</td><td>≈ ${f(c.peak*1000/(1.732*380),0)} A</td></tr>
-    </table></details>`:`<div class="need"><p class="warn" style="margin:8px 0">DC yükü girin.</p></div>`;
+    </table></details>${layoutHtml(r,c)}`:`<div class="need"><p class="warn" style="margin:8px 0">DC yükü girin.</p></div>`;
   return `<section class="card" data-i="${i}">
    <div class="top"><input data-k="name" value="${esc(r.name)}" aria-label="Site adı" placeholder="Site adı"><button class="del noprint" data-del="${i}" title="Siteyi sil">Sil</button></div>
    <div class="inputs">
@@ -150,15 +194,26 @@ function cardHtml(r,i){
     <label>Yedekleme (saat)<input inputmode="decimal" data-k="hours" value="${esc(r.hours)}" placeholder="${n1?st.a.hN1:st.a.hN}"></label>
     <label>Klima tipi<div class="seg">${[["split","Split"],["hassas","Hassas"]].map(([k,l])=>`<button type="button" data-ac="${k}" aria-pressed="${(r.ac||"split")===k}">${l}</button>`).join("")}</div></label>
     <label>Klima (BTU)<select data-k="btu">${BTUS.map(b=>`<option value="${b}"${String(r.btu)===String(b)?" selected":""}>${f(b,0)}</option>`).join("")}</select></label>
-    <label style="grid-column:1/-1;display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--ink)"><input type="checkbox" data-k="fcb" ${r.fcb?"checked":""} style="width:20px;min-height:20px;accent-color:var(--accent)"> FCB (serbest soğutma ünitesi) var</label>
+    <label>Fiber kabin (adet)<input inputmode="numeric" data-k="fib" value="${esc(r.fib??"1")}"></label>
+    <label>Mevcut alan (m², isteğe bağlı)<input inputmode="decimal" data-k="area" value="${esc(r.area??"")}" placeholder="ör. 6"></label>
+    <label style="grid-column:1/-1">Akü yerleşimi<div class="seg">${[["kabin","Kabinde üst üste"],["yan","Yan yana (zeminde)"]].map(([k,l])=>`<button type="button" data-place="${k}" aria-pressed="${(r.place||"kabin")===k}">${l}</button>`).join("")}</div></label>
     <label style="grid-column:1/-1">Rectifier boyu<select data-k="rect"><option value="">Otomatik (yüke göre)</option>${rectSizes().map(x=>`<option value="${x}"${num(r.rect)===x?" selected":""}>${f(x)} kW</option>`).join("")}</select></label>
    </div><div class="res">${need}</div></section>`;
 }
+function layoutHtml(r,c){const lo=layout(r,c);
+  const parts=[lo.fib?`${lo.fib} fiber`:"",`${c.units} rectifier`,lo.onFloor?`${c.mods} akü modülü (yan yana)`:`${lo.batCab} akü kabini (${c.mods} modül)`,c.hassas?`${c.acN} hassas klima`:""].filter(Boolean);
+  const cabs=lo.fib+c.units+lo.batCab;
+  return `<div class="need" style="border-top:1px solid var(--line)"><div class="t">Yerleşim ve alan</div><dl>
+   <dt>Kabinler</dt><dd>${cabs} kabin${c.hassas?` + ${c.acN} klima ünitesi`:""}<small>${parts.join(" + ")}</small></dd>
+   <dt>Sıra uzunluğu</dt><dd>${f(lo.L)} m<small>${lo.two?"iki sıra, karşılıklı":"tek sıra"}</small></dd>
+   <div class="big" style="display:contents"><dt>Gereken alan</dt><dd>≈ ${f(lo.area)} m²<small style="font-size:.78rem">${f(lo.roomL)} × ${f(lo.depth)} m (koridor dahil)</small></dd></div>
+   ${lo.avail!=null?`<dt>Mevcut alan</dt><dd class="${lo.fits?"":"warn"}">${f(lo.avail)} m² · ${lo.fits?"yeterli ✓":"yetersiz"}</dd>`:""}
+  </dl>${layoutSvg(lo)}${stackSvg(lo)}<div class="hint" style="margin:6px 0 10px">Üstten görünüm, ölçekli. Split klimanın iç ünitesi duvara asıldığı için zemin alanına eklenmez.</div></div>`}
 function summary(){
   const rows=st.rows.map(r=>({r,c:calc(r)}));
-  document.getElementById("sumB").innerHTML=rows.map(({r,c})=>c?`<tr><td><b>${esc(r.name||"–")}</b></td><td>${f(c.dc,0)} A</td><td>${r.scheme}</td><td>${c.mods} × ${f(st.a.mod,0)} Ah (${f(c.real,0)} sa)</td><td>${c.units} × ${f(c.rSize)} kW</td><td>${c.acN} × ${f(c.btu,0)} BTU ${c.hassas?"hassas":"split"}</td><td>${f(c.peak)} kW</td><td class="k">${c.brk} A</td><td>${c.gen?c.gen+" kVA":"–"}</td></tr>`:`<tr><td><b>${esc(r.name||"–")}</b></td><td colspan="8" class="warn">DC yükü girilmedi</td></tr>`).join("");
+  document.getElementById("sumB").innerHTML=rows.map(({r,c})=>c?`<tr><td><b>${esc(r.name||"–")}</b></td><td>${f(c.dc,0)} A</td><td>${r.scheme}</td><td>${c.mods} × ${f(st.a.mod,0)} Ah (${f(c.real,0)} sa)</td><td>${c.units} × ${f(c.rSize)} kW</td><td>${c.acN} × ${f(c.btu,0)} BTU ${c.hassas?"hassas":"split"}</td><td>${f(c.peak)} kW</td><td class="k">${c.brk} A</td><td>${c.gen?c.gen+" kVA":"–"}</td><td>≈ ${f(layout(r,c).area)} m²</td></tr>`:`<tr><td><b>${esc(r.name||"–")}</b></td><td colspan="9" class="warn">DC yükü girilmedi</td></tr>`).join("");
   const cs=rows.map(x=>x.c).filter(Boolean);
-  document.getElementById("sumF").innerHTML=cs.length>1?`<tr><td>Toplam (${cs.length} site)</td><td>${f(cs.reduce((s,c)=>s+c.dc,0),0)} A</td><td></td><td>${cs.reduce((s,c)=>s+c.mods,0)} modül</td><td>${cs.reduce((s,c)=>s+c.units,0)} sistem</td><td>${cs.reduce((s,c)=>s+c.acN,0)} klima</td><td>${f(cs.reduce((s,c)=>s+c.peak,0))} kW</td><td></td><td></td></tr>`:"";
+  document.getElementById("sumF").innerHTML=cs.length>1?`<tr><td>Toplam (${cs.length} site)</td><td>${f(cs.reduce((s,c)=>s+c.dc,0),0)} A</td><td></td><td>${cs.reduce((s,c)=>s+c.mods,0)} modül</td><td>${cs.reduce((s,c)=>s+c.units,0)} sistem</td><td>${cs.reduce((s,c)=>s+c.acN,0)} klima</td><td>${f(cs.reduce((s,c)=>s+c.peak,0))} kW</td><td></td><td></td><td></td></tr>`:"";
 }
 function renderCard(i){const el=document.querySelector(`.card[data-i="${i}"] .res`);if(!el)return render();const t=document.createElement("div");t.innerHTML=cardHtml(st.rows[i],i);el.innerHTML=t.querySelector(".res").innerHTML;summary()}
 function render(){document.getElementById("cards").innerHTML=st.rows.map(cardHtml).join("")+`<button class="addcard noprint" id="add2">+ Site ekle</button>`;summary()}
@@ -170,6 +225,7 @@ document.addEventListener("input",e=>{const el=e.target;
 document.addEventListener("change",e=>{if(TXT.includes(e.target.dataset.a))render()});
 document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.scheme){const card=b.closest(".card"),i=+card.dataset.i;st.rows[i].scheme=b.dataset.scheme;save();card.querySelectorAll("[data-scheme]").forEach(x=>x.setAttribute("aria-pressed",x===b));card.querySelector('[data-k="hours"]').placeholder=b.dataset.scheme==="N+1"?st.a.hN1:st.a.hN;renderCard(i);return}
+  if(b.dataset.place){const card=b.closest(".card"),i=+card.dataset.i;st.rows[i].place=b.dataset.place;save();card.querySelectorAll("[data-place]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderCard(i);return}
   if(b.dataset.ac){const card=b.closest(".card"),i=+card.dataset.i;st.rows[i].ac=b.dataset.ac;save();card.querySelectorAll("[data-ac]").forEach(x=>x.setAttribute("aria-pressed",x===b));renderCard(i);return}
   if(b.dataset.del!==undefined){if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Emin misin?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Sil"}},2500);return}st.rows.splice(+b.dataset.del,1);save();render();return}
   if(b.id==="add"||b.id==="add2"){st.rows.push({name:"Test"+(st.rows.length+1),dc:"25",scheme:"N",hours:"",btu:"24000",rect:""});save();render();const ins=document.querySelectorAll('.card [data-k="name"]'),last=ins[ins.length-1];if(last){last.scrollIntoView({block:"center"});last.focus();last.select()}return}
@@ -178,8 +234,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)r
   if(b.id==="copy")copyTSV();if(b.id==="print")window.print()});
 async function copyTSV(){
   const d=(n,k=1)=>n==null?"":n.toFixed(k).replace(".",",");
-  const head=["Site","DC yük (A)","Şema","Yedekleme (saat)","Akü (adet × Ah)","Akü toplam (Ah)","Gerçek yedekleme (saat)","Rectifier","Klima","Elektrik ihtiyacı (kW)","En kötü akım (A)","kVA","Talep (A)","Jeneratör (kVA)"];
-  const rows=st.rows.map(r=>{const c=calc(r);return c?[r.name,c.dc,r.scheme,c.h,`${c.mods} x ${st.a.mod}`,c.ah,d(c.real),`${c.units} x ${d(c.rSize)} kW`,`${c.acN} x ${c.btu} BTU ${c.hassas?"hassas":"split"}${c.fcb?" + FCB":""}`,d(c.peak,2),d(c.amps),d(c.kva),c.brk,c.gen||""]:[r.name,r.dc,r.scheme]});
+  const head=["Site","DC yük (A)","Şema","Yedekleme (saat)","Akü (adet × Ah)","Akü toplam (Ah)","Gerçek yedekleme (saat)","Rectifier","Klima","Elektrik ihtiyacı (kW)","En kötü akım (A)","kVA","Talep (A)","Jeneratör (kVA)","Kabin sayısı","Akü yerleşimi","Gereken alan (m²)"];
+  const rows=st.rows.map(r=>{const c=calc(r);return c?[r.name,c.dc,r.scheme,c.h,`${c.mods} x ${st.a.mod}`,c.ah,d(c.real),`${c.units} x ${d(c.rSize)} kW`,`${c.acN} x ${c.btu} BTU ${c.hassas?"hassas":"split"}`,d(c.peak,2),d(c.amps),d(c.kva),c.brk,c.gen||"",(()=>{const lo=layout(r,c);return lo.fib+c.units+lo.batCab})(),r.place==="yan"?"Yan yana":"Kabinde",d(layout(r,c).area)]:[r.name,r.dc,r.scheme]});
   const t=[head,...rows].map(x=>x.join("\t")).join("\n");
   try{await navigator.clipboard.writeText(t);toast("Kopyalandı – Excel'de bir hücreye yapıştır")}catch(e){toast("Kopyalanamadı")}}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2500)}
