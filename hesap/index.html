@@ -113,11 +113,11 @@ function calc(r){
   let rSize=num(r.rect);const rAuto=!rSize;if(rAuto)rSize=rs.find(x=>x>=dcKW-1e-9)||rs[rs.length-1];
   const rBase=Math.max(1,Math.ceil(dcKW/rSize-1e-9)),units=rBase+(n1?1:0),rLoad=dcKW/(rBase*rSize);
   const acN=n1?2:1,acKW=btu/a.eer/1000;
-  const rectW=dc*a.dcv/a.eff,chgW=chA*a.dcv/a.eff,coolW=acKW*1000+a.fcb;
+  const rectW=dc*a.dcv/a.eff,chgW=chA*a.dcv/a.eff,coolW=acKW*1000+(r.fcb?a.fcb:0);
   const normal=(rectW+coolW)/1000,peak=(rectW+chgW+coolW)/1000,amps=peak*1000/220,kva=peak/a.pf;
   const brk=BREAKERS.find(b=>b>=amps*a.safety)||Math.ceil(amps*a.safety);
   const gNeed=kva/(a.gmax*a.derate),sizes=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=sizes.find(s=>s>=gNeed)||null;
-  return{dc,h,btu,needAh,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acKW,rectW,chgW,coolW,normal,peak,amps,kva,brk,gNeed,gen,n1};
+  return{fcb:!!r.fcb,dc,h,btu,needAh,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,acN,acKW,rectW,chgW,coolW,normal,peak,amps,kva,brk,gNeed,gen,n1};
 }
 
 /* ---- cards ---- */
@@ -126,7 +126,7 @@ function cardHtml(r,i){
   const need=c?`<div class="need"><div class="t">Gerekenler</div><dl>
      <dt>Akü (lityum)</dt><dd class="${c.short?"warn":""}">${c.mods} × ${f(st.a.mod,0)} Ah = ${f(c.ah,0)} Ah<small>yaklaşık ${f(c.real)} saat dayanır</small></dd>
      <dt>Rectifier (DC sistem)</dt><dd>${c.units} × ${f(c.rSize)} kW<small>${n1?"1 çalışan + 1 yedek":"yük + akü şarjı ≈ "+f(c.dcKW,1)+" kW"}</small></dd>
-     <dt>Klima</dt><dd>${c.acN} × ${f(c.btu,0)} BTU + FCB<small>${n1?"1 çalışan + 1 yedek":"split klima"}</small></dd>
+     <dt>Klima</dt><dd>${c.acN} × ${f(c.btu,0)} BTU${c.fcb?" + FCB":""}<small>${n1?"1 çalışan + 1 yedek":"split klima"}</small></dd>
      <dt>Elektrik ihtiyacı</dt><dd>${f(c.peak)} kW · ${f(c.amps,0)} A<small>en kötü durumda (akü şarj olurken)</small></dd>
      <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.brk} A · 220 V</dd></div>
      <dt>Jeneratör</dt><dd class="${c.gen?"":"warn"}">${c.gen?c.gen+" kVA":"listedekilerden büyük"}<small>gerekli en az ${f(c.gNeed)} kVA</small></dd>
@@ -137,7 +137,7 @@ function cardHtml(r,i){
      <tr><td>Rectifier yük + şarj (${f(c.dc+c.chA,0)} A × ${st.a.dcv} V)</td><td>${f(c.dcKW,2)} kW · %${f(c.rLoad*100,0)} dolu</td></tr>
      <tr><td>Cihazlar (rectifier girişi)</td><td>${f(c.rectW,0)} W</td></tr>
      <tr><td>Akü şarjı (AC tarafı)</td><td>${f(c.chgW,0)} W</td></tr>
-     <tr><td>Klima + FCB (1 çalışan)</td><td>${f(c.coolW,0)} W</td></tr>
+     <tr><td>Klima${c.fcb?" + FCB":""} (1 çalışan)</td><td>${f(c.coolW,0)} W</td></tr>
      <tr><td>Normal çalışma (akü dolu)</td><td>${f(c.normal)} kW · ${f(c.normal*1000/220,0)} A</td></tr>
      <tr><td>En kötü durum</td><td>${f(c.peak)} kW · ${f(c.amps,0)} A · ${f(c.kva)} kVA</td></tr>
      <tr><td>3 faz olursa (faz başı)</td><td>≈ ${f(c.peak*1000/(1.732*380),0)} A</td></tr>
@@ -149,6 +149,7 @@ function cardHtml(r,i){
     <label>Şema<div class="seg">${["N","N+1"].map(s=>`<button type="button" data-scheme="${s}" aria-pressed="${r.scheme===s}">${s}</button>`).join("")}</div></label>
     <label>Yedekleme (saat)<input inputmode="decimal" data-k="hours" value="${esc(r.hours)}" placeholder="${n1?st.a.hN1:st.a.hN}"></label>
     <label>Klima (BTU)<select data-k="btu">${BTUS.map(b=>`<option value="${b}"${String(r.btu)===String(b)?" selected":""}>${f(b,0)}</option>`).join("")}</select></label>
+    <label style="grid-column:1/-1;display:flex;gap:8px;align-items:center;font-size:.9rem;color:var(--ink)"><input type="checkbox" data-k="fcb" ${r.fcb?"checked":""} style="width:20px;min-height:20px;accent-color:var(--accent)"> FCB (serbest soğutma ünitesi) var</label>
     <label style="grid-column:1/-1">Rectifier boyu<select data-k="rect"><option value="">Otomatik (yüke göre)</option>${rectSizes().map(x=>`<option value="${x}"${num(r.rect)===x?" selected":""}>${f(x)} kW</option>`).join("")}</select></label>
    </div><div class="res">${need}</div></section>`;
 }
@@ -164,7 +165,7 @@ function renderAssume(){document.getElementById("agrid").innerHTML=`<p>Bu değer
 
 document.addEventListener("input",e=>{const el=e.target;
   if(el.dataset.a){const k=el.dataset.a;st.a[k]=TXT.includes(k)?el.value:(num(el.value)??st.a[k]);save();if(!TXT.includes(k)||e.type==="change")render();return}
-  if(el.dataset.k){const i=+el.closest(".card").dataset.i;st.rows[i][el.dataset.k]=el.value;save();renderCard(i)}});
+  if(el.dataset.k){const i=+el.closest(".card").dataset.i;st.rows[i][el.dataset.k]=el.type==="checkbox"?el.checked:el.value;save();renderCard(i)}});
 document.addEventListener("change",e=>{if(TXT.includes(e.target.dataset.a))render()});
 document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.scheme){const card=b.closest(".card"),i=+card.dataset.i;st.rows[i].scheme=b.dataset.scheme;save();card.querySelectorAll("[data-scheme]").forEach(x=>x.setAttribute("aria-pressed",x===b));card.querySelector('[data-k="hours"]').placeholder=b.dataset.scheme==="N+1"?st.a.hN1:st.a.hN;renderCard(i);return}
@@ -176,7 +177,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)r
 async function copyTSV(){
   const d=(n,k=1)=>n==null?"":n.toFixed(k).replace(".",",");
   const head=["Site","DC yük (A)","Şema","Yedekleme (saat)","Akü (adet × Ah)","Akü toplam (Ah)","Gerçek yedekleme (saat)","Rectifier","Klima","Elektrik ihtiyacı (kW)","En kötü akım (A)","kVA","Talep (A)","Jeneratör (kVA)"];
-  const rows=st.rows.map(r=>{const c=calc(r);return c?[r.name,c.dc,r.scheme,c.h,`${c.mods} x ${st.a.mod}`,c.ah,d(c.real),`${c.units} x ${d(c.rSize)} kW`,`${c.acN} x ${c.btu} BTU`,d(c.peak,2),d(c.amps),d(c.kva),c.brk,c.gen||""]:[r.name,r.dc,r.scheme]});
+  const rows=st.rows.map(r=>{const c=calc(r);return c?[r.name,c.dc,r.scheme,c.h,`${c.mods} x ${st.a.mod}`,c.ah,d(c.real),`${c.units} x ${d(c.rSize)} kW`,`${c.acN} x ${c.btu} BTU${c.fcb?" + FCB":""}`,d(c.peak,2),d(c.amps),d(c.kva),c.brk,c.gen||""]:[r.name,r.dc,r.scheme]});
   const t=[head,...rows].map(x=>x.join("\t")).join("\n");
   try{await navigator.clipboard.writeText(t);toast("Kopyalandı – Excel'de bir hücreye yapıştır")}catch(e){toast("Kopyalanamadı")}}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2500)}
