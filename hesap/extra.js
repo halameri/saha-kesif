@@ -222,9 +222,10 @@ function drawTop(P,A){const R=P.room,pad=Math.max(45,Math.max(R.w,R.d)*0.08),fs=
    <g style="stroke:var(--line)" stroke-width="1">${grid.join("")}</g>
    ${zones.join("")}${walkSvg}${bb}${bodies.join("")}
    <g id="man" visibility="hidden" style="pointer-events:none">
-    <ellipse cx="0" cy="0" rx="${W?W.manR:30}" ry="14" fill="#f28c28" stroke="#7a3d00" stroke-width="2"/>
-    <ellipse cx="${-(W?W.manR:30)*.55}" cy="9" rx="7" ry="9" fill="#1d3557"/><ellipse cx="${(W?W.manR:30)*.55}" cy="9" rx="7" ry="9" fill="#1d3557"/>
-    <circle cx="0" cy="2" r="11" fill="#f4d03f" stroke="#8a6d00" stroke-width="2"/><path d="M-6 12 L0 22 L6 12 Z" fill="#7a3d00"/>
+    <circle cx="0" cy="0" r="${W?W.manR:30}" fill="none" stroke="#f28c28" stroke-width="1.5" stroke-dasharray="5 4" stroke-opacity=".8"/>
+    <ellipse cx="0" cy="0" rx="25" ry="14" fill="#f28c28" stroke="#7a3d00" stroke-width="1.5"/>
+    <ellipse cx="-21" cy="3" rx="4.5" ry="7" fill="#f28c28" stroke="#7a3d00" stroke-width="1"/><ellipse cx="21" cy="3" rx="4.5" ry="7" fill="#f28c28" stroke="#7a3d00" stroke-width="1"/>
+    <circle cx="0" cy="1" r="10" fill="#f4d03f" stroke="#8a6d00" stroke-width="1.5"/><path d="M-5 11 L0 17 L5 11 Z" fill="#8a6d00"/>
     <text id="manT" x="0" y="${-fs*1.6}" font-size="${fs}" text-anchor="middle" style="fill:var(--ink);font-weight:800;paint-order:stroke;stroke:var(--surface);stroke-width:4px"></text></g>
    <g font-size="${fs}" text-anchor="middle" style="fill:var(--ink);font-weight:700">
     <line x1="0" y1="${-pad*.55}" x2="${R.w}" y2="${-pad*.55}" style="stroke:var(--muted)" stroke-width="1.5"/><text x="${R.w/2}" y="${-pad*.7}">${f(R.w/100,2)} m</text>
@@ -293,15 +294,24 @@ function deco(ctx,kind,role,M,sw,sh){/* M(s,t): yüz üzerinde 0..1 koordinatı 
   else if(role==="front"&&kind==="face"){dot(.32,.62,Math.max(.8,sw/14),"#222");dot(.68,.62,Math.max(.8,sw/14),"#222")}
   else if(role==="front"&&kind==="door"){quadP(.08,.04,.92,.96);ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=1.2;ctx.stroke();dot(.84,.48,Math.max(1.2,sw/30),"#d9d9d9")}
   else if(role==="front"&&kind==="split"){const a=M(.06,.25),b=M(.94,.25);ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();dot(.88,.6,Math.max(1,sw/80),"#2a9bb5")}}
-function manPrims(){const m=UI.man;if(!m)return[];const out=[],w=44,d=26,rot=m.rot,sw=rot%180!==0,bw=sw?d:w,bd=sw?w:d,bx=m.x-bw/2,by=m.y-bd/2,
+/* Teknisyen: ortalama yetişkin ölçüleri (boy ~175 cm, omuz genişliği kollarla ~50 cm, gövde derinliği ~28 cm).
+   Boy Gelişmiş ayarlardan değişir; tüm parçalar orantılı ölçeklenir. */
+function manPrims(){const m=UI.man;if(!m)return[];const out=[],w=50,d=30,rot=m.rot,sw=rot%180!==0,bw=sw?d:w,bd=sw?w:d,bx=m.x-bw/2,by=m.y-bd/2,k=(num(st.a.manH)||175)/175,
     FN={0:[0,1],180:[0,-1],90:[-1,0],270:[1,0]}[rot],W=(u,v)=>rot===0?[bx+u,by+v]:rot===180?[bx+w-u,by+d-v]:rot===90?[bx+d-v,by+u]:[bx+v,by+w-u];
-  const box=(u0,v0,z0,u1,v1,z1,col,deco)=>{const p=W(u0,v0),q=W(u1,v1);out.push({x0:Math.min(p[0],q[0]),x1:Math.max(p[0],q[0]),y0:Math.min(p[1],q[1]),y1:Math.max(p[1],q[1]),z0,z1,col,deco,front:FN})};
-  const s=(m.phase||0)*7,arm=m.busy?1:0;
-  box(8,8+s,0,19,19+s,85,"#1d3557");box(25,8-s,0,36,19-s,85,"#1d3557");
-  box(9,9+s,0,19,22+s,7,"#111");box(25,9-s,0,35,22-s,7,"#111");
-  box(4,5,85,40,21,146,"#f28c28","vest");
-  if(arm){box(0,10,118,6,34,128,"#1d3557");box(38,10,118,44,34,128,"#1d3557")}else{box(0,9-s,92,6,17-s,142,"#1d3557");box(38,9+s,92,44,17+s,142,"#1d3557")}
-  box(14,6,146,30,21,170,"#e0b48a","face");box(12,4,166,32,23,178,"#f4d03f");
+  const box=(u0,v0,z0,u1,v1,z1,col,deco)=>{const p=W(u0,v0),q=W(u1,v1);out.push({x0:Math.min(p[0],q[0]),x1:Math.max(p[0],q[0]),y0:Math.min(p[1],q[1]),y1:Math.max(p[1],q[1]),z0:z0*k,z1:z1*k,col,deco,front:FN})};
+  const s=(m.phase||0)*8,busy=!!m.busy,PANT="#1d3557",VEST="#f28c28",SKIN="#d9a77c";
+  /* ayakkabı, bacaklar, kalça */
+  box(12,7+s,0,23,30+s,8,"#141414");box(27,7-s,0,38,30-s,8,"#141414");
+  box(12,9+s,8,23,22+s,82,PANT);box(27,9-s,8,38,22-s,82,PANT);
+  box(11,8,82,39,23,96,PANT);
+  /* gövde (yelek), boyun, baş, baret */
+  box(8,7,96,42,24,146,VEST,"vest");
+  box(21,12,146,29,20,153,SKIN);
+  box(17,8,153,33,26,175,SKIN,"face");
+  box(15,6,171,35,28,180,"#f4d03f");box(14,5,171,36,31,173,"#f4d03f");
+  /* kollar: yürürken sallanır, müdahalede öne uzanır */
+  if(busy){box(1,12,120,8,40,129,VEST);box(42,12,120,49,40,129,VEST);box(2,40,119,7,47,128,SKIN);box(43,40,119,48,47,128,SKIN)}
+  else{box(1,11-s,96,8,20-s,145,VEST);box(42,11+s,96,49,20+s,145,VEST);box(2,12-s,84,7,19-s,96,SKIN);box(43,12+s,84,48,19+s,96,SKIN)}
   return out}
 function draw3D(P,A){const stage=$("#pStage");
   if(!stage.querySelector("canvas")){stage.innerHTML=`<canvas aria-label="Salon 3D görünüm"></canvas><div class="hint3">Döndürmek için sürükle · yakınlaştırmak için iki parmak / tekerlek</div>`;UI.cam=UI.cam||{th:0.3,ph:0.78,z:1.25}}
