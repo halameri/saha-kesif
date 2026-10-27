@@ -8,7 +8,7 @@ try{const u=JSON.parse(localStorage.getItem("hesap-ui")||"{}");Object.assign(UI,
 const saveUI=()=>{try{localStorage.setItem("hesap-ui",JSON.stringify({tab:UI.tab,site:UI.site,view:UI.view}))}catch(e){}};
 
 /* ---------- sekmeler ---------- */
-function setTab(t){UI.tab=t;saveUI();
+function setTab(t){if(UI.walk&&t!=="salon")toggleWalk(false);UI.tab=t;saveUI();
   document.querySelectorAll(".tabs [data-tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
   ["hesap","salon","rehber"].forEach(k=>{$("#tab-"+k).hidden=k!==t});
   document.querySelectorAll("header .row .btn").forEach(b=>b.style.display=t==="hesap"?"":"none");
@@ -19,7 +19,7 @@ function siteIdx(){if(!st.rows.length)return -1;if(UI.site>=st.rows.length)UI.si
 function siteSelect(id){return `<label>Site<select id="${id}">${st.rows.map((r,i)=>`<option value="${i}"${i===UI.site?" selected":""}>${esc(r.name||"Site "+(i+1))}${num(r.dc)?" · "+num(r.dc)+" A":""}</option>`).join("")}</select></label>`}
 
 /* ---------- salon: ekipman listesi ---------- */
-const COL={dc:"#1c3d5a",aku:"#2f8a57",ac:"#2a9bb5",split:"#2a9bb5",tr:"#6b5aa6"};
+const COL={dc:"#1c3d5a",aku:"#2f8a57",ac:"#2a9bb5",split:"#2a9bb5",tr:"#6b5aa6",door:"#8a6d3b"};
 function planItems(c){const a=st.a,it=[],cnt={},svc=num(a.svc)||0,E=eqOf(c.row,c);
   const add=(type,name,w,d,h,front,extra)=>{cnt[type]=(cnt[type]||0)+1;it.push({key:type+"_"+cnt[type],type,name,w,d,h,front,...(extra||{})})};
   if(c.B.t==="pb2"){
@@ -33,6 +33,9 @@ function planItems(c){const a=st.a,it=[],cnt={},svc=num(a.svc)||0,E=eqOf(c.row,c
   for(let q=0;q<E.tr.n;q++)add("tr",`Transmisyon/fiber kabin ${q+1}`,E.tr.w,E.tr.d,E.tr.h,svc);
   if(c.acT==="dx")for(let q=0;q<c.acN;q++)add("ac",`DX klima ${f(c.acs,0)} kcal/h`,E.ac.w,E.ac.d,E.ac.h,Math.round((num(a.dxFront)||0)*100));
   else for(let q=0;q<c.acN;q++)add("split",`Split ${f(c.acs/1000,0)}k BTU (duvar)`,100,25,32,0,{wall:true});
+  add("door","Kapı",90,12,210,0,{wall:true});
+  /* aynı adlı ekipmanları numarala (mesajlarda karışmasın) */
+  const nm={};it.forEach(x=>{nm[x.name]=(nm[x.name]||0)+1});const seen={};it.forEach(x=>{if(nm[x.name]>1&&!/\d$/.test(x.name)){seen[x.name]=(seen[x.name]||0)+1;x.name+=" – "+seen[x.name]}});
   return it}
 const sigOf=it=>it.map(i=>`${i.type}:${i.w}x${i.d}x${i.h}:${i.front}`).join("|");
 /* gövde dikdörtgeni ve önündeki servis alanı (rot: 0 ön aşağı, 90 ön sola, 180 ön yukarı, 270 ön sağa) */
@@ -50,13 +53,16 @@ function autoLayout(items){const a=st.a,g=num(a.lineGap)||0,wg=10;
     W=Math.max(W,xa-g+wg);D=y+Math.max(...acs.map(i=>i.d))+wg}
   else D=wg+rowD+rowF+60;
   let xs=wg;sp.forEach(i=>{i.pos={x:xs,y:D-i.d,rot:180};xs+=i.w+60});W=Math.max(W,xs-60+wg);
-  return{w:Math.ceil(W/10)*10,d:Math.ceil(D/10)*10}}
+  const Wr=Math.ceil(W/10)*10,Dr=Math.ceil(D/10)*10,aisleMid=acs.length?wg+rowD+Math.max(rowF,...acs.map(i=>i.front))/2:wg+rowD+(Dr-wg-rowD)/2;
+  items.filter(i=>i.type==="door").forEach(i=>{i.pos={x:Wr-i.d,y:Math.round(Math.max(0,Math.min(Dr-i.w,aisleMid-i.w/2))/5)*5,rot:90}});
+  return{w:Wr,d:Dr}}
 
 function getPlan(i){const r=st.rows[i],c=calc(r);if(!c)return null;const items=planItems(c),sig=sigOf(items);
   if(!r.plan||r.plan.sig!==sig){const room=autoLayout(items),old=r.plan;
     /* ekipman değiştiyse: yerinde duranları koru, sadece yenilerini otomatik yerleştir */
     const pos=Object.fromEntries(items.map(x=>[x.key,old&&old.pos[x.key]?old.pos[x.key]:x.pos]));
-    r.plan={sig,room:old?{w:Math.max(old.room.w,room.w),d:Math.max(old.room.d,room.d)}:room,pos};save()}
+    r.plan={sig,room:old?{w:Math.max(old.room.w,room.w),d:Math.max(old.room.d,room.d)}:room,pos};
+    items.forEach(x=>{if(x.type==="door"&&old&&!old.pos[x.key])pos[x.key]={x:r.plan.room.w-x.d,y:Math.max(0,Math.min(r.plan.room.d-x.w,x.pos.y)),rot:90}});save()}
   items.forEach(x=>{x.pos=r.plan.pos[x.key]||{x:10,y:10,rot:0}});
   return{r,c,items,room:r.plan.room}}
 
@@ -66,11 +72,71 @@ function analyse(P){const R=P.room,fl=P.items.filter(i=>!i.wall),G=fl.map(i=>({i
     else if(A.z&&!inside(A.z,R))msgs.push(["w",`${A.i.name}: önündeki ${A.i.front} cm servis boşluğu duvara çarpıyor`]);
     G.forEach((B,bi)=>{if(bi<=ai)return;if(ov(A.b,B.b)){bad.add(A.i.key);bad.add(B.i.key);msgs.push(["e",`${A.i.name} ile ${B.i.name} üst üste`])}});
     G.forEach((B,bi)=>{if(bi===ai||!B.z)return;if(ov(A.b,B.z)){bad.add(A.i.key);msgs.push(["e",`${A.i.name}, ${B.i.name} önündeki servis boşluğunu kapatıyor`])}})});
-  P.items.filter(i=>i.wall).forEach(i=>{const b=geo(i).b;if(!inside(b,R)){bad.add(i.key);msgs.push(["e",`${i.name} oda dışında`])}});
+  P.items.filter(i=>i.wall).forEach(i=>{const b=geo(i).b;if(!inside(b,R)){bad.add(i.key);msgs.push(["e",`${i.name} oda dışında`])}
+    else if(i.type==="door"&&!(b.x<=2||b.y<=2||b.x+b.w>=R.w-2||b.y+b.h>=R.d-2))msgs.push(["w","Kapı bir duvara dayalı değil"])});
   let bb=null;G.forEach(A=>[A.b,A.z].forEach(r=>{if(!r)return;if(!bb)bb={x0:r.x,y0:r.y,x1:r.x+r.w,y1:r.y+r.h};else{bb.x0=Math.min(bb.x0,r.x);bb.y0=Math.min(bb.y0,r.y);bb.x1=Math.max(bb.x1,r.x+r.w);bb.y1=Math.max(bb.y1,r.y+r.h)}}));
   const foot=G.reduce((s,A)=>s+A.b.w*A.b.h,0)/1e4,svcA=G.reduce((s,A)=>s+(A.z?A.z.w*A.z.h:0),0)/1e4;
   if(!msgs.length)msgs.push(["o","Çakışma yok, tüm ekipman ve servis boşlukları odanın içinde"]);
   return{bad,msgs,bb,foot,svcA}}
+
+/* ---------- teknisyen: geçilebilir alan, ulaşılabilirlik, yürüyüş yolu ---------- */
+function walkGrid(P){const a=st.a,R=P.room,S=5,nx=Math.max(1,Math.ceil(R.w/S)),ny=Math.max(1,Math.ceil(R.d/S)),N=nx*ny,manR=(num(a.manW)||60)/2;
+  const dist=new Float32Array(N);for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const cx=(i+.5)*S,cy=(j+.5)*S;dist[j*nx+i]=Math.max(0,Math.min(cx,R.w-cx,cy,R.d-cy))}
+  P.items.filter(x=>!x.wall).forEach(x=>{const b=geo(x).b,i0=Math.max(0,Math.floor(b.x/S)),i1=Math.min(nx-1,Math.ceil((b.x+b.w)/S)-1),j0=Math.max(0,Math.floor(b.y/S)),j1=Math.min(ny-1,Math.ceil((b.y+b.h)/S)-1);
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)dist[j*nx+i]=0});
+  /* iki geçişli mesafe dönüşümü (yaklaşık öklid) */
+  const D1=S,D2=S*1.4142;
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const k=j*nx+i;let d=dist[k];if(i>0)d=Math.min(d,dist[k-1]+D1);if(j>0){d=Math.min(d,dist[k-nx]+D1);if(i>0)d=Math.min(d,dist[k-nx-1]+D2);if(i<nx-1)d=Math.min(d,dist[k-nx+1]+D2)}dist[k]=d}
+  for(let j=ny-1;j>=0;j--)for(let i=nx-1;i>=0;i--){const k=j*nx+i;let d=dist[k];if(i<nx-1)d=Math.min(d,dist[k+1]+D1);if(j<ny-1){d=Math.min(d,dist[k+nx]+D1);if(i<nx-1)d=Math.min(d,dist[k+nx+1]+D2);if(i>0)d=Math.min(d,dist[k+nx-1]+D2)}dist[k]=d}
+  const walk=new Uint8Array(N);for(let k=0;k<N;k++)walk[k]=dist[k]>=manR-0.01?1:0;
+  const cellAt=(x,y)=>[Math.min(nx-1,Math.max(0,Math.floor(x/S))),Math.min(ny-1,Math.max(0,Math.floor(y/S)))];
+  const nearestWalk=(x,y,maxCm)=>{const[i0,j0]=cellAt(x,y);let best=-1,bd=1e9;const m=Math.ceil(maxCm/S);for(let j=Math.max(0,j0-m);j<=Math.min(ny-1,j0+m);j++)for(let i=Math.max(0,i0-m);i<=Math.min(nx-1,i0+m);i++){const k=j*nx+i;if(!walk[k])continue;const d=(i-i0)**2+(j-j0)**2;if(d<bd){bd=d;best=k}}return best};
+  const door=P.items.find(x=>x.type==="door");let start=-1;
+  if(door){const b=geo(door).b;start=nearestWalk(b.x+b.w/2,b.y+b.h/2,manR+80)}
+  const bfs=src=>{const dd=new Int32Array(N).fill(-1),par=new Int32Array(N).fill(-1);if(src<0)return{dd,par};const q=new Int32Array(N);let h=0,t=0;q[t++]=src;dd[src]=0;
+    while(h<t){const k=q[h++],i=k%nx,j=(k-i)/nx;for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){if(!di&&!dj)continue;const ii=i+di,jj=j+dj;if(ii<0||jj<0||ii>=nx||jj>=ny)continue;const n=jj*nx+ii;if(!walk[n]||dd[n]>=0)continue;if(di&&dj&&(!walk[j*nx+ii]||!walk[jj*nx+i]))continue;dd[n]=dd[k]+1;par[n]=k;q[t++]=n}}return{dd,par}};
+  const base=bfs(start);
+  /* her ekipmanın önünde, önüne bakarak durulacak nokta */
+  const targets=P.items.filter(x=>!x.wall&&x.front>0).map(x=>{const b=geo(x).b,r=x.pos.rot,off=manR+8;let best=-1,bd=1e9;
+    for(let s=.1;s<=.9001;s+=.1){let px,py;if(r===0){px=b.x+b.w*s;py=b.y+b.h+off}else if(r===180){px=b.x+b.w*s;py=b.y-off}else if(r===90){px=b.x-off;py=b.y+b.h*s}else{px=b.x+b.w+off;py=b.y+b.h*s}
+      const[i,j]=cellAt(px,py),k=j*nx+i;if(px<0||py<0||px>R.w||py>R.d)continue;if(walk[k]&&base.dd[k]>=0){const d=Math.abs(s-.5);if(d<bd){bd=d;best=k}}}
+    return{key:x.key,name:x.name,cell:best,ok:best>=0,face:r}});
+  return{S,nx,ny,walk,start,base,targets,bfs,manR}}
+function walkPath(W){const pts=[],cell=k=>[(k%W.nx+.5)*W.S,(Math.floor(k/W.nx)+.5)*W.S];if(W.start<0)return{pts,stops:[]};
+  let cur=W.start;const left=W.targets.filter(t=>t.ok).slice(),stops=[];pts.push(cell(cur));
+  const go=to=>{const r=W.bfs(cur);if(r.dd[to]<0)return false;const seq=[];for(let k=to;k!==cur&&k>=0;k=r.par[k])seq.push(k);seq.reverse().forEach(k=>pts.push(cell(k)));cur=to;return true};
+  while(left.length){const r=W.bfs(cur);left.sort((p,q)=>r.dd[p.cell]-r.dd[q.cell]);const t=left.shift();if(go(t.cell))stops.push({i:pts.length-1,name:t.name,face:t.face})}
+  go(W.start);
+  /* gereksiz ara noktaları at (aynı doğrultudakiler) */
+  const keep=new Set([0,pts.length-1,...stops.map(s=>s.i)]),out=[],map={};
+  pts.forEach((p,i)=>{if(keep.has(i)||i===0||i===pts.length-1){map[i]=out.length;out.push(p);return}const a=pts[i-1],b=pts[i+1];if((p[0]-a[0])*(b[1]-p[1])-(p[1]-a[1])*(b[0]-p[0])!==0){map[i]=out.length;out.push(p)}});
+  return{pts:out,stops:stops.map(s=>({...s,i:map[s.i]}))}}
+const FACE_DIR={0:180,180:0,90:270,270:90};/* ekipmanın önü aşağıysa teknisyen yukarı bakar */
+function manAt(path,dist){/* yol üzerinde verilen mesafedeki konum, yön ve durak */
+  const P=path.pts;let acc=0;for(let k=1;k<P.length;k++){const a=P[k-1],b=P[k],L=Math.hypot(b[0]-a[0],b[1]-a[1]);if(acc+L>=dist){const t=L?(dist-acc)/L:0,dx=b[0]-a[0],dy=b[1]-a[1];return{x:a[0]+dx*t,y:a[1]+dy*t,rot:Math.abs(dx)>Math.abs(dy)?(dx>0?270:90):(dy>0?0:180),seg:k}}acc+=L}
+  const e=P[P.length-1]||[0,0];return{x:e[0],y:e[1],rot:0,seg:P.length,end:true}}
+function walkMsgs(W){const out=[],a=st.a,mw=num(a.manW)||60;
+  if(W.start<0)return[["e",`Kapının önü kapalı: teknisyen içeri giremiyor (en az ${mw} cm geçit gerekli)`]];
+  const bad=W.targets.filter(t=>!t.ok);
+  bad.forEach(t=>out.push(["e",`Teknisyen ${t.name} önüne ulaşamıyor – yol en az ${mw} cm genişliğinde olmalı`]));
+  if(!bad.length)out.push(["o",`Teknisyen kapıdan girip tüm ekipmanın önüne ulaşabiliyor (geçit ≥ ${mw} cm)`]);
+  return out}
+function toggleWalk(on){const P=getPlan(siteIdx());if(UI.walk){cancelAnimationFrame(UI.walk.raf);UI.walk=null;UI.man=null}
+  if(on&&P){const W=walkGrid(P),path=walkPath(W);if(path.pts.length<2){toast(W.start<0?"Kapı önü kapalı, teknisyen giremiyor":"Gidilecek ekipman yok");drawSalon();return}
+    const speed=110,pause=1100;UI.walk={path,d:0,t0:performance.now(),last:performance.now(),stopUntil:0,stopIdx:-1,raf:0};
+    const step=now=>{const w=UI.walk;if(!w)return;const dt=Math.min(80,now-w.last);w.last=now;
+      if(now<w.stopUntil){/* müdahale ediyor */}else{w.d+=speed*dt/1000}
+      const m=manAt(w.path,w.d),st2=w.path.stops.find(s=>s.i===m.seg-1&&s.i>w.stopIdx&&Math.hypot(w.path.pts[s.i][0]-m.x,w.path.pts[s.i][1]-m.y)<4);
+      if(st2){w.stopIdx=st2.i;w.stopUntil=now+pause;w.label=st2.name;w.face=FACE_DIR[st2.face]}
+      const busy=now<w.stopUntil;UI.man={x:m.x,y:m.y,rot:busy?w.face:m.rot,phase:busy?0:Math.sin(w.d/14),label:busy?w.label:null,busy};
+      paintMan();if(m.end){UI.walk=null;setTimeout(()=>{if(!UI.walk){UI.man=null;paintMan();syncWalkBtn()}},600);syncWalkBtn();return}
+      w.raf=requestAnimationFrame(step)};
+    UI.walk.raf=requestAnimationFrame(step)}
+  syncWalkBtn();paintMan()}
+function syncWalkBtn(){const b=$("#pWalk");if(b){b.textContent=UI.walk?"Durdur":"Teknisyeni yürüt";b.classList.toggle("on",!!UI.walk)}}
+function paintMan(){if(UI.view==="3d"){UI.r3&&UI.r3();return}const g=$("#man");if(!g)return;const m=UI.man;if(!m){g.setAttribute("visibility","hidden");return}
+  g.setAttribute("visibility","visible");g.setAttribute("transform",`translate(${m.x} ${m.y}) rotate(${{0:0,90:90,180:180,270:-90}[m.rot]||0})`);
+  const t=$("#manT");if(t){t.textContent=m.label?"🔧 "+m.label:"";t.setAttribute("transform",`rotate(${-({0:0,90:90,180:180,270:-90}[m.rot]||0)})`)}}
 
 /* ---------- salon sekmesi ---------- */
 function renderSalon(){const host=$("#tab-salon"),i=siteIdx();
@@ -86,6 +152,7 @@ function renderSalon(){const host=$("#tab-salon"),i=siteIdx();
     <button class="btn" id="pRot">Seçileni döndür</button><button class="btn" id="pAuto">Otomatik yerleştir</button><button class="btn" id="pFit">Odayı sığdır</button>
    </div>
    <details class="eqd" id="pEqD"${UI.eqOpen?" open":""}><summary>Ekipman ölçüleri (bu salon için)</summary><div id="pEq"></div></details>
+   <div class="walkbar"><button class="btn" id="pWalk">Teknisyeni yürüt</button><label><input type="checkbox" id="pWalkA"${UI.showWalk!==false?" checked":""}> Geçilebilir alanı göster</label></div>
    <div class="stage" id="pStage"></div>
    <div class="kpis" id="pK"></div>
    <ul class="msgs" id="pM"></ul>
@@ -105,9 +172,10 @@ function renderEq(P){const el=$("#pEq");if(!el)return;const c=P.c,E=eqOf(P.r,c),
     if(v>0)r.eq[k][p]=v;else delete r.eq[k][p];save();UI.eqOpen=true;render();renderSalon()}));
   $("#pEqR").onclick=()=>{delete P.r.eq;save();UI.eqOpen=true;render();renderSalon()};
   $("#pEqD").ontoggle=e=>{UI.eqOpen=e.target.open}}
-function bindSalonCtl(){const s=$("#pSite");if(s)s.onchange=()=>{UI.site=+s.value;UI.sel=null;saveUI();renderSalon()};
+function bindSalonCtl(){const s=$("#pSite");if(s)s.onchange=()=>{if(UI.walk)toggleWalk(false);UI.site=+s.value;UI.sel=null;saveUI();renderSalon()};
   const P=()=>getPlan(siteIdx());
   const setRoom=(k,el)=>{const v=num(el.value);if(v>50){const p=P();p.r.plan.room[k]=Math.round(v);save();drawSalon()}};
+  if($("#pWalk")){$("#pWalk").onclick=()=>toggleWalk(!UI.walk);$("#pWalkA").onchange=e=>{UI.showWalk=e.target.checked;drawSalon()};syncWalkBtn()}
   if($("#pW")){$("#pW").oninput=e=>setRoom("w",e.target);$("#pD").oninput=e=>setRoom("d",e.target);
     document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{UI.view=b.dataset.view;saveUI();document.querySelectorAll("[data-view]").forEach(x=>x.setAttribute("aria-pressed",x===b));drawSalon()});
     $("#pRot").onclick=()=>{const p=P();if(!UI.sel||!p.r.plan.pos[UI.sel])return toast("Önce bir ekipman seç");const q=p.r.plan.pos[UI.sel];q.rot=(q.rot+90)%360;save();drawSalon()};
@@ -115,7 +183,8 @@ function bindSalonCtl(){const s=$("#pSite");if(s)s.onchange=()=>{UI.site=+s.valu
     $("#pFit").onclick=()=>{const p=P(),A=analyse(p);if(!A.bb)return;const dx=10-A.bb.x0,dy=10-A.bb.y0;
       Object.values(p.r.plan.pos).forEach(q=>{q.x+=dx;q.y+=dy});p.r.plan.room={w:Math.ceil((A.bb.x1-A.bb.x0+20)/10)*10,d:Math.ceil((A.bb.y1-A.bb.y0+20)/10)*10};
       p.items.filter(x=>x.wall).forEach(x=>{const q=p.r.plan.pos[x.key];q.y=Math.min(q.y,p.r.plan.room.d-x.d);q.x=Math.min(q.x,p.r.plan.room.w-x.w)});save();renderSalon()}}}
-function drawSalon(){const i=siteIdx(),P=getPlan(i);if(!P||!$("#pStage"))return;const A=analyse(P);
+function drawSalon(){const i=siteIdx(),P=getPlan(i);if(!P||!$("#pStage"))return;const A=analyse(P),W=walkGrid(P);A.walk=W;A.msgs=A.msgs.concat(walkMsgs(W));
+  W.targets.forEach(t=>{if(!t.ok)A.unreach=(A.unreach||new Set()).add(t.key)});
   if(UI.sel&&!P.items.some(x=>x.key===UI.sel))UI.sel=null;
   if(UI.view==="3d")draw3D(P,A);else drawTop(P,A);
   const R=P.room,bbW=A.bb?(A.bb.x1-A.bb.x0):0,bbD=A.bb?(A.bb.y1-A.bb.y0):0,errs=A.msgs.filter(m=>m[0]==="e").length;
@@ -131,14 +200,17 @@ function drawSalon(){const i=siteIdx(),P=getPlan(i);if(!P||!$("#pStage"))return;
 /* ---------- üstten görünüm (SVG, sürükle-bırak) ---------- */
 function drawTop(P,A){const R=P.room,pad=Math.max(45,Math.max(R.w,R.d)*0.08),fs=Math.max(10,Math.min(R.w,R.d)/22),stage=$("#pStage");
   const grid=[];for(let x=50;x<R.w;x+=50)grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="${R.d}"/>`);for(let y=50;y<R.d;y+=50)grid.push(`<line x1="0" y1="${y}" x2="${R.w}" y2="${y}"/>`);
-  const zones=[],bodies=[];
-  P.items.forEach(x=>{const g=geo(x),b=g.b,sel=UI.sel===x.key,bad=A.bad.has(x.key),col=COL[x.type];
+  const zones=[],bodies=[],W=A.walk;let walkSvg="";
+  if(W&&UI.showWalk!==false){let dR="",dU="";for(let j=0;j<W.ny;j++){let i=0;while(i<W.nx){const k=j*W.nx+i;if(!W.walk[k]){i++;continue}const ok=W.base.dd[k]>=0;let e=i;while(e<W.nx&&W.walk[j*W.nx+e]&&(W.base.dd[j*W.nx+e]>=0)===ok)e++;
+      const seg=`M${i*W.S} ${j*W.S}h${(e-i)*W.S}v${W.S}h${-(e-i)*W.S}z`;if(ok)dR+=seg;else dU+=seg;i=e}}
+    walkSvg=`<path d="${dR}" fill="#34c759" fill-opacity=".28"/><path d="${dU}" fill="#8e8e93" fill-opacity=".3"/>`}
+  P.items.forEach(x=>{const g=geo(x),b=g.b,sel=UI.sel===x.key,bad=A.bad.has(x.key),col=COL[x.type],unr=A.unreach&&A.unreach.has(x.key);
     if(g.z)zones.push(`<rect x="${g.z.x}" y="${g.z.y}" width="${g.z.w}" height="${g.z.h}" fill="url(#hatch-${x.type})" stroke="${col}" stroke-opacity=".5" stroke-dasharray="6 5"/>`);
     const fr=(()=>{const p=x.pos;if(p.rot===0)return[b.x,b.y+b.h,b.x+b.w,b.y+b.h];if(p.rot===180)return[b.x,b.y,b.x+b.w,b.y];if(p.rot===90)return[b.x,b.y,b.x,b.y+b.h];return[b.x+b.w,b.y,b.x+b.w,b.y+b.h]})();
     const lab=x.name.replace(/ \(duvar\)/,""),tw=b.w>b.h,fz=Math.max(6,Math.min(fs,(tw?b.h:b.w)/3.2,((tw?b.w:b.h)-8)/(Math.min(lab.length,26)*0.58)));
     bodies.push(`<g data-it="${x.key}" style="cursor:move">
       <rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="3" fill="${bad?"#c0392b":col}" fill-opacity="${x.wall?.55:.92}" stroke="${sel?"#e09b12":"#0b1720"}" stroke-width="${sel?5:1.5}"/>
-      <line x1="${fr[0]}" y1="${fr[1]}" x2="${fr[2]}" y2="${fr[3]}" stroke="#ffd166" stroke-width="5" stroke-linecap="round"/>
+      <line x1="${fr[0]}" y1="${fr[1]}" x2="${fr[2]}" y2="${fr[3]}" stroke="${unr?"#c0392b":"#ffd166"}" stroke-width="${unr?8:5}" stroke-linecap="round"${unr?' stroke-dasharray="10 6"':""}/>
       <text x="${b.x+b.w/2}" y="${b.y+b.h/2}" font-size="${fz}" fill="#fff" text-anchor="middle" dominant-baseline="middle" ${tw?"":`transform="rotate(-90 ${b.x+b.w/2} ${b.y+b.h/2})"`} style="pointer-events:none;font-weight:700">${esc(lab.length>26?lab.slice(0,25)+"…":lab)}</text>
       <text x="${b.x+b.w/2}" y="${b.y+b.h/2+fz*1.15}" font-size="${fz*.8}" fill="#fff" fill-opacity=".85" text-anchor="middle" dominant-baseline="middle" ${tw?"":`transform="rotate(-90 ${b.x+b.w/2} ${b.y+b.h/2})"`} style="pointer-events:none">${x.w}×${x.d}</text></g>`)});
   const bb=A.bb?`<rect x="${A.bb.x0}" y="${A.bb.y0}" width="${A.bb.x1-A.bb.x0}" height="${A.bb.y1-A.bb.y0}" fill="none" stroke="#e09b12" stroke-width="2.5" stroke-dasharray="12 8"/>`:"";
@@ -148,7 +220,12 @@ function drawTop(P,A){const R=P.room,pad=Math.max(45,Math.max(R.w,R.d)*0.08),fs=
    <rect x="-12" y="-12" width="${R.w+24}" height="${R.d+24}" fill="#5b6b78"/>
    <rect x="0" y="0" width="${R.w}" height="${R.d}" style="fill:var(--surface)"/>
    <g style="stroke:var(--line)" stroke-width="1">${grid.join("")}</g>
-   ${zones.join("")}${bb}${bodies.join("")}
+   ${zones.join("")}${walkSvg}${bb}${bodies.join("")}
+   <g id="man" visibility="hidden" style="pointer-events:none">
+    <ellipse cx="0" cy="0" rx="${W?W.manR:30}" ry="14" fill="#f28c28" stroke="#7a3d00" stroke-width="2"/>
+    <ellipse cx="${-(W?W.manR:30)*.55}" cy="9" rx="7" ry="9" fill="#1d3557"/><ellipse cx="${(W?W.manR:30)*.55}" cy="9" rx="7" ry="9" fill="#1d3557"/>
+    <circle cx="0" cy="2" r="11" fill="#f4d03f" stroke="#8a6d00" stroke-width="2"/><path d="M-6 12 L0 22 L6 12 Z" fill="#7a3d00"/>
+    <text id="manT" x="0" y="${-fs*1.6}" font-size="${fs}" text-anchor="middle" style="fill:var(--ink);font-weight:800;paint-order:stroke;stroke:var(--surface);stroke-width:4px"></text></g>
    <g font-size="${fs}" text-anchor="middle" style="fill:var(--ink);font-weight:700">
     <line x1="0" y1="${-pad*.55}" x2="${R.w}" y2="${-pad*.55}" style="stroke:var(--muted)" stroke-width="1.5"/><text x="${R.w/2}" y="${-pad*.7}">${f(R.w/100,2)} m</text>
     <line x1="${-pad*.55}" y1="0" x2="${-pad*.55}" y2="${R.d}" style="stroke:var(--muted)" stroke-width="1.5"/><text x="${-pad*.7}" y="${R.d/2}" transform="rotate(-90 ${-pad*.7} ${R.d/2})">${f(R.d/100,2)} m</text>
@@ -161,7 +238,7 @@ function drawTop(P,A){const R=P.room,pad=Math.max(45,Math.max(R.w,R.d)*0.08),fs=
   svg.addEventListener("pointermove",e=>{if(!drag)return;const p=pt(e),q=P.r.plan.pos[drag.key],nx=Math.round((p.x-drag.dx)/5)*5,ny=Math.round((p.y-drag.dy)/5)*5;
     if(nx===q.x&&ny===q.y)return;const ox=nx-q.x,oy=ny-q.y;q.x=nx;q.y=ny;drag.moved=true;drag.el.setAttribute("transform",`translate(${(+drag.el.dataset.tx||0)+ox} ${(+drag.el.dataset.ty||0)+oy})`);drag.el.dataset.tx=(+drag.el.dataset.tx||0)+ox;drag.el.dataset.ty=(+drag.el.dataset.ty||0)+oy});
   const end=()=>{if(!drag)return;drag=null;save();drawSalon()};svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);
-  svg.addEventListener("keydown",()=>{})}
+  paintMan()}
 document.addEventListener("keydown",e=>{if(UI.tab!=="salon"||!UI.sel||UI.view!=="top"||/INPUT|SELECT/.test(document.activeElement.tagName))return;
   const P=getPlan(siteIdx());if(!P)return;const q=P.r.plan.pos[UI.sel];if(!q)return;const s=e.shiftKey?50:5,m={ArrowLeft:[-s,0],ArrowRight:[s,0],ArrowUp:[0,-s],ArrowDown:[0,s]}[e.key];
   if(m){q.x+=m[0];q.y+=m[1];save();drawSalon();e.preventDefault()}else if(e.key==="r"||e.key==="R"){q.rot=(q.rot+90)%360;save();drawSalon()}});
@@ -172,7 +249,7 @@ function hexRgb(h){const n=parseInt(h.slice(1),16);return[n>>16&255,n>>8&255,n&2
    lityum modüller siyah kutu + yeşil etiket). Kendi küçük çizicimiz – internet gerekmez. */
 const C3={tr:"#1f2326",dc:"#b9c0c6",steel:"#3b4146",cell:"#d5d9dc",li:"#17191b",dx:"#e4e8eb",split:"#f3f5f6",bad:"#c0392b"};
 function build3D(P,A){const prims=[],flats=[],labels=[],FN={0:[0,1],180:[0,-1],90:[-1,0],270:[1,0]};
-  P.items.forEach(x=>{const g=geo(x),b=g.b,rot=x.pos.rot,w=x.w,d=x.d,h=x.h,el=x.wall?205:0,bad=A.bad.has(x.key),front=FN[rot];
+  P.items.forEach(x=>{const g=geo(x),b=g.b,rot=x.pos.rot,w=x.w,d=x.d,h=x.h,el=x.type==="split"?205:0,bad=A.bad.has(x.key),front=FN[rot];
     const W=(u,v)=>rot===0?[b.x+u,b.y+v]:rot===180?[b.x+w-u,b.y+d-v]:rot===90?[b.x+d-v,b.y+u]:[b.x+v,b.y+w-u];
     const box=(u0,v0,z0,u1,v1,z1,col,deco)=>{const p=W(u0,v0),q=W(u1,v1);prims.push({x0:Math.min(p[0],q[0]),x1:Math.max(p[0],q[0]),y0:Math.min(p[1],q[1]),y1:Math.max(p[1],q[1]),z0:el+z0,z1:el+z1,col:bad?C3.bad:col,deco,front})};
     const posts=(t,col)=>{[[0,0],[w-t,0],[0,d-t],[w-t,d-t]].forEach(([u,v])=>box(u,v,0,u+t,v+t,h,col))};
@@ -188,6 +265,7 @@ function build3D(P,A){const prims=[],flats=[],labels=[],FN={0:[0,1],180:[0,-1],9
       for(let k=0;k<=G;k++){const z=3+k*(h-6)/G;if(k<G)box(1.5,1.5,z-2.5,w-1.5,d-1.5,z,C3.steel);else{box(0,0,z-3,w,3,z,C3.steel);box(0,d-3,z-3,w,d,z,C3.steel)}}
       for(let k=0;k<G;k++){const z=3+k*(h-6)/G;box(5,8,z,w-5,d-8,z+Math.min(24,(h-6)/G-6),C3.li,"li")}}
     else if(x.type==="ac")box(0,0,0,w,d,h,C3.dx,"dx");
+    else if(x.type==="door")box(0,0,0,w,4,h,"#8a6d3b","door");
     else box(0,0,0,w,d,h,C3.split,"split");
     if(g.z)flats.push({x0:g.z.x,y0:g.z.y,x1:g.z.x+g.z.w,y1:g.z.y+g.z.h,col:COL[x.type]});
     labels.push({x:b.x+b.w/2,y:b.y+b.h/2,z:el+h+18,t:x.name.replace(/ \(duvar\)/,""),col:COL[x.type]})});
@@ -211,7 +289,20 @@ function deco(ctx,kind,role,M,sw,sh){/* M(s,t): yüz üzerinde 0..1 koordinatı 
   else if(role==="front"&&kind==="li"){dot(.08,.5,Math.max(1,sw/50),"#c0392b");dot(.14,.5,Math.max(1,sw/50),"#222");quadP(.6,.25,.95,.75);ctx.fillStyle="#3fae49";ctx.fill()}
   else if(role==="front"&&kind==="dx"){ctx.strokeStyle="rgba(0,0,0,.25)";ctx.lineWidth=1;for(let k=0;k<12;k++){const t=.55+k*.033,a=M(.1,t),b=M(.9,t);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
     quadP(.62,.4,.88,.5);ctx.fillStyle="#1f2a33";ctx.fill();quadP(.1,.05,.9,.45);ctx.strokeStyle="rgba(0,0,0,.2)";ctx.stroke()}
+  else if(role==="front"&&kind==="vest"){quadP(.0,.55,1,.65);ctx.fillStyle="rgba(255,255,255,.85)";ctx.fill()}
+  else if(role==="front"&&kind==="face"){dot(.32,.62,Math.max(.8,sw/14),"#222");dot(.68,.62,Math.max(.8,sw/14),"#222")}
+  else if(role==="front"&&kind==="door"){quadP(.08,.04,.92,.96);ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=1.2;ctx.stroke();dot(.84,.48,Math.max(1.2,sw/30),"#d9d9d9")}
   else if(role==="front"&&kind==="split"){const a=M(.06,.25),b=M(.94,.25);ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();dot(.88,.6,Math.max(1,sw/80),"#2a9bb5")}}
+function manPrims(){const m=UI.man;if(!m)return[];const out=[],w=44,d=26,rot=m.rot,sw=rot%180!==0,bw=sw?d:w,bd=sw?w:d,bx=m.x-bw/2,by=m.y-bd/2,
+    FN={0:[0,1],180:[0,-1],90:[-1,0],270:[1,0]}[rot],W=(u,v)=>rot===0?[bx+u,by+v]:rot===180?[bx+w-u,by+d-v]:rot===90?[bx+d-v,by+u]:[bx+v,by+w-u];
+  const box=(u0,v0,z0,u1,v1,z1,col,deco)=>{const p=W(u0,v0),q=W(u1,v1);out.push({x0:Math.min(p[0],q[0]),x1:Math.max(p[0],q[0]),y0:Math.min(p[1],q[1]),y1:Math.max(p[1],q[1]),z0,z1,col,deco,front:FN})};
+  const s=(m.phase||0)*7,arm=m.busy?1:0;
+  box(8,8+s,0,19,19+s,85,"#1d3557");box(25,8-s,0,36,19-s,85,"#1d3557");
+  box(9,9+s,0,19,22+s,7,"#111");box(25,9-s,0,35,22-s,7,"#111");
+  box(4,5,85,40,21,146,"#f28c28","vest");
+  if(arm){box(0,10,118,6,34,128,"#1d3557");box(38,10,118,44,34,128,"#1d3557")}else{box(0,9-s,92,6,17-s,142,"#1d3557");box(38,9+s,92,44,17+s,142,"#1d3557")}
+  box(14,6,146,30,21,170,"#e0b48a","face");box(12,4,166,32,23,178,"#f4d03f");
+  return out}
 function draw3D(P,A){const stage=$("#pStage");
   if(!stage.querySelector("canvas")){stage.innerHTML=`<canvas aria-label="Salon 3D görünüm"></canvas><div class="hint3">Döndürmek için sürükle · yakınlaştırmak için iki parmak / tekerlek</div>`;UI.cam=UI.cam||{th:0.3,ph:0.78,z:1.25}}
   const cv=stage.querySelector("canvas"),R=P.room,S=build3D(P,A);
@@ -230,7 +321,7 @@ function draw3D(P,A){const stage=$("#pStage");
     const WH=280,wallC=dark?"rgba(70,90,105,.55)":"rgba(160,175,188,.45)";
     [[[0,0],[R.w,0],[0,1]],[[R.w,0],[R.w,R.d],[-1,0]],[[R.w,R.d],[0,R.d],[0,-1]],[[0,R.d],[0,0],[1,0]]].forEach(([a,b,n])=>{const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;if((ex-mx)*n[0]+(ey-my)*n[1]>0)quad([[a[0],a[1],0],[b[0],b[1],0],[b[0],b[1],WH],[a[0],a[1],WH]],wallC,"rgba(91,107,120,.6)",1,{layer:2})});
     S.flats.forEach(z=>{const rgb=hexRgb(z.col);quad([[z.x0,z.y0,0.5],[z.x1,z.y0,0.5],[z.x1,z.y1,0.5],[z.x0,z.y1,0.5]],`rgba(${rgb},.14)`,`rgba(${rgb},.55)`,1,{layer:1})});
-    S.prims.forEach(B=>{const rgb=hexRgb(B.col),{x0,y0,x1,y1,z0,z1}=B,cxx=(x0+x1)/2,cyy=(y0+y1)/2,hx=(x1-x0)/2,hy=(y1-y0)/2;
+    S.prims.concat(manPrims()).forEach(B=>{const rgb=hexRgb(B.col),{x0,y0,x1,y1,z0,z1}=B,cxx=(x0+x1)/2,cyy=(y0+y1)/2,hx=(x1-x0)/2,hy=(y1-y0)/2;
       [[0,0,1],[0,-1,0],[0,1,0],[-1,0,0],[1,0,0]].forEach(n=>{
         let pts;
         if(n[2]){const f=B.front,r=[-f[1],f[0]],hf=Math.abs(f[0])?hx:hy,hr=Math.abs(r[0])?hx:hy;
@@ -246,7 +337,8 @@ function draw3D(P,A){const stage=$("#pStage");
         ctx.save();deco(ctx,F.deco,F.role,M,Math.hypot(B0[0]-A0[0],B0[1]-A0[1]),Math.hypot(D0[0]-A0[0],D0[1]-A0[1]));ctx.restore()}
       if(F.layer===3){ctx.save();ctx.strokeStyle=dark?"rgba(255,255,255,.06)":"rgba(0,0,0,.06)";ctx.lineWidth=1;for(let x=50;x<R.w;x+=50){const a=prj(x,0,0),b=prj(x,R.d,0);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}for(let y=50;y<R.d;y+=50){const a=prj(0,y,0),b=prj(R.w,y,0);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}ctx.restore()}});
     ctx.font="600 11px system-ui,-apple-system,sans-serif";ctx.textAlign="center";
-    S.labels.map(o=>({o,p:prj(o.x,o.y,o.z)})).filter(q=>q.p[2]>1).sort((a,b)=>b.p[2]-a.p[2]).forEach(({o,p})=>{
+    const LB=UI.man&&UI.man.label?S.labels.concat([{x:UI.man.x,y:UI.man.y,z:205,t:"🔧 "+UI.man.label,col:"#f28c28"}]):S.labels;
+    LB.map(o=>({o,p:prj(o.x,o.y,o.z)})).filter(q=>q.p[2]>1).sort((a,b)=>b.p[2]-a.p[2]).forEach(({o,p})=>{
       const t=o.t.length>26?o.t.slice(0,25)+"…":o.t,w=ctx.measureText(t).width+12;ctx.fillStyle=dark?"rgba(24,34,41,.88)":"rgba(255,255,255,.9)";ctx.strokeStyle=o.col;ctx.lineWidth=1.5;
       ctx.beginPath();ctx.roundRect?ctx.roundRect(p[0]-w/2,p[1]-10,w,18,5):ctx.rect(p[0]-w/2,p[1]-10,w,18);ctx.fill();ctx.stroke();ctx.fillStyle=dark?"#e3eaef":"#14212b";ctx.fillText(t,p[0],p[1]+3)});
     const lbl=(x,y,t)=>{const p=prj(x,y,0);if(p[2]<=1)return;ctx.font="700 13px system-ui,sans-serif";ctx.fillStyle=dark?"#e3eaef":"#14212b";ctx.fillText(t,p[0],p[1])};

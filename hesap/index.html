@@ -106,6 +106,9 @@ details.det summary{color:var(--navy)!important;font-size:.9rem!important}
 .kpi b{display:block;font-size:1.25rem;font-variant-numeric:tabular-nums}
 .kpi span{font-size:.78rem;color:var(--muted);font-weight:600}
 .kpi.ok{background:var(--ok-soft);border-color:transparent}.kpi.bad{background:var(--bad-soft);border-color:transparent}
+.walkbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.walkbar .btn.on{background:var(--accent);border-color:var(--accent);color:#1b1403}
+.walkbar label{display:flex;gap:6px;align-items:center;font-size:.85rem;font-weight:600;color:var(--muted)}
 .items{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:6px}
 .items li{display:grid;grid-template-columns:14px 1fr auto;gap:10px;align-items:center;font-size:.86rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--surface)}
 .items li[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
@@ -188,7 +191,7 @@ const DEF_A={dcv:54,eff:0.95,chg:0.1,chgMax:0,
  hSmall:15,hBig:10,hLimit:100,
  roomW:2000,coolM:1.2,splitMin:24000,splitA:20,dxA:33.2,acAll:1,
  rects:"7,2; 72",v1:220,v3:380,monoMax:63,dcMonoMax:10,safety:1.25,gmax:0.8,derate:0.9,gens:"33,45,60,80,100,150,200,250,300,400,500",
- svc:80,trN:2,trW:70,trD:70,trH:200,dcH:200,rackH:100,dxH:195,dxW:130,dxD:75,dxFront:1,dcBigW:60,dcBigD:60,lineGap:20,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2};
+ svc:80,manW:60,trN:2,trW:70,trD:70,trH:200,dcH:200,rackH:100,dxH:195,dxW:130,dxD:75,dxFront:1,dcBigW:60,dcBigD:60,lineGap:20,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2};
 const A_LABELS=[
  ["hSmall","Yedekleme – küçük yük (saat)"],["hBig","Yedekleme – büyük yük (saat)"],["hLimit","Büyük yük sınırı (A DC, bu ve üstü)"],
  ["dod","Lityum: kullanılabilir oran (1 = ekip yöntemi)"],["aging","Lityum: yaşlanma payı (×)"],["dodPb","Jel/kurşun-asit: kullanılabilir oran"],["agingPb","Jel/kurşun-asit: yaşlanma payı (×)"],
@@ -199,7 +202,7 @@ const A_LABELS=[
  ["v1","Monofaze gerilim (V)"],["v3","Trifaze gerilim (V)"],["monoMax","Monofaze en fazla akım (A, üstü trifaze)"],["dcMonoMax","DC sistem tek faz en fazla (kW, üstü 3 faz girişli)"],["safety","Sigorta güvenlik payı (×)"],
  ["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],
  ["cabG","DC kabin altına sığan akü grubu"],["cabW","DC kabin eni (cm)"],["cabD","DC kabin derinliği (cm)"],["rackG","Akü rafına sığan grup"],["rackW","Akü rafı eni (cm)"],["rackD","Akü rafı derinliği (cm)"],
- ["trN","Transmisyon/fiber kabin sayısı (en az 2)"],["trW","Transmisyon kabin eni (cm)"],["trD","Transmisyon kabin derinliği (cm)"],["trH","Transmisyon kabin yüksekliği (cm)"],["svc","Kabin/akü önü servis boşluğu (cm)"],["dcH","DC kabin/dolap yüksekliği (cm)"],["rackH","Akü rafı yüksekliği (cm)"],["dxH","DX klima yüksekliği (cm)"],["dxW","DX klima iç ünite eni (cm)"],["dxD","DX klima iç ünite derinliği (cm)"],["dxFront","DX klima önü boşluk (m)"],["dcBigW","Ayrı DC dolabı eni (cm, jel akülü sitelerde)"],["dcBigD","Ayrı DC dolabı derinliği (cm)"],["lineGap","DC+Akü sırasında aralık (cm)"],
+ ["trN","Transmisyon/fiber kabin sayısı (en az 2)"],["trW","Transmisyon kabin eni (cm)"],["trD","Transmisyon kabin derinliği (cm)"],["trH","Transmisyon kabin yüksekliği (cm)"],["svc","Kabin/akü önü servis boşluğu (cm)"],["manW","Teknisyenin geçmesi için gereken genişlik (cm)"],["dcH","DC kabin/dolap yüksekliği (cm)"],["rackH","Akü rafı yüksekliği (cm)"],["dxH","DX klima yüksekliği (cm)"],["dxW","DX klima iç ünite eni (cm)"],["dxD","DX klima iç ünite derinliği (cm)"],["dxFront","DX klima önü boşluk (m)"],["dcBigW","Ayrı DC dolabı eni (cm, jel akülü sitelerde)"],["dcBigD","Ayrı DC dolabı derinliği (cm)"],["lineGap","DC+Akü sırasında aralık (cm)"],
  ["rects","DC sistem boyları (kW; noktalı virgülle: 7,2; 72)",1],["liSizes","Lityum grup boyları (Ah; noktalı virgülle)",1],["pb2Sizes","2 V jel hücre boyları (Ah)",1],["pb12Sizes","12 V jel monoblok boyları (Ah)",1],["gens","Jeneratör boyları (kVA)",1]];
 const TXT=["rects","gens","liSizes","pb2Sizes","pb12Sizes"];
 const BREAKERS=[16,20,25,32,40,50,63,80,100,125,160,200,250,315,400,500,630];
@@ -417,7 +420,7 @@ async function copyTSV(){const t=teamRows().map(([k,v])=>[k,...v].join("\t")).jo
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2500)}
 renderAssume();render();
 </script>
-<script src="extra.js?v=4"></script>
+<script src="extra.js?v=5"></script>
 <script>/* eski servis çalışanı bu sayfanın dosyalarını önbellekten veriyordu: güncelle, değişince bir kez yenile */
 if("serviceWorker" in navigator){navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});let once=0;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!once){once=1;location.reload()}})}</script>
 </body></html>
