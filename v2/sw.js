@@ -1,10 +1,13 @@
-const V="saha-kesif-2-v5";
+const V="saha-kesif-2-v6";
 const FILES=["./","index.html","manifest.webmanifest","../icon-180.png","../icon-192.png","../icon-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(FILES.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x.startsWith("saha-kesif-2-")&&x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",e=>{
   const u=new URL(e.request.url);
   if(e.request.method!=="GET"||u.origin!==location.origin||!u.pathname.includes("/v2/")&&!u.pathname.endsWith(".png"))return;
+  /* sayfanın kendisi: önce internet (yeni sürüm hemen gelsin), internet yoksa kayıtlı kopya */
+  if(e.request.mode==="navigate"||u.pathname.endsWith("/v2/")||u.pathname.endsWith("index.html")){
+    e.respondWith(caches.open(V).then(c=>fetch(e.request,{cache:"no-store"}).then(r=>{if(r.ok){c.put("index.html",r.clone());return r}return c.match("index.html").then(h=>h||r)}).catch(()=>c.match("index.html",{ignoreSearch:true}))));return}
   e.respondWith(caches.open(V).then(c=>c.match(e.request,{ignoreSearch:true}).then(hit=>{
     const net=fetch(e.request).then(r=>{if(r.ok)c.put(e.request,r.clone());return r}).catch(()=>hit||c.match("index.html"));
     return hit||net;
