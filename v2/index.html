@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.5 · 14.11.2026";
+const VERSION="2.6 · 14.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -546,7 +546,7 @@ function renderEditor(){
     <div class="seg">${Object.entries(TYPES).map(([k,l])=>`<button type="button" data-type="${k}" aria-pressed="${s.type===k}">${l}</button>`).join("")}</div>
     <div class="hint" style="margin-top:4px">${s.type?esc(TYPE_HINT[s.type]):"Tipi seçince sorular buna göre düzenlenir."}</div></div>
    <div class="grid2">
-    <label class="f" for="m-gov">İl / bölge<input id="m-gov" data-m="gov" value="${esc(s.gov)}" placeholder="ör. Maysan"></label>
+    <label class="f" for="m-gov">İl / bölge<input id="m-gov" data-m="gov" value="${esc(s.gov)}" placeholder="konumdan dolar · ör. Maysan"></label>
     <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
    </div>
    <label class="f" for="m-coord">GPS (enlem, boylam)<input id="m-coord" class="num" inputmode="decimal" data-m="coord" value="${esc(s.coord)}" placeholder="32.468763, 46.688981"></label>
@@ -556,7 +556,6 @@ function renderEditor(){
     <div class="row" style="margin-top:6px"><button type="button" class="btn sm" id="mapBtn">🗺 ${photos(s,"harita").length?"Haritayı yenile":"Harita oluştur"}</button>${addPhotoBtn("harita","📱 Google Maps ekran görüntüsü")}</div>
     <div class="hint">Konumumu al'a basınca internet varsa harita kendiliğinden eklenir. Uydu görüntüsü için: Haritada aç › ekran görüntüsü al › buradan ekle. Haritaya dokunup binayı işaretleyebilirsin.</div></div>
    <div><div class="f" style="margin-bottom:6px">Sahanın genel fotoğrafları</div>${photoStrip("genel")}<div class="row" style="margin-top:6px">${addPhotoBtn("genel","📷 Genel fotoğraf ekle")}</div></div>
-   <label class="f" for="m-contact">Bina görevlisi / irtibat (isteğe bağlı)<input id="m-contact" data-m="contact" value="${esc(s.contact)}" placeholder="Ad, telefon"></label>
   </section>
   ${s.type?SEC.filter(sec=>!sec.only||sec.only===s.type).map((sec,i)=>{const its=sec.items.filter(it=>shown(s,it,sec));const d=its.filter(it=>answered(s,it)).length;
     return `<details class="sec" data-sec="${sec.id}" ${i===0?"open":""}><summary><span class="sn">${i+1}</span><h2>${sec.t}</h2><span class="cnt" id="c-${sec.id}">${d}/${its.length}</span><span class="chev">›</span></summary>${its.map(it=>itemHtml(sec,it)).join("")}</details>`}).join("")+energyHtml()
@@ -593,7 +592,7 @@ function onInput(e){
   const el=e.target;
   if(view==="report"){reportInput(e);return}
   if(!cur||view!=="editor")return;
-  if(el.dataset.m){cur[el.dataset.m]=el.value;if(el.dataset.m==="name")app.querySelector("#tName").textContent=el.value||"Yeni saha";if(el.dataset.m==="coord")app.querySelector("#coordHint").innerHTML=coordHint();refreshSummary();dirty();return}
+  if(el.dataset.m){cur[el.dataset.m]=el.value;if(el.dataset.m==="gov")cur.govAuto=false;if(el.dataset.m==="coord"&&e.type==="change")fillGov(true);if(el.dataset.m==="name")app.querySelector("#tName").textContent=el.value||"Yeni saha";if(el.dataset.m==="coord")app.querySelector("#coordHint").innerHTML=coordHint();refreshSummary();dirty();return}
   if(el.dataset.num){cur.a[el.dataset.num]=el.value.trim();refreshCounts();refreshSummary();refreshEnergy();dirty();return}
   if(el.dataset.v){cur.v[el.dataset.v]=el.value;const k=el.dataset.v.split(".")[0];const ar=app.querySelector("#ar-"+k);if(ar){const a=areaOf(cur,k);ar.textContent=a?`≈ ${fmt(a,0)} m²`:""}refreshSummary();dirty();return}
   if(el.dataset.note){if(el.dataset.note==="__gen")cur.genNote=el.value;else cur.n[el.dataset.note]=el.value;dirty();return}
@@ -682,13 +681,28 @@ async function openAnnotator(g,i){
   draw();
 }
 
+/* İl / bölge: koordinattan doldur. İnternet varsa OpenStreetMap (Nominatim) ile kesin il,
+   yoksa en yakın il merkezine göre tahmin. Sadece koordinat gönderilir, başka bilgi gitmez. */
+const GOVS=[["Bağdat",33.315,44.366],["Basra",30.508,47.783],["Maysan",31.835,47.144],["Zi Kar",31.058,46.257],["Vasıt",32.512,45.818],["Babil",32.483,44.433],["Kerbela",32.616,44.024],["Necef",32.0,44.336],["Kadisiye",31.992,44.925],["Musanna",31.332,45.28],["Enbar",33.425,43.299],["Diyala",33.746,44.643],["Selahaddin",34.607,43.677],["Kerkük",35.468,44.392],["Ninova",36.34,43.13],["Erbil",36.191,44.009],["Süleymaniye",35.561,45.437],["Duhok",36.867,42.988],["Halepçe",35.177,45.986]];
+const GOV_TR={"Baghdad":"Bağdat","Basra":"Basra","Maysan":"Maysan","Dhi Qar":"Zi Kar","Wasit":"Vasıt","Babylon":"Babil","Babil":"Babil","Karbala":"Kerbela","Najaf":"Necef","Al-Qadisiyyah":"Kadisiye","Qadisiyyah":"Kadisiye","Al-Muthanna":"Musanna","Muthanna":"Musanna","Al Anbar":"Enbar","Anbar":"Enbar","Diyala":"Diyala","Saladin":"Selahaddin","Salah ad-Din":"Selahaddin","Kirkuk":"Kerkük","Nineveh":"Ninova","Erbil":"Erbil","Sulaymaniyah":"Süleymaniye","Duhok":"Duhok","Halabja":"Halepçe"};
+async function fillGov(force){
+  if(!cur)return;const c=parseCoord(cur.coord);if(!c)return;if(cur.gov&&!force)return;if(cur.gov&&cur.govAuto!==true)return;
+  const id=cur.id,before=cur.gov||"",set=(g,how)=>{if(!cur||cur.id!==id||!g||(cur.gov||"")!==before)return;cur.gov=g;cur.govAuto=true;const i=app.querySelector("#m-gov");if(i)i.value=g;refreshSummary();dirty();toast(`İl / bölge: ${g}${how}`)};
+  if(navigator.onLine!==false){try{
+    const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&accept-language=en&lat=${c[0]}&lon=${c[1]}`,{signal:ctl.signal});clearTimeout(tm);
+    const j=await r.json(),st=(j.address&&(j.address.state||j.address.province||j.address.region))||"";
+    const en=st.replace(/ Governorate$/i,"").replace(/^Governorate of /i,"").trim();
+    if(en){set(GOV_TR[en]||en,"");return}}catch(e){}}
+  const d=GOVS.map(([n,la,lo])=>[n,(la-c[0])**2+((lo-c[1])*Math.cos(c[0]*Math.PI/180))**2]).sort((a,b)=>a[1]-b[1])[0];
+  set(d[0]," (en yakın il merkezine göre, kontrol et)")}
 /* GPS + map */
 function getGps(){
   if(!navigator.geolocation){toast("Bu tarayıcı konum vermiyor; koordinatı elle yaz");return}
   toast("Konum alınıyor… açık havada daha hızlı");
   navigator.geolocation.getCurrentPosition(p=>{if(!cur)return;const c=p.coords;cur.coord=`${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)}`;
     const i=app.querySelector("#m-coord");if(i)i.value=cur.coord;const h=app.querySelector("#coordHint");if(h)h.innerHTML=coordHint()+` · ±${Math.round(c.accuracy)} m`;dirty();toast("Konum alındı");
-    if(navigator.onLine!==false)setTimeout(()=>addMap(true),400)},
+    fillGov(true);if(navigator.onLine!==false)setTimeout(()=>addMap(true),400)},
    e=>toast(e.code===1?"Konum izni yok: Ayarlar › Gizlilik › Konum Servisleri › Safari Web Siteleri":"Konum alınamadı, tekrar dene"),{enableHighAccuracy:true,timeout:30000,maximumAge:0});
 }
 async function makeMapImage(lat,lon,z,label){
@@ -871,7 +885,7 @@ async function siteToPdf(D,s,idx){
   D.page();
   D.text(`${idx}. ${s.name||"Adsız saha"}`,{sz:38,bold:true,color:C.navy,gap:4});
   D.text([TYPES[s.type]||"",s.gov,fmtDate(s.date)].filter(Boolean).join(" · "),{sz:23,color:C.muted,gap:6});
-  const c=parseCoord(s.coord);const meta=[c?`GPS: ${c[0]}, ${c[1]}`:"",s.contact?`İrtibat: ${s.contact}`:""].filter(Boolean).join("   ·   ");if(meta)D.text(meta,{sz:20,color:C.muted,gap:12});
+  const c=parseCoord(s.coord);const meta=[c?`GPS: ${c[0]}, ${c[1]}`:"",""].filter(Boolean).join("   ·   ");if(meta)D.text(meta,{sz:20,color:C.muted,gap:12});
   D.rule();
   const maps=photos(s,"harita");
   if(maps.length){try{const b=await idbGet(maps[0].id);if(b)await D.image(b,{maxH:560,cap:maps[0].cap||"Konum"})}catch(e){}}
