@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.4 · 11.11.2026";
+const VERSION="2.5 · 14.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -282,60 +282,79 @@ function energy(s){
    4. AUTO SUMMARY (written Turkish paragraph)
    ========================================================= */
 function siteSummary(s){
-  const P=[],name=s.name||"Saha",tt=s.type==="tt";
-  P.push(`${name}${s.gov?` (${s.gov})`:""} ${s.date?fmtDate(s.date)+" tarihinde ":""}ziyaret edilmiştir.${s.type?` Saha ${tt?"yeni bir TT santrali kurulması planlanan bir lokasyondur":"mevcut bir İTPC santralidir; binada şebeke elektriği bulunmaktadır"}.`:""}`);
+  /* Akış: giriş → yer ve kurulum → elektrik → soğutma → jeneratör → enerji hesabı */
+  const P=[],name=s.name||"Saha",tt=s.type==="tt",cap=t=>t.replace(/^./,c=>c.toLocaleUpperCase("tr"));
+  const nm=/saha|santral|merkez/i.test(name)?name:`${name} sahası`;
+  P.push(`${nm}${s.gov?` (${s.gov})`:""} ${s.date?fmtDate(s.date)+" tarihinde ":""}ziyaret edilmiştir.${s.type?(tt?" Lokasyonda yeni bir TT santrali kurulması planlanmaktadır.":" Saha, binada şebeke elektriği bulunan mevcut bir İTPC santralidir."):""}`);
+  /* 1) yer */
   const sal=A(s,"salon"),bos=A(s,"salonBos"),oda=A(s,"oda"),ba=areaOf(s,"salonBos"),oa=areaOf(s,"oda");
-  if(sal==="yes"){let t="Sahada hazır bir sistem salonu bulunmaktadır";
-    if(bos==="yes")t+=`; salonda tarafımıza verilebilecek boş alan mevcuttur${ba?` (yaklaşık ${fmt(ba,0)} m²)`:""}`;
-    else if(bos==="no")t+=", ancak salonda tarafımıza ayrılabilecek boş alan bulunmamaktadır";
-    else if(bos==="unk")t+="; salonda bize alan verilip verilemeyeceği henüz netleşmemiştir";
-    P.push(t+".")}
-  else if(sal==="no")P.push("Sahada hazır bir sistem salonu bulunmamaktadır.");
-  else if(bos==="yes")P.push(`Sistem salonunda tarafımıza verilebilecek boş alan mevcuttur${ba?` (yaklaşık ${fmt(ba,0)} m²)`:""}.`);
-  if(oda==="yes")P.push(`Ayrıca kullanılabilecek ayrı bir boş oda vardır${oa?` (yaklaşık ${fmt(oa,0)} m²)`:""}.`);
-  else if(oda==="no")P.push("Ayrı bir boş oda bulunmamaktadır.");
+  const baT=ba?` (yaklaşık ${fmt(ba,0)} m²)`:"",oaT=oa?` (yaklaşık ${fmt(oa,0)} m²)`:"";
+  let t="";
+  if(sal==="yes"){
+    if(bos==="yes")t=`Sahada hazır bir sistem salonu bulunmakta olup salonda tarafımıza verilebilecek boş alan mevcuttur${baT}`;
+    else if(bos==="no")t="Sahada hazır bir sistem salonu bulunmakla birlikte salonda tarafımıza ayrılabilecek boş alan yoktur";
+    else if(bos==="unk")t="Sahada hazır bir sistem salonu bulunmaktadır; salonda tarafımıza alan verilip verilemeyeceği henüz netleşmemiştir";
+    else t="Sahada hazır bir sistem salonu bulunmaktadır"}
+  else if(sal==="no")t="Sahada hazır bir sistem salonu bulunmamaktadır";
+  else if(bos==="yes")t=`Sistem salonunda tarafımıza verilebilecek boş alan mevcuttur${baT}`;
+  if(oda==="yes")t=t?`${t}; ayrıca kullanılabilecek ayrı bir boş oda vardır${oaT}`:`Kullanılabilecek ayrı bir boş oda vardır${oaT}`;
+  else if(oda==="no")t=t?`${t}; ayrı bir boş oda bulunmamaktadır`:"Ayrı bir boş oda bulunmamaktadır";
+  if(t)P.push(t+".");
   if(tt){const k=A(s,"kont"),ka=areaOf(s,"kont");
     if(k==="yes")P.push(`Konteyner veya kabin için uygun bir alan mevcuttur${ka?` (yaklaşık ${fmt(ka,0)} m²)`:""}.`);else if(k==="no")P.push("Konteyner veya kabin için uygun bir alan görülmemiştir.");
     const d=A(s,"direk"),m=num(V(s,"direk.m"));
     if(d==="yes")P.push(`En yakın elektrik direği ${m!=null?`binaya yaklaşık ${fmt(m,0)} m uzaklıktadır`:"sahanın yakınındadır"}${A(s,"trafo")==="yes"?" ve yakında bir trafo bulunmaktadır":""}.`);
     else if(d==="no")P.push("Sahanın yakınında elektrik direği bulunmamaktadır.");}
+  const tl=talep(s),yerT=tl.yer==="Sistem salonu"?"sistem salonuna":tl.yer==="Ayrı oda"?"ayrı bir odaya":"";
+  if(yerT)P.push(`Ekipmanımızın ${yerT} kurulması öngörülmekte olup${tl.ok?` talep edilen güç ${talepTxt(tl).replace("normal ","normalde ")} olarak belirlenmiştir`:" talep edilecek güç henüz belirlenmemiştir"}.`);
+  else if(tl.yer==="Belli değil"||tl.ok)P.push(`Ekipmanımızın sistem salonuna mı ayrı bir odaya mı kurulacağı henüz netleşmemiştir${tl.ok?`; talep edilen güç ${talepTxt(tl).replace("normal ","normalde ")} olarak öngörülmektedir`:""}.`);
+  /* 2) elektrik */
   const k=num(A(s,"kesinti")),en=num(A(s,"enuzun")),du=A(s,"duzen");
+  const duT=du==="Programlı"?"kesintiler belirli bir programa göre yapılmaktadır":du==="Rastgele"?"kesintiler rastgele gerçekleşmektedir":du==="Karışık"?"kesintilerin bir kısmı programlı, bir kısmı rastgeledir":"";
+  const enT=en!=null?`tek seferde en uzun kesinti ortalama yaklaşık ${fmt(en)} saat sürmektedir`:"";
   if(k===0)P.push("Bölgede elektrik kesintisi yok denecek kadar azdır.");
-  else if(k!=null){let t=`Elektrik en kötü durumda günde yaklaşık ${fmt(k)} saat kesilmektedir`;
-    if(du==="Programlı")t+=" ve kesintiler belirli bir programa göre yapılmaktadır";
-    else if(du==="Rastgele")t+=" ve kesintiler belirli bir programa bağlı olmadan, rastgele gerçekleşmektedir";
-    else if(du==="Karışık")t+="; kesintilerin bir kısmı programlı, bir kısmı rastgeledir";
-    if(en!=null)t+=`. Ortalama en uzun kesintisiz kesinti yaklaşık ${fmt(en)} saat sürmektedir`;
-    P.push(t+".")}
-  else if(du&&du!=="Bilinmiyor")P.push(`Elektrik kesintileri ${du==="Programlı"?"programlı":du==="Rastgele"?"rastgele":"kısmen programlı, kısmen rastgele"} gerçekleşmektedir.`);
-  const so=A(s,"sogutma");
-  if(so==="Mevcut soğutma kullanılabilir")P.push("Ekipmanlarımızın soğutulması için sahadaki mevcut soğutma sisteminin kullanılabileceği görülmüştür.");
-  else if(so==="Yeni split klima gerekli")P.push("Ekipmanlarımızın soğutulması için yeni bir split klima eklenmesi gerekmektedir.");
-  else if(so==="Bilinmiyor")P.push("Soğutmanın nasıl sağlanacağı henüz netleşmemiştir.");
-  const ie=A(s,"isiEk");
-  if(ie==="Evet")P.push("Sistem salonuna kurulmamız halinde mevcut soğutmanın 1–3 kW ek ısıyı karşılayabileceği bildirilmiştir.");
-  else if(ie==="Hayır – ayrı soğutma gerekli")P.push("Sistem salonuna kurulmamız halinde mevcut soğutma 1–3 kW ek ısıyı karşılayamayacağından ayrı soğutma gerekmektedir.");
-  const tl=talep(s);
-  if(tl.yer&&tl.yer!=="Belli değil"||tl.ok){P.push(`${tl.yer==="Sistem salonu"?"Ekipmanımızın sistem salonuna kurulması öngörülmektedir":tl.yer==="Ayrı oda"?"Ekipmanımızın ayrı bir odaya kurulması öngörülmektedir":"Ekipmanımızın kurulacağı yer henüz netleşmemiştir"}${tl.ok?`; talep edilen güç ${talepTxt(tl)} olarak belirlenmiştir`:""}.`)}
-  const j=A(s,"jen"),g=genStats(s);
+  else if(k!=null)P.push(`Elektrik en kötü durumda günde yaklaşık ${fmt(k)} saat kesilmekte${duT?` olup ${duT}`:"dir"}${enT?`; ${enT}`:""}.`);
+  else if(duT||enT)P.push(cap([duT,enT].filter(Boolean).join("; "))+".");
+  /* 3) soğutma */
+  const so=A(s,"sogutma"),ie=A(s,"isiEk"),ieNo=ie==="Hayır – ayrı soğutma gerekli";
+  if(ieNo&&so==="Yeni split klima gerekli")P.push("Sistem salonuna kurulmamız halinde mevcut soğutma 1–3 kW ek ısıyı karşılayamayacağından ekipmanlarımız için yeni bir split klima eklenmesi gerekmektedir.");
+  else if(ie==="Evet"&&so==="Mevcut soğutma kullanılabilir")P.push("Ekipmanlarımızın soğutulması için mevcut soğutma sistemi kullanılabilecektir; sistem salonuna kurulmamız halinde gelecek 1–3 kW ek ısıyı da karşılayabildiği bildirilmiştir.");
+  else if(ie==="Evet"&&so==="Yeni split klima gerekli")P.push("Sistem salonuna kurulmamız halinde mevcut soğutma 1–3 kW ek ısıyı karşılayabilmektedir; ayrı bir odaya kurulmamız halinde ise yeni bir split klima gerekmektedir.");
+  else{
+    if(so==="Mevcut soğutma kullanılabilir")P.push("Ekipmanlarımızın soğutulması için mevcut soğutma sistemi kullanılabilecektir.");
+    else if(so==="Yeni split klima gerekli")P.push("Ekipmanlarımızın soğutulması için yeni bir split klima eklenmesi gerekmektedir.");
+    else if(so==="Bilinmiyor")P.push("Soğutmanın nasıl sağlanacağı henüz netleşmemiştir.");
+    if(ie==="Evet")P.push("Sistem salonuna kurulmamız halinde mevcut soğutmanın 1–3 kW ek ısıyı karşılayabileceği bildirilmiştir.");
+    else if(ieNo)P.push("Sistem salonuna kurulmamız halinde mevcut soğutma 1–3 kW ek ısıyı karşılayamayacağından ayrı soğutma gerekmektedir.");}
+  /* 4) jeneratör */
+  const j=A(s,"jen"),g=genStats(s),many=g.count>1;
   if(j==="no")P.push("Sahada jeneratör bulunmamaktadır.");
   else if(j==="yes"){
-    if(g.count){const parts=g.gens.map(x=>`${x.kvaN!=null?fmt(x.kvaN,0)+" kVA":"gücü bilinmeyen"} ${x.role==="Yedek"?"yedek":"asıl"} jeneratör${x.pctN===0?" (şu an boşta)":x.pctN!=null?` (yaklaşık %${fmt(x.pctN,0)} yüklü)`:""}`);
-      P.push(`Sahada ${g.count} adet jeneratör bulunmaktadır: ${parts.join(", ")}.`);
+    if(g.count){
+      const anyPct=g.gens.some(x=>x.pctN!=null);let gt;
+      if(!anyPct){/* aynı güçteki jeneratörleri grupla */
+        const grp={};g.gens.forEach(x=>{const key=(x.kvaN!=null?fmt(x.kvaN,0)+" kVA":"gücü bilinmeyen")+"|"+(x.role==="Yedek"?"yedek":"asıl");grp[key]=(grp[key]||0)+1});
+        const kvas=[...new Set(g.gens.map(x=>x.kvaN))];
+        if(kvas.length===1&&kvas[0]!=null&&many)gt=`Sahada ${fmt(kvas[0],0)} kVA gücünde ${g.count} adet jeneratör bulunmaktadır${g.mainCount&&g.backupCount?` (${g.mainCount} asıl, ${g.backupCount} yedek)`:g.backupCount?" (yedek)":""}`;
+        else gt=`Sahada ${Object.entries(grp).map(([key,n])=>{const[kv,r]=key.split("|");return `${n} adet ${kv} ${r}`}).join(" ve ")} jeneratör bulunmaktadır`;
+      }else gt=`Sahada ${g.count} adet jeneratör bulunmaktadır: ${g.gens.map(x=>`${x.kvaN!=null?fmt(x.kvaN,0)+" kVA":"gücü bilinmeyen"} ${x.role==="Yedek"?"yedek":"asıl"} jeneratör${x.pctN===0?" (şu an boşta)":x.pctN!=null?` (yaklaşık %${fmt(x.pctN,0)} yüklü)`:""}`).join(", ")}`;
+      P.push(gt+".");
       if(g.free!=null)P.push(`${g.mainCount&&g.backupCount?"Asıl jeneratörlerde":"Jeneratörlerde"} yaklaşık ${fmt(g.free,0)} kVA boş kapasite bulunmaktadır.`)}
     else P.push("Sahada jeneratör bulunmaktadır; kapasite bilgisi alınamamıştır.")}
   else if(j==="unk")P.push("Sahada jeneratör olup olmadığı netleştirilememiştir.");
-  if(j!=="no"){const at=A(s,"ats"),yk=num(A(s,"yakit")),jv=A(s,"jenVer"),G=[];
-    if(at==="Evet")G.push("jeneratör kesinti anında otomatik olarak devreye girmektedir");else if(at==="Hayır")G.push("jeneratör kesintide elle çalıştırılmaktadır");
-    if(yk!=null)G.push(`yakıt deposu kesintisiz çalışmada yaklaşık ${fmt(yk)} saat yetmektedir`);
-    if(G.length)P.push(G.join("; ").replace(/^./,c=>c.toUpperCase())+".");
-    if(jv==="Evet")P.push("Talep ettiğimiz gücün sahanın jeneratöründen verilebileceği bildirilmiştir.");
-    else if(jv==="Hayır")P.push("Talep ettiğimiz gücün sahanın jeneratöründen verilemeyeceği bildirilmiştir.");}
+  if(j!=="no"){const at=A(s,"ats"),yk=num(A(s,"yakit")),jv=A(s,"jenVer"),sub=many?"Jeneratörler":"Jeneratör";
+    const atT=at==="Evet"?`${sub} kesinti anında otomatik olarak devreye girmekte`:at==="Hayır"?`${sub} kesintide elle çalıştırılmakta`:"";
+    const ykT=yk!=null?`yakıt deposu kesintisiz çalışmada yaklaşık ${fmt(yk)} saat yetmektedir`:"";
+    if(atT)P.push(`${atT}${ykT?` olup ${ykT}`:"dır"}.`);else if(ykT)P.push(cap(ykT)+".");
+    const lim=tl.max!=null?` (en fazla ${fmt(tl.max)} kW)`:"";
+    if(jv==="Evet")P.push(`Talep ettiğimiz gücün${lim} sahanın jeneratöründen karşılanabileceği bildirilmiştir.`);
+    else if(jv==="Hayır")P.push(`Talep ettiğimiz gücün${lim} sahanın jeneratöründen karşılanamayacağı bildirilmiştir.`);}
+  /* 5) enerji hesabı */
   if(s.load?.on){const e=energy(s);
     P.push(`Bu lokasyonda öngörülen ${fmt(e.dcA)} A (-48 V DC) yükümüz, akü şarjı${e.splitOn?" ve soğutma":""} ile birlikte en kötü durumda yaklaşık ${fmt(e.peakW/1000)} kW (220 V'ta yaklaşık ${fmt(e.A220,0)} A, ${fmt(e.kVA)} kVA) güç gerektirmektedir; güvenlik payıyla ${e.breaker} A besleme talep edilmelidir.`);
     if(e.genOk===true)P.push("Jeneratörlerin boş kapasitesi bu ihtiyacı karşılamaya yeterli görünmektedir.");
     else if(e.genOk===false)P.push("Jeneratörlerin boş kapasitesi bu ihtiyaç için yetersiz görünmektedir.");
-    if(e.backupOk===false)P.push(`${e.worstSrc==="en uzun tek kesinti"?"Ortalama en uzun kesintisiz kesinti":"Günlük kesinti süresi"} (${fmt(e.worst)} saat) ${fmt(e.hours,0)} saatlik akü yedeklemesini aştığından jeneratör desteği gereklidir.`);
+    if(e.backupOk===false)P.push(`${e.worstSrc==="en uzun tek kesinti"?"Tek seferdeki en uzun kesinti":"Günlük kesinti süresi"} (${fmt(e.worst)} saat) ${fmt(e.hours,0)} saatlik akü yedeklemesini aştığından jeneratör desteği gereklidir.`);
     else if(e.backupOk===true&&e.worst>0)P.push(`Kesinti süresi ${fmt(e.hours,0)} saatlik akü yedeklemesi ile karşılanabilmektedir.`);}
   return P.join(" ");
 }
