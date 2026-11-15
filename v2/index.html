@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.6 · 14.11.2026";
+const VERSION="2.7 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -738,7 +738,7 @@ async function addMap(auto){
    ========================================================= */
 let R={mode:"day",d1:null,d2:null,sel:{},photos:true,energy:true,summary:"",summaryEdited:false};
 function inRange(s){return R.mode==="day"?s.date===R.d1:(s.date>=R.d1&&s.date<=R.d2)}
-function repList(){return Object.values(surveys).filter(s=>inRange(s)&&R.sel[s.id]!==false).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||String(a.name).localeCompare(String(b.name),"tr"))}
+function repList(){const ord=prefs.routeOrd||[];return Object.values(surveys).filter(s=>inRange(s)&&R.sel[s.id]!==false).sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia>=0&&ib>=0)return ia-ib;return (a.date||"").localeCompare(b.date||"")||String(a.name).localeCompare(String(b.name),"tr")})}
 function rangeLabel(){if(R.mode==="day")return `${fmtDate(R.d1)} tarihinde`;return R.d1===R.d2?`${fmtDate(R.d1)} tarihinde`:`${fmtDate(R.d1)} – ${fmtDate(R.d2)} tarihleri arasında`}
 function renderReport(){
   view="report";cur=null;
@@ -758,6 +758,7 @@ function renderReport(){
    ${dates.length?`<div class="hint">Keşif olan günler: ${dates.slice(-8).map(fmtDate).join(", ")}</div>`:""}
    ${all.length?`<div class="checks">${all.map(s=>`<label class="chk" for="rs-${s.id}"><input type="checkbox" id="rs-${s.id}" data-rsel="${s.id}" ${R.sel[s.id]!==false?"checked":""}><span><b>${esc(s.name||"Adsız saha")}</b><small>${fmtDate(s.date)} · ${s.type?TYPES[s.type]:"tip seçilmedi"}</small></span></label>`).join("")}</div>`:`<p class="muted" style="margin:0">Bu aralıkta keşif yok.</p>`}
   </section>
+  ${routePanelHtml()}
   <section class="panel">
    <div class="grid2">
     <label class="f" for="r-author">Hazırlayan<input id="r-author" value="${esc(prefs.author)}" placeholder="Ad Soyad"></label>
@@ -782,15 +783,107 @@ function renderReport(){
   app.querySelector("#r-pdf").onclick=makePdf;
   app.querySelector("#r-txt").onclick=copyShort;
   app.querySelector("#r-bk").onclick=backup;
+  bindRoute();
 }
 function reportInput(e){const el=e.target;
   if((el.id==="r-d1"||el.id==="r-d2")&&e.type==="change"&&el.value){R[el.id==="r-d1"?"d1":"d2"]=el.value;if(R.mode==="day")R.d2=R.d1;R.summaryEdited=false;renderReport();return}
-  if(el.dataset.rsel){R.sel[el.dataset.rsel]=el.checked;if(!R.summaryEdited){R.summary=overallSummary(repList(),rangeLabel());app.querySelector("#r-sum").value=R.summary}return}
+  if(el.id==="r-road"){prefs.routeRoad=el.checked;savePrefs();return}
+  if(el.dataset.rvia!=null){prefs.routeVia=prefs.routeVia||{};prefs.routeVia[el.dataset.rvia]=el.value;savePrefs();return}
+  if(el.dataset.rsel){R.sel[el.dataset.rsel]=el.checked;rerenderRoute(false);if(!R.summaryEdited){R.summary=overallSummary(repList(),rangeLabel());app.querySelector("#r-sum").value=R.summary}return}
   if(el.id==="r-author"){prefs.author=el.value;savePrefs()}if(el.id==="r-unit"){prefs.unit=el.value;savePrefs()}if(el.id==="r-project"){prefs.project=el.value;savePrefs()}
   if(el.id==="r-ph")R.photos=el.checked;if(el.id==="r-en")R.energy=el.checked;
   if(el.id==="r-sum"){R.summary=el.value;R.summaryEdited=true}
   if(el.id==="r-next"){prefs["next-"+R.d1]=el.value;savePrefs()}
 }
+/* ---------- 7b. Combined route map (all selected sites on one map) ---------- */
+const ROUTE_COL=["#d62728","#1f77b4","#2ca02c","#ff7f0e","#9467bd","#17becf","#e377c2","#8c564b","#bcbd22","#7f7f7f"];
+function hav(a,b){const r=Math.PI/180,dLa=(b[0]-a[0])*r,dLo=(b[1]-a[1])*r,x=Math.sin(dLa/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLo/2)**2;return 12742*Math.asin(Math.sqrt(x))}
+function pathKm(p){let d=0;for(let i=1;i<p.length;i++)d+=hav(p[i-1],p[i]);return d}
+function routeSites(){return repList().filter(s=>parseCoord(s.coord))}
+function legKey(a,b){return a.id+">"+b.id}
+function parseVia(t){return String(t||"").split(/\n|;|\|/).map(x=>{const m=x.match(/[?&@](?:q=|ll=)?(-?\d+\.\d+),\s*(-?\d+\.\d+)/);return m?[+m[1],+m[2]]:parseCoord(x)}).filter(Boolean)}
+let routeCache={sig:"",legs:null,blob:null,url:""};
+async function osrmLeg(pts){const q=pts.map(p=>`${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(";");
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),15000);
+  try{const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${q}?overview=full&geometries=geojson`,{signal:ctl.signal});if(!r.ok)throw 0;const j=await r.json();const rt=j.routes?.[0];if(!rt)throw 0;
+    return{path:rt.geometry.coordinates.map(c=>[c[1],c[0]]),km:rt.distance/1000,min:rt.duration/60,road:true}}finally{clearTimeout(t)}}
+async function routeLegs(sites){const road=prefs.routeRoad!==false&&navigator.onLine!==false;const legs=[];
+  for(let i=1;i<sites.length;i++){const a=sites[i-1],b=sites[i],A1=parseCoord(a.coord),B1=parseCoord(b.coord),via=parseVia((prefs.routeVia||{})[legKey(a,b)]);const pts=[A1,...via,B1];
+    let leg=null;if(road){try{leg=await osrmLeg(pts)}catch(e){}}
+    if(!leg)leg={path:pts,km:pathKm(pts),road:false};
+    leg.air=hav(A1,B1);leg.a=a;leg.b=b;leg.i=i;leg.via=via.length;leg.col=ROUTE_COL[(i-1)%ROUTE_COL.length];legs.push(leg)}
+  return legs}
+async function makeRouteImage(sites,legs){
+  const W=1400,H=1000,PAD=90;const pts=[...sites.map(s=>parseCoord(s.coord)),...legs.flatMap(l=>l.path)];
+  const px=(la,lo,z)=>{const n=256*2**z,r=la*Math.PI/180;return[(lo+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n]};
+  let z=16;for(;z>3;z--){const P=pts.map(p=>px(p[0],p[1],z)),xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);if(Math.max(...xs)-Math.min(...xs)<=W-2*PAD&&Math.max(...ys)-Math.min(...ys)<=H-2*PAD-70)break}
+  const P0=pts.map(p=>px(p[0],p[1],z)),xs=P0.map(p=>p[0]),ys=P0.map(p=>p[1]);
+  const x0=(Math.min(...xs)+Math.max(...xs))/2-W/2,y0=(Math.min(...ys)+Math.max(...ys))/2-H/2+35,n=2**z;
+  const XY=p=>{const q=px(p[0],p[1],z);return[q[0]-x0,q[1]-y0]};
+  const c=document.createElement("canvas");c.width=W;c.height=H;const g=c.getContext("2d");g.fillStyle="#eef0ea";g.fillRect(0,0,W,H);
+  g.strokeStyle="#d9dcd3";g.lineWidth=1;for(let x=0;x<W;x+=100){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke()}for(let y=0;y<H;y+=100){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke()}
+  const jobs=[];if(navigator.onLine!==false)for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n;
+    jobs.push(fetch(`https://tile.openstreetmap.org/${z}/${X}/${ty}.png`).then(r=>{if(!r.ok)throw 0;return r.blob()}).then(b=>createImageBitmap(b)).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
+  const res=await Promise.allSettled(jobs);const tilesOk=res.some(r=>r.status==="fulfilled");
+  if(tilesOk){g.fillStyle="rgba(255,255,255,.18)";g.fillRect(0,0,W,H)}
+  const F="-apple-system,system-ui,Arial,sans-serif";
+  const line=(path,col,w,dash)=>{g.beginPath();path.forEach((p,i)=>{const [x,y]=XY(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.lineJoin="round";g.lineCap="round";g.setLineDash(dash||[]);g.strokeStyle=col;g.lineWidth=w;g.stroke();g.setLineDash([])};
+  for(const l of legs){line(l.path,"#fff",13,l.road?null:[1,0]);line(l.path,l.col,7,l.road?null:[22,12])}
+  // via points
+  for(const l of legs)if(!l.road||l.via){const v=parseVia((prefs.routeVia||{})[legKey(l.a,l.b)]);for(const p of v){const [x,y]=XY(p);g.beginPath();g.arc(x,y,7,0,7);g.fillStyle="#fff";g.fill();g.lineWidth=3;g.strokeStyle=l.col;g.stroke()}}
+  // distance labels at path midpoint
+  for(const l of legs){let half=pathKm(l.path)/2,acc=0,m=l.path[0];for(let i=1;i<l.path.length;i++){const d=hav(l.path[i-1],l.path[i]);if(acc+d>=half){const f=d?(half-acc)/d:0;m=[l.path[i-1][0]+(l.path[i][0]-l.path[i-1][0])*f,l.path[i-1][1]+(l.path[i][1]-l.path[i-1][1])*f];break}acc+=d}
+    const [x,y]=XY(m),t=`${fmt(l.km,0)} km`;g.font=`bold 24px ${F}`;const w=g.measureText(t).width+22;g.fillStyle=l.col;g.beginPath();g.roundRect?g.roundRect(x-w/2,y-17,w,34,17):g.rect(x-w/2,y-17,w,34);g.fill();g.lineWidth=3;g.strokeStyle="#fff";g.stroke();g.fillStyle="#fff";g.fillText(t,x-w/2+11,y+8)}
+  // markers
+  sites.forEach((s,i)=>{const [x,y]=XY(parseCoord(s.coord));g.beginPath();g.arc(x,y,21,0,7);g.fillStyle="#13324f";g.fill();g.lineWidth=4;g.strokeStyle="#fff";g.stroke();
+    g.font=`bold 22px ${F}`;g.fillStyle="#fff";const t=String(i+1),tw=g.measureText(t).width;g.fillText(t,x-tw/2,y+8);
+    const nm=s.name||"Adsız saha";g.font=`bold 22px ${F}`;const nw=g.measureText(nm).width;let lx=x+28;if(lx+nw+16>W)lx=x-28-nw-16;
+    g.fillStyle="rgba(255,255,255,.93)";g.fillRect(lx,y-17,nw+16,32);g.strokeStyle="#13324f";g.lineWidth=1.5;g.strokeRect(lx,y-17,nw+16,32);g.fillStyle="#13324f";g.fillText(nm,lx+8,y+7)});
+  // header
+  const tot=legs.reduce((a,l)=>a+l.km,0),t1="Güzergâh haritası",t2=`${sites.length} saha · toplam ≈ ${fmt(tot,0)} km${legs.every(l=>l.road)?" (yol)":legs.some(l=>l.road)?"":" (düz hat / ara noktalar)"}`;
+  g.font=`bold 28px ${F}`;const w1=g.measureText(t1).width;g.font=`21px ${F}`;const w2=g.measureText(t2).width;
+  g.fillStyle="rgba(255,255,255,.94)";g.fillRect(14,14,Math.max(w1,w2)+32,82);g.fillStyle="#13324f";g.font=`bold 28px ${F}`;g.fillText(t1,30,48);g.fillStyle="#333";g.font=`21px ${F}`;g.fillText(t2,30,80);
+  const at=tilesOk?"© OpenStreetMap contributors":"Harita altlığı yüklenemedi (internet yok) – noktalar ölçekli",aw=(g.font=`15px ${F}`,g.measureText(at).width);g.fillStyle="rgba(255,255,255,.88)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
+  return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.88));
+}
+function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false])}
+async function buildRoute(){const sites=routeSites();if(sites.length<2)return null;const sig=routeSig(sites);
+  if(routeCache.sig===sig&&routeCache.blob)return routeCache;
+  const legs=await routeLegs(sites),blob=await makeRouteImage(sites,legs);if(routeCache.url)URL.revokeObjectURL(routeCache.url);
+  routeCache={sig,sites,legs,blob,url:URL.createObjectURL(blob)};return routeCache}
+function legRows(legs){return legs.map(l=>[`${l.i}→${l.i+1}`,`${l.a.name||"?"} → ${l.b.name||"?"}`,`${fmt(l.km,0)} km${l.road?"":" *"}`,`${fmt(l.air,0)} km`,l.min!=null?`≈ ${l.min>=60?Math.floor(l.min/60)+" sa "+Math.round(l.min%60)+" dk":Math.round(l.min)+" dk"}`:"–"])}
+function routePanelHtml(){const sites=routeSites(),miss=repList().length-sites.length;
+  if(sites.length<2)return `<section class="panel"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası</h2><p class="muted" style="margin:0">Ortak harita için koordinatı girilmiş en az 2 saha seçilmeli.${miss?` (${miss} sahada koordinat yok)`:""}</p></section>`;
+  const via=prefs.routeVia||{};
+  return `<section class="panel" id="routeP"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası ve mesafeler</h2>
+   <div class="hint">Seçilen sahalar tek haritada; her ara yol farklı renkte. Ziyaret sırasını oklarla değiştir (raporda da bu sıra kullanılır).${miss?` ${miss} sahada koordinat olmadığı için haritada yok.`:""}</div>
+   <ol class="rlist" style="padding-left:0;list-style:none;margin:8px 0">${sites.map((s,i)=>`<li style="display:flex;align-items:center;gap:6px;margin:4px 0"><b style="min-width:1.6em">${i+1}.</b><span style="flex:1">${esc(s.name||"Adsız saha")} <small class="muted">${fmtDate(s.date)}</small></span><button type="button" class="btn sm" data-rup="${i}" ${i?"":"disabled"} aria-label="Yukarı">↑</button><button type="button" class="btn sm" data-rdn="${i}" ${i<sites.length-1?"":"disabled"} aria-label="Aşağı">↓</button></li>`).join("")}</ol>
+   <label class="chk" for="r-road"><input type="checkbox" id="r-road" ${prefs.routeRoad!==false?"checked":""}><span><b>Gerçek yol üzerinden çiz</b><small>İnternet gerekir; yalnızca koordinatlar yol servisine (OSRM) gönderilir. Kapalıysa düz hat çizilir.</small></span></label>
+   <details style="margin:6px 0"><summary>Ara noktalar (isteğe bağlı)</summary><div class="hint">Yol yanlış giderse ya da düz hat yerine belirli bir yoldan geçsin istersen, her satıra bir koordinat yaz (ör. 32.51, 45.82) ya da Google Maps bağlantısı yapıştır.</div>
+    ${sites.slice(1).map((b,i)=>{const a=sites[i];return `<label class="f" for="rv-${i}"><span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${ROUTE_COL[i%ROUTE_COL.length]};margin-right:6px"></span>${i+1}→${i+2}: ${esc(a.name||"?")} → ${esc(b.name||"?")}</span><textarea id="rv-${i}" data-rvia="${esc(legKey(a,b))}" style="min-height:48px" placeholder="32.51, 45.82">${esc(via[legKey(a,b)]||"")}</textarea></label>`}).join("")}</details>
+   <div class="row"><button type="button" class="btn" id="r-map">🗺 Haritayı oluştur / yenile</button></div>
+   <div id="routeOut"></div></section>`}
+function routeOutHtml(rc){const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.reduce((a,l)=>a+l.air,0);
+  return `<img src="${rc.url}" alt="Güzergâh haritası" style="width:100%;border-radius:8px;border:1px solid var(--line);margin-top:8px">
+   <div style="overflow-x:auto"><table class="rt" style="width:100%;border-collapse:collapse;font-size:.85rem;margin-top:8px"><tr><th></th><th style="text-align:left">Ara yol</th><th>Mesafe</th><th>Kuş uçuşu</th><th>Süre</th></tr>
+   ${rc.legs.map((l,i)=>{const r=legRows([l])[0];return `<tr style="border-top:1px solid var(--line)"><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${l.col}"></span></td><td>${esc(r[1])}</td><td style="text-align:right"><b>${r[2]}</b></td><td style="text-align:right">${r[3]}</td><td style="text-align:right">${r[4]}</td></tr>`}).join("")}
+   <tr style="border-top:2px solid var(--line)"><td></td><td><b>Toplam</b></td><td style="text-align:right"><b>${fmt(tot,0)} km</b></td><td style="text-align:right">${fmt(air,0)} km</td><td></td></tr></table></div>
+   ${rc.legs.some(l=>!l.road)?`<div class="hint">* Yol servisine ulaşılamadı ya da kapalı: düz hat / ara noktalar üzerinden ölçüldü.</div>`:""}`}
+async function showRoute(){const out=app.querySelector("#routeOut"),btn=app.querySelector("#r-map");if(!out)return;btn.disabled=true;btn.textContent="Harita hazırlanıyor…";
+  try{const rc=await buildRoute();if(rc&&view==="report")out.innerHTML=routeOutHtml(rc)}catch(e){console.error(e);toast("Harita oluşturulamadı")}finally{if(btn.isConnected){btn.disabled=false;btn.textContent="🗺 Haritayı oluştur / yenile"}}}
+function rerenderRoute(auto){const p=app.querySelector("#routeP")||[...app.querySelectorAll("section.panel")].find(x=>x.querySelector("h2")?.textContent.includes("Güzergâh"));if(p){p.outerHTML=routePanelHtml();bindRoute();if(auto&&routeCache.blob)showRoute()}}
+function bindRoute(){const p=app.querySelector("#routeP");if(!p)return;
+  p.querySelectorAll("[data-rup],[data-rdn]").forEach(b=>b.onclick=()=>{const ids=routeSites().map(s=>s.id),i=+(b.dataset.rup??b.dataset.rdn),j=b.dataset.rup!=null?i-1:i+1;[ids[i],ids[j]]=[ids[j],ids[i]];prefs.routeOrd=[...ids,...(prefs.routeOrd||[]).filter(x=>!ids.includes(x))].slice(0,300);savePrefs();rerenderRoute(true)});
+  p.querySelector("#r-map").onclick=showRoute;
+  if(routeCache.blob&&routeCache.sig===routeSig(routeSites()))p.querySelector("#routeOut").innerHTML=routeOutHtml(routeCache)}
+async function routeToPdf(D){const sites=routeSites();if(sites.length<2)return;let rc;try{rc=await buildRoute()}catch(e){return}if(!rc)return;
+  D.page();D.h2("Güzergâh haritası ve mesafeler");await D.image(rc.blob,{maxH:900,cap:"Ziyaret sırasına göre sahalar; her ara yol farklı renkte"});
+  const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.reduce((a,l)=>a+l.air,0);
+  D.table([{t:"#",w:9,al:"center"},{t:"Ara yol",w:43},{t:"Mesafe",w:16,al:"right"},{t:"Kuş uçuşu",w:16,al:"right"},{t:"Süre",w:16,al:"right"}],
+    [...legRows(rc.legs).map((r,i)=>[{t:r[0],bold:true,color:rc.legs[i].col},...r.slice(1)]),[{t:""},{t:"Toplam",bold:true},{t:`${fmt(tot,0)} km`,bold:true},`${fmt(air,0)} km`,""]],{sz:20});
+  if(rc.legs.some(l=>!l.road))D.text("* Düz hat / ara noktalar üzerinden ölçülen mesafe (yol servisi kullanılamadı).",{sz:18,color:C.muted});
+  if(sites.length>2&&sites.length<=8){D.h3("Sahalar arası kuş uçuşu mesafeler (km)");
+    D.table([{t:"",w:24},...sites.map((s,i)=>({t:String(i+1),w:76/sites.length,al:"center"}))],sites.map((a,i)=>[{t:`${i+1}. ${a.name||"?"}`,bold:true},...sites.map((b,j)=>i===j?"–":fmt(hav(parseCoord(a.coord),parseCoord(b.coord)),0))]),{sz:18})}}
 function shortText(){
   const list=repList(),L=[];
   L.push(`SAHA KEŞİF RAPORU – ENERJİ · ${R.mode==="day"||R.d1===R.d2?fmtDate(R.d1):fmtDate(R.d1)+" – "+fmtDate(R.d2)}`);
@@ -805,6 +898,8 @@ function shortText(){
     {const tl=talep(s);if(tl.yer||tl.ok)L.push(`• Kurulum yeri: ${tl.yer||"belli değil"}${tl.ok?` · talep: ${talepTxt(tl)}`:""}${A(s,"jenVer")?` · jeneratörden verilebilir mi: ${A(s,"jenVer").toLowerCase()}`:""}`)}
     if(A(s,"isiEk"))L.push(`• Salonda 1–3 kW ek ısı: ${A(s,"isiEk")}`);
     if(s.load?.on&&R.energy){const e=energy(s);L.push(`• İhtiyaç: ${fmt(e.peakW/1000)} kW · ${fmt(e.A220,0)} A → talep ${e.breaker} A (220 V)`)}});
+  {const rs=routeSites();if(rs.length>1){const rc=routeCache.sig===routeSig(rs)?routeCache:null;L.push("","Güzergâh / mesafeler:");
+    for(let i=1;i<rs.length;i++){const l=rc?.legs[i-1],air=hav(parseCoord(rs[i-1].coord),parseCoord(rs[i].coord));L.push(`• ${rs[i-1].name||"?"} → ${rs[i].name||"?"}: ${l?`${fmt(l.km,0)} km${l.road?" yol":""}`:`${fmt(air,0)} km kuş uçuşu`}`)}}}
   const nx=(prefs["next-"+R.d1]||"").trim();if(nx)L.push("",`Sonraki adımlar: ${nx}`);
   return L.join("\n");
 }
@@ -936,6 +1031,7 @@ async function makePdf(){
         A(s,"kesinti")!==""?`${A(s,"kesinti")} sa/gün`:"–",YN[A(s,"salonBos")]||"–",so==="Mevcut soğutma kullanılabilir"?"Mevcut":so==="Yeni split klima gerekli"?"Yeni split":so||"–",
         A(s,"jen")==="yes"?(g.count?`${g.count} adet${g.free!=null?` · boş ${fmt(g.free,0)} kVA`:""}`:"Var"):YN[A(s,"jen")]||"–",...(R.energy?[s.load?.on?`${energy(s).breaker} A`:"–"]:[])]}),{sz:19});
     const nx=(prefs["next-"+R.d1]||"").trim();if(nx){D.h2("Sonraki adımlar");D.text(nx)}
+    btn.textContent="Güzergâh haritası…";await routeToPdf(D);btn.textContent="PDF hazırlanıyor…";
     for(const [i,s] of list.entries())await siteToPdf(D,s,i+1);
     const blobs=await D.done();const pdf=await pdfFromJpegs(blobs);
     const fn=`${multi?"saha-raporu":"gunluk-rapor"}_${R.d1}${multi?"_"+R.d2:""}.pdf`;
