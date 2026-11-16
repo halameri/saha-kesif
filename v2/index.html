@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="3.4 · 16.11.2026";
+const VERSION="3.5 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -909,6 +909,7 @@ function reportInput(e){const el=e.target;
   if((el.id==="r-d1"||el.id==="r-d2")&&e.type==="change"&&el.value){R[el.id==="r-d1"?"d1":"d2"]=el.value;if(R.mode==="day")R.d2=R.d1;R.summaryEdited=false;renderReport();return}
   if(el.id==="r-road"){prefs.routeRoad=el.checked;savePrefs();return}
   if(el.id==="r-dots"){prefs.routeDots=el.checked;savePrefs();return}
+  if(el.id==="r-usepts"){prefs.routeUsePts=el.checked;savePrefs();return}
   if(el.dataset.rvia!=null){prefs.routeVia=prefs.routeVia||{};prefs.routeVia[el.dataset.rvia]=el.value;savePrefs();return}
   if(el.dataset.rsel){R.sel[el.dataset.rsel]=el.checked;rerenderRoute(false);if(!R.summaryEdited){R.summary=overallSummary(repList(),rangeLabel());app.querySelector("#r-sum").value=R.summary}return}
   if(el.id==="r-author"){prefs.author=el.value;savePrefs()}if(el.id==="r-unit"){prefs.unit=el.value;savePrefs()}if(el.id==="r-project"){prefs.project=el.value;savePrefs()}
@@ -1005,18 +1006,21 @@ function rangePts(){return (prefs.routePts||[]).filter(p=>R.mode==="day"?p.d===R
 /* each recorded point goes to the leg it fits best (smallest detour); order inside a leg = distance from start site */
 function legVias(sites){const legs=sites.slice(1).map((b,i)=>{const a=sites[i];return{a,b,A:parseCoord(a.coord),B:parseCoord(b.coord),pts:parseVia((prefs.routeVia||{})[legKey(a,b)])}});
   const sc=sites.map(s=>parseCoord(s.coord));
-  for(const p of rangePts()){if(sc.some(c=>hav(c,p)<1))continue;let best=null,bd=1e9;for(const L of legs){const air=hav(L.A,L.B),det=hav(L.A,p)+hav(p,L.B)-air;if(det<bd&&det<Math.max(40,air*.6)){bd=det;best=L}}if(best)best.pts.push(p)}
-  for(const L of legs){L.pts.sort(L.pts.every(x=>x.t)?(x,y)=>x.t-y.t:(x,y)=>hav(L.A,x)-hav(L.A,y));if(L.pts.length>25){const k=L.pts.length/25;L.pts=Array.from({length:25},(_,i)=>L.pts[Math.floor(i*k)])}}
+  /* sahaya 2 km'den yakın noktalar (sahada/otoparkta kaydedilen) ve yoldan çok sapan noktalar alınmaz */
+  if(prefs.routeUsePts!==false)for(const p of rangePts()){if(sc.some(c=>hav(c,p)<2))continue;let best=null,bd=1e9;for(const L of legs){const air=hav(L.A,L.B),det=hav(L.A,p)+hav(p,L.B)-air;if(det<bd&&det<Math.max(8,air*.35)){bd=det;best=L}}if(best)best.pts.push(p)}
+  for(const L of legs){L.pts.sort(L.pts.every(x=>x.t)?(x,y)=>x.t-y.t:(x,y)=>hav(L.A,x)-hav(L.A,y));
+    {const keep=[];let last=0;for(const q of L.pts){const prog=hav(L.A,q)-hav(q,L.B);if(prog>=last-3){keep.push(q);last=Math.max(last,prog)}}L.pts=keep}if(L.pts.length>25){const k=L.pts.length/25;L.pts=Array.from({length:25},(_,i)=>L.pts[Math.floor(i*k)])}}
   return legs}
 async function osrmLeg(pts){const q=pts.map(p=>`${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(";");
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),15000);
-  try{const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${q}?overview=full&geometries=geojson`,{signal:ctl.signal});if(!r.ok)throw 0;const j=await r.json();const rt=j.routes?.[0];if(!rt)throw 0;
+  try{const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${q}?overview=full&geometries=geojson&continue_straight=false`,{signal:ctl.signal});if(!r.ok)throw 0;const j=await r.json();const rt=j.routes?.[0];if(!rt)throw 0;
     return{path:rt.geometry.coordinates.map(c=>[c[1],c[0]]),km:rt.distance/1000,min:rt.duration/60,road:true}}finally{clearTimeout(t)}}
 async function routeLegs(sites){const road=prefs.routeRoad!==false&&navigator.onLine!==false;const legs=[];
   const LV=legVias(sites);
   for(let i=1;i<sites.length;i++){const a=sites[i-1],b=sites[i],A1=parseCoord(a.coord),B1=parseCoord(b.coord),via=LV[i-1].pts;const pts=[A1,...via,B1];
     let leg=null;if(road){try{leg=await osrmLeg(pts)}catch(e){}}
     if(!leg)leg={path:pts,km:pathKm(pts),road:false};
+    leg.direct=leg.km;if(road&&via.length){try{leg.direct=(await osrmLeg([A1,B1])).km}catch(e){leg.direct=null}}
     leg.air=hav(A1,B1);leg.a=a;leg.b=b;leg.i=i;leg.via=via.length;leg.viaPts=via;leg.col=ROUTE_COL[(i-1)%ROUTE_COL.length];legs.push(leg)}
   return legs}
 async function makeRouteImage(sites,legs){
@@ -1051,12 +1055,12 @@ async function makeRouteImage(sites,legs){
   const at=tilesOk?"© OpenStreetMap contributors · © CARTO":"Harita altlığı yüklenemedi (internet yok) – noktalar ölçekli",aw=(g.font=`15px ${F}`,g.measureText(at).width);g.fillStyle="rgba(255,255,255,.88)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
   return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.88));
 }
-function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false,!!prefs.routeDots,rangePts().map(p=>[p[0],p[1]])])}
+function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false,!!prefs.routeDots,prefs.routeUsePts!==false,rangePts().map(p=>[p[0],p[1]])])}
 async function buildRoute(){const sites=routeSites();if(sites.length<2)return null;const sig=routeSig(sites);
   if(routeCache.sig===sig&&routeCache.blob)return routeCache;
   const legs=await routeLegs(sites),blob=await makeRouteImage(sites,legs);if(routeCache.url)URL.revokeObjectURL(routeCache.url);
   routeCache={sig,sites,legs,blob,url:URL.createObjectURL(blob)};return routeCache}
-function legRows(legs){return legs.map(l=>[`${l.i}→${l.i+1}`,`${l.a.name||"?"} → ${l.b.name||"?"}`,`${fmt(l.km,0)} km${l.road?"":" *"}`,`${fmt(l.air,0)} km`])}
+function legRows(legs){return legs.map(l=>[`${l.i}→${l.i+1}`,`${l.a.name||"?"} → ${l.b.name||"?"}`,`${fmt(l.km,0)} km${l.road?"":" *"}${l.direct&&l.km>l.direct*1.3?" ⚠":""}`,`${fmt(l.air,0)} km`,l.direct!=null&&l.via?`${fmt(l.direct,0)} km`:"–"])}
 function routePanelHtml(){const sites=routeSites(),missL=repList().filter(s=>!parseCoord(s.coord)),miss=missL.length;
   const missHtml=miss?`<div class="hint" style="color:var(--warn,#b45309)">Koordinatı olmayan (haritada yok): ${missL.map(s=>`<b>${esc(s.name||"Adsız saha")}</b>${s.coord?` <small>(“${esc(String(s.coord).slice(0,40))}” okunamadı)</small>`:""} <button type="button" class="btn sm" data-ropen="${esc(s.id)}">Aç, koordinat ekle</button><button type="button" class="btn sm" data-rmap="${esc(s.id)}">🗺 Haritada seç</button><button type="button" class="btn sm" data-rphoto="${esc(s.id)}">📷 Fotoğraftan al</button>${(prefs.routePts||[]).some(q=>q.d===s.date)?` <button type="button" class="btn sm" data-rpick="${esc(s.id)}">📍 Yol noktası listesi</button>`:""}<div id="rpick-${esc(s.id)}"></div>`).join("")}</div>`:"";
   if(sites.length<2)return `<section class="panel"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası</h2><p class="muted" style="margin:0">Ortak harita için koordinatı girilmiş en az 2 saha seçilmeli.</p>${missHtml}</section>`;
@@ -1066,17 +1070,19 @@ function routePanelHtml(){const sites=routeSites(),missL=repList().filter(s=>!pa
    <ol class="rlist" style="padding-left:0;list-style:none;margin:8px 0">${sites.map((s,i)=>`<li style="display:flex;align-items:center;gap:6px;margin:4px 0"><b style="min-width:1.6em">${i+1}.</b><span style="flex:1">${esc(s.name||"Adsız saha")} <small class="muted">${fmtDate(s.date)}</small></span><button type="button" class="btn sm" data-rup="${i}" ${i?"":"disabled"} aria-label="Yukarı">↑</button><button type="button" class="btn sm" data-rdn="${i}" ${i<sites.length-1?"":"disabled"} aria-label="Aşağı">↓</button></li>`).join("")}</ol>
    <label class="chk" for="r-road"><input type="checkbox" id="r-road" ${prefs.routeRoad!==false?"checked":""}><span><b>Gerçek yol üzerinden çiz</b><small>İnternet gerekir; yalnızca koordinatlar yol servisine (OSRM) gönderilir. Kapalıysa düz hat çizilir.</small></span></label>
    <div class="hint" style="margin-top:8px"><b>Geçtiğimiz yol:</b> yolculukta önemli yerlerde (kavşak, köprü, ilçe girişi) ana ekrandaki <b>📍 Yol noktası kaydet</b>'e bas. Sıra ve hangi ara yola ait olduğu otomatik bulunur. Bu raporda kayıtlı nokta: <b>${rangePts().length}</b></div>
+   <label class="chk" for="r-usepts"><input type="checkbox" id="r-usepts" ${prefs.routeUsePts!==false?"checked":""}><span><b>Kayıtlı yol noktalarını kullan</b><small>Kaldırırsan yol, noktalar olmadan en kısa yoldan çizilir</small></span></label>
    <label class="chk" for="r-dots"><input type="checkbox" id="r-dots" ${prefs.routeDots?"checked":""}><span><b>Yol noktalarını küçük işaretle göster</b><small>Kapalıysa noktalar sadece yolu çizmek ve mesafeyi hesaplamak için kullanılır</small></span></label>
    <div class="row"><button type="button" class="btn sm" id="r-pt">📍 Şimdi nokta kaydet</button>${rangePts().length?`<button type="button" class="btn ghost sm danger" id="r-ptdel">Bu tarihlerin noktalarını sil</button>`:""}</div>
    <details style="margin:6px 0" ${Object.values(via).some(x=>x&&x.trim())?"open":""}><summary>Elle ara nokta ekle (isteğe bağlı)</summary><div class="hint">Gerekirse her satıra bir koordinat (ör. 32.51, 45.82) veya Google Maps bağlantısı yapıştır; sırası önemli değil, otomatik sıralanır.</div>
     ${sites.slice(1).map((b,i)=>{const a=sites[i];return `<label class="f" for="rv-${i}"><span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${ROUTE_COL[i%ROUTE_COL.length]};margin-right:6px"></span>${i+1}→${i+2}: ${esc(a.name||"?")} → ${esc(b.name||"?")}</span><textarea id="rv-${i}" data-rvia="${esc(legKey(a,b))}" style="min-height:48px" placeholder="32.51, 45.82">${esc(via[legKey(a,b)]||"")}</textarea></label>`}).join("")}</details>
    <div class="row"><button type="button" class="btn" id="r-map">🗺 Haritayı oluştur / yenile</button></div>
    <div id="routeOut"></div></section>`}
-function routeOutHtml(rc){const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.reduce((a,l)=>a+l.air,0);
+function routeOutHtml(rc){const anyVia=rc.legs.some(l=>l.via);const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.reduce((a,l)=>a+l.air,0);
   return `<img src="${rc.url}" alt="Güzergâh haritası" style="width:100%;border-radius:8px;border:1px solid var(--line);margin-top:8px">
-   <div style="overflow-x:auto"><table class="rt" style="width:100%;border-collapse:collapse;font-size:.85rem;margin-top:8px"><tr><th></th><th style="text-align:left">Ara yol</th><th>Mesafe</th><th>Kuş uçuşu</th></tr>
-   ${rc.legs.map((l,i)=>{const r=legRows([l])[0];return `<tr style="border-top:1px solid var(--line)"><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${l.col}"></span></td><td>${esc(r[1])}</td><td style="text-align:right"><b>${r[2]}</b></td><td style="text-align:right">${r[3]}</td></tr>`}).join("")}
-   <tr style="border-top:2px solid var(--line)"><td></td><td><b>Toplam</b></td><td style="text-align:right"><b>${fmt(tot,0)} km</b></td><td style="text-align:right">${fmt(air,0)} km</td></tr></table></div>
+   <div style="overflow-x:auto"><table class="rt" style="width:100%;border-collapse:collapse;font-size:.85rem;margin-top:8px"><tr><th></th><th style="text-align:left">Ara yol</th><th>Mesafe</th><th>Kuş uçuşu</th>${anyVia?"<th>Noktasız yol</th>":""}</tr>
+   ${rc.legs.map((l,i)=>{const r=legRows([l])[0];return `<tr style="border-top:1px solid var(--line)"><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${l.col}"></span></td><td>${esc(r[1])}</td><td style="text-align:right"><b>${r[2]}</b></td><td style="text-align:right">${r[3]}</td>${anyVia?`<td style="text-align:right">${r[4]}</td>`:""}</tr>`}).join("")}
+   <tr style="border-top:2px solid var(--line)"><td></td><td><b>Toplam</b></td><td style="text-align:right"><b>${fmt(tot,0)} km</b></td><td style="text-align:right">${fmt(air,0)} km</td>${anyVia?"<td></td>":""}</tr></table></div>
+   ${rc.legs.some(l=>l.direct&&l.km>l.direct*1.3)?`<div class="hint">⚠ Bu ara yolda kayıtlı yol noktaları güzergâhı belirgin uzatıyor (yanlış yerde/dönüşte kaydedilmiş nokta olabilir). “Noktasız yol” sütunu, noktalar olmadan en kısa yolu gösterir. Noktaları kullanmamak için aşağıdaki kutuyu kaldır.</div>`:""}
    ${rc.legs.some(l=>!l.road)?`<div class="hint">* Yol servisine ulaşılamadı ya da kapalı: düz hat / ara noktalar üzerinden ölçüldü.</div>`:""}`}
 async function showRoute(){const out=app.querySelector("#routeOut"),btn=app.querySelector("#r-map");if(!out)return;btn.disabled=true;btn.textContent="Harita hazırlanıyor…";
   try{routeCache.sig="";const rc=await buildRoute();if(rc&&view==="report")out.innerHTML=routeOutHtml(rc)}catch(e){console.error(e);toast("Harita oluşturulamadı")}finally{if(btn.isConnected){btn.disabled=false;btn.textContent="🗺 Haritayı oluştur / yenile"}}}
@@ -1102,7 +1108,7 @@ async function routeToPdf(D){const sites=routeSites();if(sites.length<2)return;l
   D.page();D.h2("Güzergâh haritası ve mesafeler");await D.image(rc.blob,{maxH:900,cap:"Ziyaret sırasına göre sahalar; her ara yol farklı renkte"});
   const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.reduce((a,l)=>a+l.air,0);
   D.table([{t:"#",w:9,al:"center"},{t:"Ara yol",w:51},{t:"Mesafe (yol)",w:20,al:"right"},{t:"Kuş uçuşu",w:20,al:"right"}],
-    [...legRows(rc.legs).map((r,i)=>[{t:r[0],bold:true,color:rc.legs[i].col},...r.slice(1)]),[{t:""},{t:"Toplam",bold:true},{t:`${fmt(tot,0)} km`,bold:true},`${fmt(air,0)} km`]],{sz:20});
+    [...legRows(rc.legs).map((r,i)=>[{t:r[0],bold:true,color:rc.legs[i].col},...r.slice(1,4)]),[{t:""},{t:"Toplam",bold:true},{t:`${fmt(tot,0)} km`,bold:true},`${fmt(air,0)} km`]],{sz:20});
   if(rc.legs.some(l=>!l.road))D.text("* Düz hat / ara noktalar üzerinden ölçülen mesafe (yol servisi kullanılamadı).",{sz:18,color:C.muted});
   if(sites.length>2&&sites.length<=8){D.h3("Sahalar arası kuş uçuşu mesafeler (km)");
     D.table([{t:"",w:24},...sites.map((s,i)=>({t:String(i+1),w:76/sites.length,al:"center"}))],sites.map((a,i)=>[{t:`${i+1}. ${a.name||"?"}`,bold:true},...sites.map((b,j)=>i===j?"–":fmt(hav(parseCoord(a.coord),parseCoord(b.coord)),0))]),{sz:18})}}
