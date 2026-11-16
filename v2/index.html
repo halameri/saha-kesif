@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="3.0 · 16.11.2026";
+const VERSION="3.1 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -697,71 +697,85 @@ async function openAnnotator(g,i){
   draw();
 }
 
-/* Kabin yerleştirme: boş alan fotoğrafının üstüne gerçek ölçülü kabin / akü rafı / klima çizip sürükle, boyutla, kaydet */
-const CAB_T={tr:{n:"Transmisyon",w:70,d:70,h:200},dc:{n:"DC güç",w:70,d:70,h:200},aku:{n:"Akü rafı",w:70,d:70,h:100},ac:{n:"DX klima",w:130,d:75,h:195}};
+/* Kabin yerleştirme (3D): boş alan fotoğrafına gerçek ölçülü kutular; sürükle, boyutla, kendi ekseninde döndür, bakış açısını fotoğrafa uydur */
+const CAB_T={tr:{n:"Transmisyon",w:70,d:30,h:200},dc:{n:"DC güç",w:70,d:70,h:200},aku:{n:"Akü rafı",w:70,d:70,h:100},ac:{n:"DX klima",w:130,d:75,h:195}};
 function shade(hex,f){const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;const m=x=>Math.max(0,Math.min(255,Math.round(f<0?x*(1+f):x+(255-x)*f)));return`rgb(${m(r)},${m(g)},${m(b)})`}
-function drawCab(c,o,showDim){const T=CAB_T[o.t],s=o.s,W=T.w*s,H=T.h*s,D=T.d*s*.42,x0=o.x-W/2,y0=o.y-H;
-  const dx=o.side?o.side*D*.85:0,dy=-D*(o.side?.5:.3),base=o.t==="aku"?"#4a5058":o.t==="ac"?"#eef0f2":"#d6dade";
-  c.save();c.lineJoin="round";c.lineWidth=Math.max(1,s*.6);c.strokeStyle="#2b3036";
-  const poly=(pts,f)=>{c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();c.fillStyle=f;c.fill();c.stroke()};
-  // gölge
-  c.fillStyle="rgba(0,0,0,.28)";c.beginPath();c.ellipse(o.x+dx/2,o.y+dy/2+2,W*.62+Math.abs(dx)/2,Math.max(4,D*.35),0,0,7);c.fill();
-  poly([[x0,y0],[x0+W,y0],[x0+W+dx,y0+dy],[x0+dx,y0+dy]],shade(base,.25));
-  if(o.side){const ex=o.side>0?x0+W:x0;poly([[ex,y0],[ex+dx,y0+dy],[ex+dx,o.y+dy],[ex,o.y]],shade(base,-.28))}
-  if(o.t==="aku"){// açık raf: dikmeler, raflar, aküler
-    const sh=2,fh=H/sh;c.fillStyle=shade(base,-.1);c.fillRect(x0,y0,W,H);c.strokeRect(x0,y0,W,H);
-    for(let k=0;k<sh;k++){const yb=y0+fh*(k+1),bh=fh*.62,bw=(W-6*s)/3;
-      for(let j=0;j<3;j++){const bx=x0+3*s+j*bw+bw*.06;c.fillStyle="#1d1f22";c.fillRect(bx,yb-bh-2*s,bw*.88,bh);c.fillStyle="#c33";c.fillRect(bx+bw*.12,yb-bh-2*s-2.5*s,bw*.14,2.5*s);c.fillStyle="#333";c.fillRect(bx+bw*.62,yb-bh-2*s-2.5*s,bw*.14,2.5*s)}
-      c.fillStyle="#8a9098";c.fillRect(x0,yb-2*s,W,2*s)}
-    c.fillStyle="#6b7179";c.fillRect(x0,y0,3*s,H);c.fillRect(x0+W-3*s,y0,3*s,H)}
-  else if(o.t==="ac"){c.fillStyle=base;c.fillRect(x0,y0,W,H);c.strokeRect(x0,y0,W,H);
-    c.fillStyle="#c9ced4";for(let k=0;k<14;k++)c.fillRect(x0+8*s,y0+8*s+k*4*s,W-16*s,1.6*s);
-    c.fillStyle="#d3d8dd";c.fillRect(x0+8*s,y0+H*.45,W-16*s,H*.5);c.strokeRect(x0+8*s,y0+H*.45,W-16*s,H*.5);
-    c.fillStyle="#2d6fb3";c.fillRect(x0+W*.4,y0+H*.36,W*.2,5*s)}
-  else{// kapılı kabin
-    c.fillStyle=base;c.fillRect(x0,y0,W,H);c.strokeRect(x0,y0,W,H);const m=4*s;c.fillStyle=shade(base,-.06);c.fillRect(x0+m,y0+m,W-2*m,H-2*m);c.strokeRect(x0+m,y0+m,W-2*m,H-2*m);
-    if(o.t==="tr"){c.fillStyle="rgba(40,45,52,.55)";const st=3.2*s;for(let yy=y0+m+st;yy<o.y-m-st;yy+=st*1.6)for(let xx=x0+m+st;xx<x0+W-m-st;xx+=st*1.6){c.fillRect(xx,yy,st*.7,st*.7)}}
-    else{// DC: doğrultucu modülleri + sigorta paneli
-      const mw=(W-2*m-6*s)/4;for(let r=0;r<2;r++)for(let j=0;j<4;j++){const xx=x0+m+3*s+j*mw,yy=y0+m+6*s+r*16*s;c.fillStyle="#3a4048";c.fillRect(xx+s,yy,mw-2*s,13*s);c.fillStyle="#5dd36a";c.fillRect(xx+mw*.4,yy+2*s,2*s,2*s)}
-      c.fillStyle="#f4f5f6";c.fillRect(x0+m+3*s,y0+m+42*s,W-2*m-6*s,22*s);c.fillStyle="#222";for(let j=0;j<10;j++)c.fillRect(x0+m+6*s+j*(W-2*m-12*s)/10,y0+m+46*s,3*s,12*s);
-      c.fillStyle="#1d1f22";for(let k=0;k<2;k++)c.fillRect(x0+m+4*s,o.y-m-(k+1)*26*s,W-2*m-8*s,22*s)}
-    c.fillStyle="#2b3036";c.fillRect(o.side<0?x0+W-m-4*s:x0+W-m-5*s,y0+H*.45,2.5*s,14*s)}
-  if(showDim){const l1=T.n,l2=`${T.w}×${T.d}×${T.h}`;let fs=Math.max(9,Math.min(24,W*.15));const F=n=>`bold ${n}px -apple-system,system-ui,Arial,sans-serif`;c.font=F(fs);
-    let tw=Math.max(c.measureText(l1).width,c.measureText(l2).width);if(tw>W*.9){fs=Math.max(8,fs*W*.9/tw);c.font=F(fs);tw=Math.max(c.measureText(l1).width,c.measureText(l2).width)}
-    const bh=fs*2.5,by=o.t==="aku"?y0+dy-bh-4:y0+H*.06+(o.t==="dc"?H*.34:0);c.fillStyle="rgba(255,255,255,.93)";c.fillRect(o.x-tw/2-5,by,tw+10,bh);c.strokeStyle="#13324f";c.lineWidth=1;c.strokeRect(o.x-tw/2-5,by,tw+10,bh);
-    c.fillStyle="#13324f";c.textAlign="center";c.fillText(l1,o.x,by+fs*1.05);c.font=`${fs*.9}px -apple-system,system-ui,Arial,sans-serif`;c.fillText(l2,o.x,by+fs*2.15)}
-  c.restore();return{x0:Math.min(x0,x0+dx),y0:y0+dy,x1:Math.max(x0+W,x0+W+dx),y1:o.y,hx:x0+W,hy:y0}}
+/* nesne uzayı: X sağ, Y yukarı, Z kameraya doğru (ön yüz +Z). yaw: dikey eksende dönüş, el: kameranın yukarıdan bakış açısı */
+function cabProj(o,el){const th=(o.yaw||0)*Math.PI/180,ph=el*Math.PI/180,ct=Math.cos(th),st=Math.sin(th),cp=Math.cos(ph),sp=Math.sin(ph);
+  const P=(X,Y,Z)=>{const x=X*ct+Z*st,z=-X*st+Z*ct;return[o.x+o.s*x,o.y+o.s*(-Y*cp+z*sp)]};
+  const vis=(nx,ny,nz)=>{const z=-nx*st+nz*ct;return ny*sp+z*cp>1e-3};
+  const lit=(nx,ny,nz)=>{const x=nx*ct+nz*st,z=-nx*st+nz*ct;return .5*(x*-.45+ny*.75+z*.5)};return{P,vis,lit}}
+function cabFront(c,t,w,h,dim,T){// ön yüz detayı, yerel cm koordinatında (0..w, 0..h)
+  c.lineWidth=.6;c.strokeStyle="#2b3036";
+  if(t==="aku"){c.fillStyle="#3a3f46";c.fillRect(0,0,w,h);for(let k=0;k<2;k++){const yb=h/2*(k+1),bh=h/2*.62,bw=(w-6)/3;
+      for(let j=0;j<3;j++){const bx=3+j*bw+bw*.06;c.fillStyle="#17191c";c.fillRect(bx,yb-bh-2,bw*.88,bh);c.fillStyle="#c33";c.fillRect(bx+bw*.12,yb-bh-4.5,bw*.14,2.5);c.fillStyle="#444";c.fillRect(bx+bw*.62,yb-bh-4.5,bw*.14,2.5)}
+      c.fillStyle="#8a9098";c.fillRect(0,yb-2,w,2)}c.fillStyle="#6b7179";c.fillRect(0,0,3,h);c.fillRect(w-3,0,3,h);c.strokeRect(0,0,w,h)}
+  else if(t==="ac"){c.fillStyle="#eef0f2";c.fillRect(0,0,w,h);c.strokeRect(0,0,w,h);c.fillStyle="#c3c9cf";for(let k=0;k<14;k++)c.fillRect(8,8+k*4,w-16,1.6);
+    c.fillStyle="#d5dadf";c.fillRect(8,h*.45,w-16,h*.5);c.strokeRect(8,h*.45,w-16,h*.5);c.fillStyle="#2d6fb3";c.fillRect(w*.4,h*.36,w*.2,5)}
+  else{const m=4;c.fillStyle="#d6dade";c.fillRect(0,0,w,h);c.strokeRect(0,0,w,h);c.fillStyle="#cbd0d5";c.fillRect(m,m,w-2*m,h-2*m);c.strokeRect(m,m,w-2*m,h-2*m);
+    if(t==="tr"){c.fillStyle="rgba(40,45,52,.55)";for(let y=m+3;y<h-m-3;y+=5)for(let x=m+3;x<w-m-3;x+=5)c.fillRect(x,y,2.2,2.2)}
+    else{const mw=(w-2*m-6)/4;for(let r=0;r<2;r++)for(let j=0;j<4;j++){const x=m+3+j*mw,y=m+6+r*16;c.fillStyle="#3a4048";c.fillRect(x+1,y,mw-2,13);c.fillStyle="#5dd36a";c.fillRect(x+mw*.4,y+2,2,2)}
+      c.fillStyle="#f4f5f6";c.fillRect(m+3,m+42,w-2*m-6,22);c.fillStyle="#222";for(let j=0;j<10;j++)c.fillRect(m+6+j*(w-2*m-12)/10,m+46,3,12);
+      c.fillStyle="#1d1f22";for(let k=0;k<2;k++)c.fillRect(m+4,h-m-(k+1)*26,w-2*m-8,22)}
+    c.fillStyle="#2b3036";c.fillRect(w-m-5,h*.45,2.5,14)}
+  if(dim){const l1=T.n,l2=`${T.w}×${T.d}×${T.h}`;let fs=Math.min(15,w*.15);const F=n=>`bold ${n}px -apple-system,system-ui,Arial,sans-serif`;c.font=F(fs);
+    let tw=Math.max(c.measureText(l1).width,c.measureText(l2).width);if(tw>w*.9){fs*=w*.9/tw;c.font=F(fs);tw=Math.max(c.measureText(l1).width,c.measureText(l2).width)}
+    const bh=fs*2.5,by=t==="aku"?h*.02:t==="dc"?h*.34:h*.06;c.fillStyle="rgba(255,255,255,.94)";c.fillRect(w/2-tw/2-3,by,tw+6,bh);c.lineWidth=.4;c.strokeStyle="#13324f";c.strokeRect(w/2-tw/2-3,by,tw+6,bh);
+    c.fillStyle="#13324f";c.textAlign="center";c.fillText(l1,w/2,by+fs*1.05);c.font=`${fs*.9}px -apple-system,system-ui,Arial,sans-serif`;c.fillText(l2,w/2,by+fs*2.15)}}
+function drawCab(c,o,dim,el){const T=CAB_T[o.t],w=T.w,d=T.d,h=T.h,{P,vis,lit}=cabProj(o,el),a=w/2,b=d/2;
+  const base={tr:"#d6dade",dc:"#d6dade",aku:"#4a5058",ac:"#eef0f2"}[o.t];
+  c.save();// gölge
+  const fp=[P(-a,0,-b),P(a,0,-b),P(a,0,b),P(-a,0,b)];c.fillStyle="rgba(0,0,0,.3)";c.beginPath();fp.forEach((p,i)=>{const q=[p[0]+(p[0]-o.x)*.08,p[1]+3];i?c.lineTo(...q):c.moveTo(...q)});c.closePath();c.filter="blur(4px)";c.fill();c.filter="none";
+  // yüz: [normal, sol-üst, sağ-üst, sol-alt köşeler (ön yüz için yerel detay)]
+  const F=[{n:[0,0,1],tl:[-a,h,b],tr:[a,h,b],bl:[-a,0,b],front:1},{n:[0,0,-1],tl:[a,h,-b],tr:[-a,h,-b],bl:[a,0,-b]},
+    {n:[1,0,0],tl:[a,h,b],tr:[a,h,-b],bl:[a,0,b]},{n:[-1,0,0],tl:[-a,h,-b],tr:[-a,h,b],bl:[-a,0,-b]},{n:[0,1,0],tl:[-a,h,-b],tr:[a,h,-b],bl:[-a,h,b]}];
+  for(const f of F){if(!vis(...f.n))continue;const A=P(...f.tl),B=P(...f.tr),C=P(...f.bl),D=[B[0]+C[0]-A[0],B[1]+C[1]-A[1]];
+    const fw=Math.hypot(f.tl[0]-f.tr[0],f.tl[2]-f.tr[2]),fh=Math.hypot(f.tl[1]-f.bl[1],f.tl[2]-f.bl[2]);
+    if(f.front||(f.n[2]===-1&&o.t==="aku")){c.save();c.setTransform(c.getTransform().multiply(new DOMMatrix([(B[0]-A[0])/fw,(B[1]-A[1])/fw,(C[0]-A[0])/fh,(C[1]-A[1])/fh,A[0],A[1]])));
+      cabFront(c,o.t,fw,fh,dim&&f.front,T);c.restore();
+      const L=lit(...f.n);if(L<0){c.fillStyle=`rgba(0,0,0,${-L*.5})`;c.beginPath();c.moveTo(...A);c.lineTo(...B);c.lineTo(...D);c.lineTo(...C);c.closePath();c.fill()}}
+    else{c.beginPath();c.moveTo(...A);c.lineTo(...B);c.lineTo(...D);c.lineTo(...C);c.closePath();c.fillStyle=shade(base,Math.max(-.45,Math.min(.35,lit(...f.n)-.05)));c.fill();
+      c.lineWidth=Math.max(1,o.s*.5);c.strokeStyle="#2b3036";c.stroke();
+      if(f.n[1]===0&&o.t!=="aku"){c.strokeStyle="rgba(0,0,0,.25)";c.lineWidth=Math.max(1,o.s*.4);for(const t of [.33,.66]){c.beginPath();c.moveTo(A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t);c.lineTo(C[0]+(D[0]-C[0])*t,C[1]+(D[1]-C[1])*t);c.stroke()}}}}
+  c.restore();const pts=[];for(const X of [-a,a])for(const Y of [0,h])for(const Z of [-b,b])pts.push(P(X,Y,Z));
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);const top=P(a,h,b);return{x0:Math.min(...xs),y0:Math.min(...ys),x1:Math.max(...xs),y1:Math.max(...ys),hx:Math.max(...xs),hy:Math.min(...ys)}}
 async function openCabPlacer(g,i){
   const p=photos(cur,g)[i],re=!!p.cab;const srcBlob=await idbGet(re?p.cab.src:p.id),base=await blobToImg(srcBlob);
   const k=Math.min(1,1600/Math.max(base.width,base.height));const W=Math.round(base.width*k),H=Math.round(base.height*k);
   ov.innerHTML=`<div class="ov"><div class="bar" style="flex-wrap:nowrap;overflow-x:auto"><span style="color:#aab">Ekle:</span>${Object.entries(CAB_T).map(([t,T])=>`<button class="btn" data-addc="${t}">${T.n} <small>${T.w}×${T.d}×${T.h}</small></button>`).join("")}</div>
    <div class="stage"><canvas id="kc" width="${W}" height="${H}"></canvas></div>
    <div class="bar" id="kSel" style="flex-wrap:nowrap;overflow-x:auto;min-height:58px"></div>
+   <div class="bar"><label style="color:#cfd6dc;display:flex;align-items:center;gap:6px;flex:1;min-width:200px">Bakış açısı <input type="range" id="kEl" min="0" max="45" step="1" style="flex:1"><span id="kElV"></span></label></div>
    <div class="bar"><button class="btn on" id="kDim">Ölçüleri yaz</button><button class="btn" id="kCancel">Vazgeç</button><button class="btn on" id="kSave" style="margin-left:auto">✓ Kaydet</button></div>
-   <div class="bar" style="color:#aab;font-size:.8rem">Sürükle: taşı · sağ üstteki sarı nokta: boyutla (kabin boyunu fotoğraftaki kapıya/duvara göre ayarla; diğerleri aynı ölçekle eklenir).</div></div>`;
-  const cv=ov.querySelector("#kc"),ctx=cv.getContext("2d");const objs=re?p.cab.objs.map(o=>({...o})):[];let sel=-1,mode=null,off=[0,0],dim=re?p.cab.dim!==false:true,lastS=.42*H/200,lastSide=0;const box=[];
-  function draw(){ctx.drawImage(base,0,0,W,H);box.length=0;
-    const order=objs.map((o,j)=>j).sort((a,b)=>objs[a].y-objs[b].y);for(const j of order)box[j]=drawCab(ctx,objs[j],dim);
+   <div class="bar" style="color:#aab;font-size:.8rem">Sürükle: taşı · sarı nokta: boyutla (kabin boyunu fotoğraftaki kapıya/duvara göre ayarla) · Döndür kaydırıcısı: kabini kendi ekseninde çevir · Bakış açısı: fotoğrafın çekildiği yüksekliğe uydur.</div></div>`;
+  const cv=ov.querySelector("#kc"),ctx=cv.getContext("2d");
+  const objs=re?p.cab.objs.map(o=>({yaw:o.side?o.side*35:0,...o})):[];let el=re&&p.cab.el!=null?p.cab.el:12;
+  let sel=-1,mode=null,off=[0,0],dim=re?p.cab.dim!==false:true,lastS=.42*H/200,lastYaw=0;const box=[];
+  const kEl=ov.querySelector("#kEl");kEl.value=el;ov.querySelector("#kElV").textContent=el+"°";
+  kEl.oninput=()=>{el=+kEl.value;ov.querySelector("#kElV").textContent=el+"°";draw(false)};
+  function draw(bar=true){ctx.drawImage(base,0,0,W,H);box.length=0;
+    const order=objs.map((o,j)=>j).sort((a,b)=>objs[a].y-objs[b].y);for(const j of order)box[j]=drawCab(ctx,objs[j],dim,el);
     if(sel>=0){const b=box[sel];ctx.save();ctx.setLineDash([8,6]);ctx.strokeStyle="#ffd400";ctx.lineWidth=3;ctx.strokeRect(b.x0-4,b.y0-4,b.x1-b.x0+8,b.y1-b.y0+8);ctx.setLineDash([]);
       ctx.beginPath();ctx.arc(b.hx,b.hy,Math.max(14,W/70),0,7);ctx.fillStyle="#ffd400";ctx.fill();ctx.lineWidth=3;ctx.strokeStyle="#000";ctx.stroke();ctx.restore()}
-    selBar()}
-  function selBar(){const el=ov.querySelector("#kSel");if(sel<0){el.innerHTML=`<span style="color:#aab">${objs.length?"Düzenlemek için bir kabine dokun":"Yukarıdan ekipman ekle"}</span>`;return}
-    const o=objs[sel];el.innerHTML=`<button class="btn" id="kSide">↔ Yön: ${o.side<0?"sola":o.side>0?"sağa":"düz"}</button><button class="btn" id="kNext">⧉ Yanına ekle</button><button class="btn" id="kType">⟳ Tür</button><button class="btn" id="kDel" style="color:#f07a62">🗑 Sil</button>`;
-    el.querySelector("#kSide").onclick=()=>{o.side=o.side===0?1:o.side>0?-1:0;lastSide=o.side;draw()};
-    el.querySelector("#kNext").onclick=()=>{const T=CAB_T[o.t];objs.push({...o,x:o.x+(o.side<0?-1:1)*T.w*o.s});sel=objs.length-1;draw()};
-    el.querySelector("#kType").onclick=()=>{const ks=Object.keys(CAB_T);o.t=ks[(ks.indexOf(o.t)+1)%ks.length];draw()};
-    el.querySelector("#kDel").onclick=()=>{objs.splice(sel,1);sel=-1;draw()}}
+    if(bar)selBar()}
+  function selBar(){const elb=ov.querySelector("#kSel");if(sel<0){elb.innerHTML=`<span style="color:#aab">${objs.length?"Düzenlemek için bir kabine dokun":"Yukarıdan ekipman ekle"}</span>`;return}
+    const o=objs[sel];elb.innerHTML=`<label style="color:#cfd6dc;display:flex;align-items:center;gap:6px;min-width:190px">Döndür <input type="range" id="kYaw" min="-180" max="180" step="5" value="${o.yaw||0}" style="width:120px"><span id="kYawV">${o.yaw||0}°</span></label><button class="btn" id="kNext">⧉ Yanına ekle</button><button class="btn" id="kType">⟳ Tür</button><button class="btn" id="kDel" style="color:#f07a62">🗑 Sil</button>`;
+    elb.querySelector("#kYaw").oninput=e=>{o.yaw=+e.target.value;lastYaw=o.yaw;elb.querySelector("#kYawV").textContent=o.yaw+"°";draw(false)};
+    elb.querySelector("#kNext").onclick=()=>{objs.push(nextTo(o,o.t));sel=objs.length-1;draw()};
+    elb.querySelector("#kType").onclick=()=>{const ks=Object.keys(CAB_T);o.t=ks[(ks.indexOf(o.t)+1)%ks.length];draw()};
+    elb.querySelector("#kDel").onclick=()=>{objs.splice(sel,1);sel=-1;draw()}}
+  function nextTo(q,t){// q'nun sağına, aynı hizada ve aynı açıyla
+    const Tq=CAB_T[q.t],T=CAB_T[t],{P}=cabProj(q,el),dx=(Tq.w+T.w)/2,dz=(Tq.d-T.d)/2*(t===q.t?0:-1),p2=P(dx,0,-(Tq.d-T.d)/2);return{t,s:q.s,yaw:q.yaw||0,x:p2[0],y:p2[1]}}
   const pos=ev=>{const r=cv.getBoundingClientRect();return[(ev.clientX-r.left)*W/r.width,(ev.clientY-r.top)*H/r.height]};
   cv.addEventListener("pointerdown",ev=>{ev.preventDefault();const [x,y]=pos(ev),hr=Math.max(26,W/40);
     if(sel>=0&&Math.hypot(x-box[sel].hx,y-box[sel].hy)<hr){mode="size";cv.setPointerCapture(ev.pointerId);return}
     let hit=-1;const order=objs.map((o,j)=>j).sort((a,b)=>objs[b].y-objs[a].y);for(const j of order){const b=box[j];if(x>=b.x0&&x<=b.x1&&y>=b.y0&&y<=b.y1){hit=j;break}}
     sel=hit;if(hit>=0){mode="move";off=[x-objs[hit].x,y-objs[hit].y];cv.setPointerCapture(ev.pointerId)}draw()});
   cv.addEventListener("pointermove",ev=>{if(!mode||sel<0)return;const [x,y]=pos(ev),o=objs[sel];
-    if(mode==="move"){o.x=x-off[0];o.y=y-off[1]}else{const T=CAB_T[o.t];o.s=Math.max(.05,(o.y-y)/T.h);lastS=o.s}draw()});
-  const up=()=>{mode=null};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
-  ov.querySelectorAll("[data-addc]").forEach(b=>b.onclick=()=>{const t=b.dataset.addc;let o;
-    if(sel>=0){const q=objs[sel],Tq=CAB_T[q.t],T=CAB_T[t];o={t,s:q.s,side:q.side,y:q.y,x:q.x+(q.side<0?-1:1)*(Tq.w+T.w)/2*q.s}}
-    else o={t,s:lastS,side:lastSide,x:W/2,y:H*.88};objs.push(o);sel=objs.length-1;draw()});
+    if(mode==="move"){o.x=x-off[0];o.y=y-off[1]}else{const T=CAB_T[o.t],top=o.y-y;o.s=Math.max(.05,top/(T.h*Math.cos(el*Math.PI/180)+T.d/2*Math.sin(el*Math.PI/180)));lastS=o.s}draw(false)});
+  const up=()=>{if(mode)draw();mode=null};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+  ov.querySelectorAll("[data-addc]").forEach(b=>b.onclick=()=>{const t=b.dataset.addc;
+    const o=sel>=0?nextTo(objs[sel],t):{t,s:lastS,yaw:lastYaw,x:W/2,y:H*.88};objs.push(o);sel=objs.length-1;draw()});
   ov.querySelector("#kDim").classList.toggle("on",dim);
   ov.querySelector("#kDim").onclick=e=>{dim=!dim;e.target.classList.toggle("on",dim);draw()};
   ov.querySelector("#kCancel").onclick=()=>openViewer(g,i);
@@ -769,7 +783,7 @@ async function openCabPlacer(g,i){
     if(!objs.length){if(re){toast("Kabin kalmadı – istersen bu fotoğrafı Sil ile kaldır")}openViewer(g,i);return}
     const blob=await new Promise(r=>cv.toBlob(r,"image/jpeg",.88));const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);
     const cnt={};objs.forEach(o=>cnt[o.t]=(cnt[o.t]||0)+1);const cap="Önerilen yerleşim (temsili): "+Object.entries(cnt).map(([t,n])=>`${n} × ${CAB_T[t].n} ${CAB_T[t].w}×${CAB_T[t].d}×${CAB_T[t].h} cm`).join(", ");
-    const data={objs:objs.map(o=>({...o})),dim};
+    const data={objs:objs.map(o=>({...o})),dim,el};
     if(re){idbDel(p.id);p.id=id;p.cab={...p.cab,...data};if(!p.cap||p.cap.startsWith("Önerilen yerleşim"))p.cap=cap;dirty();toast("Yerleşim güncellendi");openViewer(g,i)}
     else{const src=uid();await idbPut(src,srcBlob);(cur.photos[g]=cur.photos[g]||[]).splice(i+1,0,{id,cap,cab:{src,...data}});dirty();toast("Yerleşim fotoğrafı eklendi (orijinal de duruyor)");openViewer(g,i+1)}};
   draw();
