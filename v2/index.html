@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.8.2 · 16.11.2026";
+const VERSION="2.9 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -187,9 +187,16 @@ const SEC=[
 ];
 /* talep edilen güç: kurulum yerine göre normal (nominal) ve en fazla (max) kW; elle yazılırsa o kullanılır */
 const TALEP_DEF={"Sistem salonu":{nom:1,max:3},"Ayrı oda":{nom:3,max:5}};
-function talep(s){const yer=A(s,"yer"),d=TALEP_DEF[yer]||null,nom=num(V(s,"yer.nom"))??d?.nom??null,max=num(V(s,"yer.max"))??d?.max??null;
-  return{yer,nom,max,kva:max!=null?max/PF:null,ok:nom!=null||max!=null}}
-const talepTxt=t=>[t.nom!=null?`normal ${fmt(t.nom)} kW`:"",t.max!=null?`en fazla ${fmt(t.max)} kW (≈ ${fmt(t.kva,0)} kVA)`:""].filter(Boolean).join(", ");
+/* güç kW ya da amper olarak girilebilir; amper → kVA (1 faz 220 V / 3 faz 380 V, faz başı) → kW (×PF) */
+const kwPerA=ph=>(ph==="3"?Math.sqrt(3)*380:220)*PF/1000;
+function talep(s){const yer=A(s,"yer"),d=TALEP_DEF[yer]||null,u=V(s,"yer.u")==="A"?"A":"kW",ph=V(s,"yer.ph")==="3"?"3":"1",k=kwPerA(ph);
+  const inp=x=>{const n=num(V(s,"yer."+x));return n==null?null:u==="A"?n*k:n};
+  const nom=inp("nom")??d?.nom??null,max=inp("max")??d?.max??null;
+  return{yer,nom,max,u,ph,nomA:nom!=null?nom/k:null,maxA:max!=null?max/k:null,kva:max!=null?max/PF:null,ok:nom!=null||max!=null}}
+const phTxt=t=>t.ph==="3"?"3 faz 380 V, faz başı":"1 faz 220 V";
+const talepTxt=t=>t.u==="A"
+  ?[t.nomA!=null?`normal ${fmt(t.nomA,0)} A`:"",t.maxA!=null?`en fazla ${fmt(t.maxA,0)} A`:""].filter(Boolean).join(", ")+` (${phTxt(t)}; ≈ ${t.nom!=null?fmt(t.nom)+" / ":""}${t.max!=null?fmt(t.max)+" kW, "+fmt(t.kva,0)+" kVA":""})`
+  :[t.nom!=null?`normal ${fmt(t.nom)} kW`:"",t.max!=null?`en fazla ${fmt(t.max)} kW (≈ ${fmt(t.kva,0)} kVA, ${phTxt(t)} ≈ ${fmt(t.maxA,0)} A)`:""].filter(Boolean).join(", ");
 const ALL=[];SEC.forEach(sec=>sec.items.forEach(it=>ALL.push({sec,it})));
 const GEN_QN=["Etiket fotoğrafı çekildi","Yakıt tankı ayrı","Jeneratör kabinli (sessiz tip)","Jeneratör eski görünüyor"];
 const GENERAL_QN=["Bina görevlisi eşlik etti","Sahada kısa süre kalınabildi","Bazı alanlara giriş izni verilmedi","Fotoğraf çekimi kısıtlıydı","Bilgiler tahminidir, teyit edilmeli"];
@@ -456,7 +463,10 @@ function itemHtml(sec,it){
   if(it.ms&&yes){const ar=areaOf(s,it.k);extra.push(`<div><div class="f" style="margin-bottom:4px">Ölçü (isteğe bağlı)</div><div class="grid2" style="grid-template-columns:1fr 1fr"><label class="f">En (m)<input class="num" inputmode="decimal" data-v="${it.k}.en" value="${esc(V(s,it.k+".en"))}"></label><label class="f">Boy (m)<input class="num" inputmode="decimal" data-v="${it.k}.boy" value="${esc(V(s,it.k+".boy"))}"></label></div><div class="hint" id="ar-${it.k}">${ar?`≈ ${fmt(ar,0)} m²`:""}</div></div>`)}
   if(it.ph&&(it.phAlways||yes||it.kind!=="yn"&&a))extra.push(`<div class="sub">${photoStrip(it.k)}<div class="row">${addPhotoBtn(it.k,`📷 ${it.s} fotoğrafı`)}</div></div>`);
   if(it.gens&&yes)extra.push(gensHtml());
-  if(it.talep){const d=TALEP_DEF[a]||{};extra.push(`<div class="grid2" style="grid-template-columns:1fr 1fr;max-width:420px"><label class="f">Normal (nominal) kW<input class="num" inputmode="decimal" data-v="yer.nom" value="${esc(V(s,"yer.nom"))}" placeholder="${d.nom??"ör. 1"}"></label><label class="f">En fazla (max) kW<input class="num" inputmode="decimal" data-v="yer.max" value="${esc(V(s,"yer.max"))}" placeholder="${d.max??"ör. 3"}"></label></div><div class="hint">Boş bırakırsan kurulum yerine göre varsayılan kullanılır.</div>`)}
+  if(it.talep){const d=TALEP_DEF[a]||{},tl=talep(s),u=tl.u,k=kwPerA(tl.ph),ph=x=>x==null?"":u==="A"?fmt(x/k,0):String(x);
+    extra.push(`<div class="grid2" style="grid-template-columns:1fr 1fr;max-width:420px"><label class="f">Birim<select data-v="yer.u"><option value="kW" ${u==="kW"?"selected":""}>kW</option><option value="A" ${u==="A"?"selected":""}>Amper (A)</option></select></label><label class="f">Besleme<select data-v="yer.ph"><option value="1" ${tl.ph==="1"?"selected":""}>1 faz 220 V</option><option value="3" ${tl.ph==="3"?"selected":""}>3 faz 380 V (faz başı A)</option></select></label></div>
+    <div class="grid2" style="grid-template-columns:1fr 1fr;max-width:420px"><label class="f">Normal (nominal) ${u}<input class="num" inputmode="decimal" data-v="yer.nom" value="${esc(V(s,"yer.nom"))}" placeholder="${d.nom!=null?ph(d.nom):"ör. 1"}"></label><label class="f">En fazla (max) ${u}<input class="num" inputmode="decimal" data-v="yer.max" value="${esc(V(s,"yer.max"))}" placeholder="${d.max!=null?ph(d.max):"ör. 3"}"></label></div>
+    <div class="hint" id="tl-conv">${tl.ok?"= "+talepTxt(tl):""}</div><div class="hint">Boş bırakırsan kurulum yerine göre varsayılan kullanılır. kW ↔ A dönüşümü: güç faktörü ${String(PF).replace(".",",")}.</div>`)}
   return `<div class="item" data-item="${it.k}">
    <div class="q">${esc(it.q)}</div>${ctl}${extra.join("")}
    ${it.tip?`<details class="tip"><summary>Nasıl bakılır?</summary><p>${esc(it.tip)}</p></details>`:""}
@@ -595,7 +605,11 @@ function onInput(e){
   if(!cur||view!=="editor")return;
   if(el.dataset.m){cur[el.dataset.m]=el.value;if(el.dataset.m==="gov")cur.govAuto=false;if(el.dataset.m==="coord"&&e.type==="change")fillGov(true);if(el.dataset.m==="name")app.querySelector("#tName").textContent=el.value||"Yeni saha";if(el.dataset.m==="coord")app.querySelector("#coordHint").innerHTML=coordHint();refreshSummary();dirty();return}
   if(el.dataset.num){cur.a[el.dataset.num]=el.value.trim();refreshCounts();refreshSummary();refreshEnergy();dirty();return}
-  if(el.dataset.v){cur.v[el.dataset.v]=el.value;const k=el.dataset.v.split(".")[0];const ar=app.querySelector("#ar-"+k);if(ar){const a=areaOf(cur,k);ar.textContent=a?`≈ ${fmt(a,0)} m²`:""}refreshSummary();dirty();return}
+  if(el.dataset.v&&!el.isConnected)return;
+  if(el.dataset.v==="yer.u"||el.dataset.v==="yer.ph"){const ae=document.activeElement;if(ae&&ae!==el&&ae.dataset?.v)ae.blur();const old=talep(cur);cur.v[el.dataset.v]=el.value;const nw=talep(cur);
+    for(const x of ["nom","max"]){const n=num(V(cur,"yer."+x));if(n==null)continue;const kw=old.u==="A"?n*kwPerA(old.ph):n;cur.v["yer."+x]=nw.u==="A"?String(Math.round(kw/kwPerA(nw.ph))):String(Math.round(kw*10)/10)}
+    rerenderItem("yer");refreshSummary();dirty();return}
+  if(el.dataset.v){cur.v[el.dataset.v]=el.value;if(el.dataset.v.startsWith("yer.")){const c=app.querySelector("#tl-conv");if(c){const t=talep(cur);c.textContent=t.ok?"= "+talepTxt(t):""}}const k=el.dataset.v.split(".")[0];const ar=app.querySelector("#ar-"+k);if(ar){const a=areaOf(cur,k);ar.textContent=a?`≈ ${fmt(a,0)} m²`:""}refreshSummary();dirty();return}
   if(el.dataset.note){if(el.dataset.note==="__gen")cur.genNote=el.value;else cur.n[el.dataset.note]=el.value;dirty();return}
   if(el.dataset.g){const id=el.closest("[data-gen]").dataset.gen,g=cur.gens.find(x=>x.id===id);g[el.dataset.g]=el.value;
     const st=genStats(cur);const box=el.closest(".gen").querySelector("[data-gcalc]");box.innerHTML=genCalcText(st.gens[cur.gens.indexOf(g)]);const tt=app.querySelector("#genTot");if(tt)tt.textContent=genTotText(st);
