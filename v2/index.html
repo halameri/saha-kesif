@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.7.1 · 16.11.2026";
+const VERSION="2.8 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -407,7 +407,7 @@ function renderList(){
   <div class="masthead"><div><small>Enerji birimi · saha keşfi</small><h1>Saha Keşfi 2</h1></div>
    <button class="btn primary" id="new">+ Yeni saha</button></div>
   ${prefs.unsaved?`<div class="banner"><b>Yedeklenmemiş değişiklikler var</b><span style="font-size:.9rem">Son yedek: ${ago(prefs.lastBackup)}. Telefon kaybolursa veya uygulama silinirse kayıtlar gider.</span><div class="row"><button class="btn primary" id="bk">Şimdi yedek al</button></div></div>`:prefs.lastBackup?`<p class="hint" style="margin:0 0 10px">✓ Tüm kayıtlar yedekli · son yedek ${ago(prefs.lastBackup)}</p>`:""}
-  <div class="row" style="margin-bottom:12px"><button class="btn primary" id="rep">📄 Rapor (PDF)</button></div>
+  <div class="row" style="margin-bottom:12px"><button class="btn primary" id="rep">📄 Rapor (PDF)</button><button class="btn" id="rpt">📍 Yol noktası kaydet${todayPts()?` <small>(bugün ${todayPts()})</small>`:""}</button></div>
   ${arr.length?`<div class="row" style="justify-content:space-between"><h2 style="font-size:1.1rem">Keşifler</h2><button class="btn ghost sm" id="editList">${listEdit?"Bitti":"Kayıt sil"}</button></div>
    ${days.map(d=>`<div class="dayh">${fmtDate(d)||"Tarihsiz"}</div><div class="cards">${arr.filter(s=>s.date===d).map(s=>{const p=progress(s);return `<div class="cardrow"><button class="card" data-id="${esc(s.id)}"><b>${esc(s.name||"Adsız saha")} ${s.type?`<span class="pill ${s.type==="tt"?"tt":"it"}">${s.type==="tt"?"Yeni TT":"İTPC"}</span>`:'<span class="pill">Tip seçilmedi</span>'}${s.imported?' <span class="pill">Eski sürüm</span>':""}</b><span>${esc([s.gov,`${p.d}/${p.t} soru`,photoCount(s)?`${photoCount(s)} fotoğraf`:""].filter(Boolean).join(" · "))}</span></button>${listEdit?`<button class="btn danger" data-del="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`).join("")}`
   :`<div class="empty"><b>Henüz keşif yok</b><span class="muted" style="max-width:40ch">Sahaya varınca “+ Yeni saha”ya bas, saha tipini seç ve soruları doldur. Gün sonunda “Rapor (PDF)” ile raporu hazırla.</span></div>`}
@@ -415,6 +415,7 @@ function renderList(){
   <p class="hint" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kur. "}İnternet gerekmez; kayıtlar ve fotoğraflar sadece bu telefonda. Her akşam yedek al.<br>Sürüm ${VERSION}</p>`;
   app.querySelector("#new").onclick=newSurvey;
   app.querySelector("#rep").onclick=()=>renderReport();
+  app.querySelector("#rpt").onclick=()=>takeRoutePt(()=>renderList());
   app.querySelector("#bk")?.addEventListener("click",backup);
   app.querySelector("#bk2").onclick=backup;
   app.querySelector("#imp").onclick=renderImport;
@@ -803,15 +804,28 @@ function routeSites(){return repList().filter(s=>parseCoord(s.coord))}
 function legKey(a,b){return a.id+">"+b.id}
 function parseVia(t){return String(t||"").split(/\n|;|\|/).map(x=>{const m=x.match(/[?&@](?:q=|ll=)?(-?\d+\.\d+),\s*(-?\d+\.\d+)/);return m?[+m[1],+m[2]]:parseCoord(x)}).filter(Boolean)}
 let routeCache={sig:"",legs:null,blob:null,url:""};
+function todayPts(){return (prefs.routePts||[]).filter(p=>p.d===today()).length}
+function takeRoutePt(after){if(!navigator.geolocation){toast("Konum alınamıyor");return}toast("Konum alınıyor…");
+  navigator.geolocation.getCurrentPosition(pos=>{prefs.routePts=prefs.routePts||[];prefs.routePts.push({la:+pos.coords.latitude.toFixed(5),lo:+pos.coords.longitude.toFixed(5),t:Date.now(),d:today()});
+    prefs.routePts=prefs.routePts.slice(-2000);savePrefs();toast(`Yol noktası kaydedildi (bugün ${todayPts()})`);after&&after()},
+    e=>toast(e.code===1?"Konum izni yok: Ayarlar › Gizlilik › Konum Servisleri":"Konum alınamadı, tekrar dene"),{enableHighAccuracy:true,timeout:30000,maximumAge:0})}
+function rangePts(){return (prefs.routePts||[]).filter(p=>R.mode==="day"?p.d===R.d1:(p.d>=R.d1&&p.d<=R.d2)).map(p=>Object.assign([p.la,p.lo],{t:p.t}))}
+/* each recorded point goes to the leg it fits best (smallest detour); order inside a leg = distance from start site */
+function legVias(sites){const legs=sites.slice(1).map((b,i)=>{const a=sites[i];return{a,b,A:parseCoord(a.coord),B:parseCoord(b.coord),pts:parseVia((prefs.routeVia||{})[legKey(a,b)])}});
+  const sc=sites.map(s=>parseCoord(s.coord));
+  for(const p of rangePts()){if(sc.some(c=>hav(c,p)<1))continue;let best=null,bd=1e9;for(const L of legs){const air=hav(L.A,L.B),det=hav(L.A,p)+hav(p,L.B)-air;if(det<bd&&det<Math.max(40,air*.6)){bd=det;best=L}}if(best)best.pts.push(p)}
+  for(const L of legs){L.pts.sort(L.pts.every(x=>x.t)?(x,y)=>x.t-y.t:(x,y)=>hav(L.A,x)-hav(L.A,y));if(L.pts.length>25){const k=L.pts.length/25;L.pts=Array.from({length:25},(_,i)=>L.pts[Math.floor(i*k)])}}
+  return legs}
 async function osrmLeg(pts){const q=pts.map(p=>`${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(";");
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),15000);
   try{const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${q}?overview=full&geometries=geojson`,{signal:ctl.signal});if(!r.ok)throw 0;const j=await r.json();const rt=j.routes?.[0];if(!rt)throw 0;
     return{path:rt.geometry.coordinates.map(c=>[c[1],c[0]]),km:rt.distance/1000,min:rt.duration/60,road:true}}finally{clearTimeout(t)}}
 async function routeLegs(sites){const road=prefs.routeRoad!==false&&navigator.onLine!==false;const legs=[];
-  for(let i=1;i<sites.length;i++){const a=sites[i-1],b=sites[i],A1=parseCoord(a.coord),B1=parseCoord(b.coord),via=parseVia((prefs.routeVia||{})[legKey(a,b)]);const pts=[A1,...via,B1];
+  const LV=legVias(sites);
+  for(let i=1;i<sites.length;i++){const a=sites[i-1],b=sites[i],A1=parseCoord(a.coord),B1=parseCoord(b.coord),via=LV[i-1].pts;const pts=[A1,...via,B1];
     let leg=null;if(road){try{leg=await osrmLeg(pts)}catch(e){}}
     if(!leg)leg={path:pts,km:pathKm(pts),road:false};
-    leg.air=hav(A1,B1);leg.a=a;leg.b=b;leg.i=i;leg.via=via.length;leg.col=ROUTE_COL[(i-1)%ROUTE_COL.length];legs.push(leg)}
+    leg.air=hav(A1,B1);leg.a=a;leg.b=b;leg.i=i;leg.via=via.length;leg.viaPts=via;leg.col=ROUTE_COL[(i-1)%ROUTE_COL.length];legs.push(leg)}
   return legs}
 async function makeRouteImage(sites,legs){
   const W=1400,H=1000,PAD=90;const pts=[...sites.map(s=>parseCoord(s.coord)),...legs.flatMap(l=>l.path)];
@@ -830,7 +844,7 @@ async function makeRouteImage(sites,legs){
   const line=(path,col,w,dash)=>{g.beginPath();path.forEach((p,i)=>{const [x,y]=XY(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.lineJoin="round";g.lineCap="round";g.setLineDash(dash||[]);g.strokeStyle=col;g.lineWidth=w;g.stroke();g.setLineDash([])};
   for(const l of legs){line(l.path,"#fff",13,l.road?null:[1,0]);line(l.path,l.col,7,l.road?null:[22,12])}
   // via points
-  for(const l of legs)if(!l.road||l.via){const v=parseVia((prefs.routeVia||{})[legKey(l.a,l.b)]);for(const p of v){const [x,y]=XY(p);g.beginPath();g.arc(x,y,7,0,7);g.fillStyle="#fff";g.fill();g.lineWidth=3;g.strokeStyle=l.col;g.stroke()}}
+  for(const l of legs){for(const p of l.viaPts||[]){const [x,y]=XY(p);g.beginPath();g.arc(x,y,7,0,7);g.fillStyle="#fff";g.fill();g.lineWidth=3;g.strokeStyle=l.col;g.stroke()}}
   // distance labels at path midpoint
   for(const l of legs){let half=pathKm(l.path)/2,acc=0,m=l.path[0];for(let i=1;i<l.path.length;i++){const d=hav(l.path[i-1],l.path[i]);if(acc+d>=half){const f=d?(half-acc)/d:0;m=[l.path[i-1][0]+(l.path[i][0]-l.path[i-1][0])*f,l.path[i-1][1]+(l.path[i][1]-l.path[i-1][1])*f];break}acc+=d}
     const [x,y]=XY(m),t=`${fmt(l.km,0)} km`;g.font=`bold 24px ${F}`;const w=g.measureText(t).width+22;g.fillStyle=l.col;g.beginPath();g.roundRect?g.roundRect(x-w/2,y-17,w,34,17):g.rect(x-w/2,y-17,w,34);g.fill();g.lineWidth=3;g.strokeStyle="#fff";g.stroke();g.fillStyle="#fff";g.fillText(t,x-w/2+11,y+8)}
@@ -846,7 +860,7 @@ async function makeRouteImage(sites,legs){
   const at=tilesOk?"© OpenStreetMap contributors":"Harita altlığı yüklenemedi (internet yok) – noktalar ölçekli",aw=(g.font=`15px ${F}`,g.measureText(at).width);g.fillStyle="rgba(255,255,255,.88)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
   return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.88));
 }
-function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false])}
+function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false,rangePts().map(p=>[p[0],p[1]])])}
 async function buildRoute(){const sites=routeSites();if(sites.length<2)return null;const sig=routeSig(sites);
   if(routeCache.sig===sig&&routeCache.blob)return routeCache;
   const legs=await routeLegs(sites),blob=await makeRouteImage(sites,legs);if(routeCache.url)URL.revokeObjectURL(routeCache.url);
@@ -859,8 +873,10 @@ function routePanelHtml(){const sites=routeSites(),miss=repList().length-sites.l
    <div class="hint">Seçilen sahalar tek haritada; her ara yol farklı renkte. Ziyaret sırasını oklarla değiştir (raporda da bu sıra kullanılır).${miss?` ${miss} sahada koordinat olmadığı için haritada yok.`:""}</div>
    <ol class="rlist" style="padding-left:0;list-style:none;margin:8px 0">${sites.map((s,i)=>`<li style="display:flex;align-items:center;gap:6px;margin:4px 0"><b style="min-width:1.6em">${i+1}.</b><span style="flex:1">${esc(s.name||"Adsız saha")} <small class="muted">${fmtDate(s.date)}</small></span><button type="button" class="btn sm" data-rup="${i}" ${i?"":"disabled"} aria-label="Yukarı">↑</button><button type="button" class="btn sm" data-rdn="${i}" ${i<sites.length-1?"":"disabled"} aria-label="Aşağı">↓</button></li>`).join("")}</ol>
    <label class="chk" for="r-road"><input type="checkbox" id="r-road" ${prefs.routeRoad!==false?"checked":""}><span><b>Gerçek yol üzerinden çiz</b><small>İnternet gerekir; yalnızca koordinatlar yol servisine (OSRM) gönderilir. Kapalıysa düz hat çizilir.</small></span></label>
-   <details style="margin:6px 0" ${Object.values(via).some(x=>x&&x.trim())?"open":""}><summary>Geçtiğimiz yol – ara noktalar (isteğe bağlı)</summary><div class="hint">Haritadaki yol gerçekte geçtiğimiz yoldan farklıysa: yolculuk sırasında önemli bir noktada (kavşak, köprü, ilçe girişi) <b>📍 Şu anki konumu bu yola ekle</b>'ye bas; ya da her satıra bir koordinat (ör. 32.51, 45.82) veya Google Maps bağlantısı yapıştır. Yol bu noktalardan geçirilerek çizilir; birkaç nokta genelde yeter.</div>
-    ${sites.slice(1).map((b,i)=>{const a=sites[i];return `<label class="f" for="rv-${i}"><span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${ROUTE_COL[i%ROUTE_COL.length]};margin-right:6px"></span>${i+1}→${i+2}: ${esc(a.name||"?")} → ${esc(b.name||"?")}</span><textarea id="rv-${i}" data-rvia="${esc(legKey(a,b))}" style="min-height:48px" placeholder="32.51, 45.82">${esc(via[legKey(a,b)]||"")}</textarea></label><button type="button" class="btn sm" data-rgps="${i}">📍 Şu anki konumu bu yola ekle</button>`}).join("")}</details>
+   <div class="hint" style="margin-top:8px"><b>Geçtiğimiz yol:</b> yolculukta önemli yerlerde (kavşak, köprü, ilçe girişi) ana ekrandaki <b>📍 Yol noktası kaydet</b>'e bas. Sıra ve hangi ara yola ait olduğu otomatik bulunur. Bu raporda kayıtlı nokta: <b>${rangePts().length}</b></div>
+   <div class="row"><button type="button" class="btn sm" id="r-pt">📍 Şimdi nokta kaydet</button>${rangePts().length?`<button type="button" class="btn ghost sm danger" id="r-ptdel">Bu tarihlerin noktalarını sil</button>`:""}</div>
+   <details style="margin:6px 0" ${Object.values(via).some(x=>x&&x.trim())?"open":""}><summary>Elle ara nokta ekle (isteğe bağlı)</summary><div class="hint">Gerekirse her satıra bir koordinat (ör. 32.51, 45.82) veya Google Maps bağlantısı yapıştır; sırası önemli değil, otomatik sıralanır.</div>
+    ${sites.slice(1).map((b,i)=>{const a=sites[i];return `<label class="f" for="rv-${i}"><span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${ROUTE_COL[i%ROUTE_COL.length]};margin-right:6px"></span>${i+1}→${i+2}: ${esc(a.name||"?")} → ${esc(b.name||"?")}</span><textarea id="rv-${i}" data-rvia="${esc(legKey(a,b))}" style="min-height:48px" placeholder="32.51, 45.82">${esc(via[legKey(a,b)]||"")}</textarea></label>`}).join("")}</details>
    <div class="row"><button type="button" class="btn" id="r-map">🗺 Haritayı oluştur / yenile</button></div>
    <div id="routeOut"></div></section>`}
 function routeOutHtml(rc){const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.reduce((a,l)=>a+l.air,0);
@@ -874,10 +890,8 @@ async function showRoute(){const out=app.querySelector("#routeOut"),btn=app.quer
 function rerenderRoute(auto){const p=app.querySelector("#routeP")||[...app.querySelectorAll("section.panel")].find(x=>x.querySelector("h2")?.textContent.includes("Güzergâh"));if(p){p.outerHTML=routePanelHtml();bindRoute();if(auto&&routeCache.blob)showRoute()}}
 function bindRoute(){const p=app.querySelector("#routeP");if(!p)return;
   p.querySelectorAll("[data-rup],[data-rdn]").forEach(b=>b.onclick=()=>{const ids=routeSites().map(s=>s.id),i=+(b.dataset.rup??b.dataset.rdn),j=b.dataset.rup!=null?i-1:i+1;[ids[i],ids[j]]=[ids[j],ids[i]];prefs.routeOrd=[...ids,...(prefs.routeOrd||[]).filter(x=>!ids.includes(x))].slice(0,300);savePrefs();rerenderRoute(true)});
-  p.querySelectorAll("[data-rgps]").forEach(b=>b.onclick=()=>{if(!navigator.geolocation){toast("Konum alınamıyor");return}toast("Konum alınıyor…");
-    navigator.geolocation.getCurrentPosition(pos=>{const ta=p.querySelector("#rv-"+b.dataset.rgps);if(!ta)return;const c=`${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-      ta.value=(ta.value.trim()?ta.value.trim()+"\n":"")+c;prefs.routeVia=prefs.routeVia||{};prefs.routeVia[ta.dataset.rvia]=ta.value;savePrefs();toast("Nokta eklendi: "+c)},
-      e=>toast(e.code===1?"Konum izni yok":"Konum alınamadı, tekrar dene"),{enableHighAccuracy:true,timeout:30000,maximumAge:0})});
+  p.querySelector("#r-pt").onclick=()=>takeRoutePt(()=>rerenderRoute(false));
+  p.querySelector("#r-ptdel")?.addEventListener("click",e=>{const b=e.target;if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Silinsin mi?";return}prefs.routePts=(prefs.routePts||[]).filter(p=>!(R.mode==="day"?p.d===R.d1:(p.d>=R.d1&&p.d<=R.d2)));savePrefs();rerenderRoute(false)});
   p.querySelector("#r-map").onclick=showRoute;
   if(routeCache.blob&&routeCache.sig===routeSig(routeSites()))p.querySelector("#routeOut").innerHTML=routeOutHtml(routeCache)}
 async function routeToPdf(D){const sites=routeSites();if(sites.length<2)return;let rc;try{rc=await buildRoute()}catch(e){return}if(!rc)return;
