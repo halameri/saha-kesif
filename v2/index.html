@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.1 · 16.11.2026";
+const VERSION="4.1.1 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -409,7 +409,7 @@ function overallSummary(list,label){
   const heatNo=s=>A(s,"isiEk")==="Hayır – ayrı soğutma gerekli";
   const needAC=nm(s=>A(s,"sogutma")==="Yeni split klima gerekli"||heatNo(s)),okAC=nm(s=>A(s,"sogutma")==="Mevcut soğutma kullanılabilir"&&!heatNo(s));
   const allHeat=needAC.length&&list.filter(s=>A(s,"sogutma")==="Yeni split klima gerekli"||heatNo(s)).every(heatNo);
-  if(needAC.length)P.push(`${where(needAC)} ${allHeat?"mevcut soğutma ek ısıyı karşılayamadığından ":""}ekipmanlarımız için yeni split klima gerekmektedir.`);
+  if(needAC.length)P.push(`${where(needAC)} ${allHeat?"mevcut soğutma ek ısıyı karşılayamadığından ":""}ekipmanlarımız için ayrı split klima gerekmektedir.`);
   if(okAC.length)P.push(`${where(okAC)} mevcut soğutma kullanılabilecektir.`);
   const gj=nm(s=>A(s,"jen")==="yes"),man=nm(s=>A(s,"ats")==="Hayır"&&A(s,"jen")!=="no"),auto=nm(s=>A(s,"ats")==="Evet");
   if(gj.length)P.push(`${where(gj)} jeneratör bulunmaktadır${man.length&&man.length===gj.length?"; jeneratörler kesintide elle çalıştırılmaktadır":""}.`);
@@ -1297,7 +1297,7 @@ async function makePdf(){
       [{t:"Ziyaret edilen sahalar",color:C.muted},{t:list.map(s=>s.name||"Adsız saha").join(", "),bold:true}]],{head:false,zebra:false});
     D.h2("Genel özet");D.box(R.summaryEdited?R.summary:overallSummary(list,rangeLabel()),{sz:24});
     D.h2("Sahalara genel bakış");
-    D.table([{t:"#",w:5,al:"center"},{t:"Saha",w:20},...(multi?[{t:"Tarih",w:12}]:[]),{t:"Tip",w:10},{t:"Kesinti",w:13},{t:"Salonda alan",w:12},{t:"Jeneratör",w:16},{t:"Yeni klima",w:11,al:"center"},{t:"Yeni jeneratör",w:13,al:"center"}],
+    D.table([{t:"#",w:5,al:"center"},{t:"Saha",w:20},...(multi?[{t:"Tarih",w:12}]:[]),{t:"Tip",w:10},{t:"Kesinti",w:13},{t:"Salonda alan",w:12},{t:"Jeneratör",w:16},{t:"Ayrı klima",w:11,al:"center"},{t:"Ayrı jeneratör",w:13,al:"center"}],
       list.map((s,i)=>{const g=genStats(s),so=A(s,"sogutma");return [String(i+1),{t:s.name||"–",bold:true},...(multi?[fmtDate(s.date)]:[]),s.type==="tt"?"Yeni TT":s.type==="itpc"?"İTPC":"–",
         A(s,"kesinti")!==""?`${A(s,"kesinti")} sa/gün`:"–",YN[A(s,"salonBos")]||"–",
         A(s,"jen")==="yes"?(g.count?`${g.count} adet${g.free!=null?` · boş ${fmt(g.free,0)} kVA`:""}`:"Var"):YN[A(s,"jen")]||"–",needTxt(needAC(s)),needTxt(needGen(s))]}),{sz:19});
