@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.0.2 · 16.11.2026";
+const VERSION="4.1 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -196,6 +196,10 @@ function talep(s){const yer=A(s,"yer"),d=talepDef(s),u=V(s,"yer.u")==="A"?"A":"k
   const nom=inp("nom")??d?.nom??null,max=inp("max")??d?.max??null;
   return{yer,nom,max,u,ph,nomA:nom!=null?nom/k:null,maxA:max!=null?max/k:null,kva:max!=null?max/PF:null,ok:nom!=null||max!=null}}
 const phTxt=t=>t.ph==="3"?"3 faz 380 V, faz başı":"1 faz 220 V";
+/* özet tablo: yeni klima / kendi jeneratörümüz gerekiyor mu (true / false / null=bilinmiyor) */
+function needAC(s){const so=A(s,"sogutma"),ie=A(s,"isiEk");if(so==="Yeni split klima gerekli"||ie==="Hayır – ayrı soğutma gerekli")return true;if(so==="Mevcut soğutma kullanılabilir"&&ie!=="Bilinmiyor")return false;return null}
+function needGen(s){if(A(s,"jen")==="no")return true;const v=A(s,"jenVer");if(v==="Hayır")return true;if(s.load?.on){try{if(energy(s).genOk===false)return true}catch(e){}}if(v==="Evet")return false;return null}
+const needTxt=v=>v===true?{t:"Gerekli",bold:true}:v===false?"Gerekmiyor":"–";
 /* rapor cümlesi için: ≈ yerine "yaklaşık" */
 const rA=x=>x>=20?Math.round(x/5)*5:Math.round(x);
 const talepProse=t=>{const ph=t.ph==="3"?"3 faz, faz başı":"tek faz",two=(a,b,f)=>a!=null&&b!=null?`${f(a)} / ${f(b)}`:f(a??b);
@@ -407,19 +411,19 @@ function overallSummary(list,label){
   const allHeat=needAC.length&&list.filter(s=>A(s,"sogutma")==="Yeni split klima gerekli"||heatNo(s)).every(heatNo);
   if(needAC.length)P.push(`${where(needAC)} ${allHeat?"mevcut soğutma ek ısıyı karşılayamadığından ":""}ekipmanlarımız için yeni split klima gerekmektedir.`);
   if(okAC.length)P.push(`${where(okAC)} mevcut soğutma kullanılabilecektir.`);
-  const gj=nm(s=>A(s,"jen")==="yes"),man=nm(s=>A(s,"ats")==="Hayır"),auto=nm(s=>A(s,"ats")==="Evet");
+  const gj=nm(s=>A(s,"jen")==="yes"),man=nm(s=>A(s,"ats")==="Hayır"&&A(s,"jen")!=="no"),auto=nm(s=>A(s,"ats")==="Evet");
   if(gj.length)P.push(`${where(gj)} jeneratör bulunmaktadır${man.length&&man.length===gj.length?"; jeneratörler kesintide elle çalıştırılmaktadır":""}.`);
   if(man.length&&man.length!==gj.length)P.push(`${where(man)} jeneratör kesintide elle çalıştırılmaktadır.`);
   const jvY=nm(s=>A(s,"jenVer")==="Evet"),jvN=nm(s=>A(s,"jenVer")==="Hayır");
   if(jvY.length)P.push(`${where(jvY)} talep ettiğimiz güç sahanın jeneratöründen karşılanabilecektir.`);
-  if(jvN.length)P.push(`${where(jvN)} talep ettiğimiz güç sahanın jeneratöründen karşılanamamaktadır.`);
+  if(jvN.length)P.push(`${where(jvN)} talep ettiğimiz güç sahanın jeneratöründen karşılanamadığından kendi jeneratörümüzün kurulması gerekmektedir.`);
+  const noGen=nm(s=>A(s,"jen")==="no");if(noGen.length)P.push(`${where(noGen)} jeneratör bulunmadığından kendi jeneratörümüzün kurulması gerekmektedir.`);
+  const weakGen=nm(s=>needGen(s)&&A(s,"jen")!=="no"&&A(s,"jenVer")!=="Hayır");if(weakGen.length)P.push(`${where(weakGen)} jeneratörün boş kapasitesi yetersiz göründüğünden kendi jeneratörümüzün kurulması gerekebilir.`);
   const en=list.filter(s=>s.load?.on).map(s=>({s,e:energy(s)}));
   if(en.length){const ws=en.map(x=>x.e.peakW/1000),bs=[...new Set(en.map(x=>x.e.breaker))];
     P.push(`Enerji hesabı yapılan sahalarda ihtiyacımız saha başına en kötü durumda yaklaşık ${fmt(Math.min(...ws))}${Math.max(...ws)-Math.min(...ws)>0.05?`–${fmt(Math.max(...ws))}`:""} kW olup ${bs.length===1?`${bs[0]} A`:`${Math.min(...bs)}–${Math.max(...bs)} A`} besleme talep edilmektedir.`);
     const over=en.filter(x=>x.e.backupOk===false).map(x=>x.s.name);
-    if(over.length)P.push(`${over.join(", ")} ${over.length>1?"sahalarında":"sahasında"} kesinti süresi akü yedeklemesini aştığı için jeneratör desteği gereklidir.`);
-    const weak=en.filter(x=>x.e.genOk===false).map(x=>x.s.name);
-    if(weak.length)P.push(`${weak.join(", ")} ${weak.length>1?"sahalarında":"sahasında"} jeneratörlerin boş kapasitesi yetersiz görünmektedir.`);}
+    if(over.length)P.push(`${over.join(", ")} ${over.length>1?"sahalarında":"sahasında"} kesinti süresi akü yedeklemesini aştığı için jeneratör desteği gereklidir.`);}
   return P.join(" ");
 }
 
@@ -1293,10 +1297,10 @@ async function makePdf(){
       [{t:"Ziyaret edilen sahalar",color:C.muted},{t:list.map(s=>s.name||"Adsız saha").join(", "),bold:true}]],{head:false,zebra:false});
     D.h2("Genel özet");D.box(R.summaryEdited?R.summary:overallSummary(list,rangeLabel()),{sz:24});
     D.h2("Sahalara genel bakış");
-    D.table([{t:"#",w:5,al:"center"},{t:"Saha",w:20},...(multi?[{t:"Tarih",w:12}]:[]),{t:"Tip",w:12},{t:"Kesinti",w:13},{t:"Salonda alan",w:13},{t:"Soğutma",w:15},{t:"Jeneratör",w:17},...(R.energy?[{t:"Talep",w:10,al:"right"}]:[])],
+    D.table([{t:"#",w:5,al:"center"},{t:"Saha",w:20},...(multi?[{t:"Tarih",w:12}]:[]),{t:"Tip",w:10},{t:"Kesinti",w:13},{t:"Salonda alan",w:12},{t:"Jeneratör",w:16},{t:"Yeni klima",w:11,al:"center"},{t:"Yeni jeneratör",w:13,al:"center"}],
       list.map((s,i)=>{const g=genStats(s),so=A(s,"sogutma");return [String(i+1),{t:s.name||"–",bold:true},...(multi?[fmtDate(s.date)]:[]),s.type==="tt"?"Yeni TT":s.type==="itpc"?"İTPC":"–",
-        A(s,"kesinti")!==""?`${A(s,"kesinti")} sa/gün`:"–",YN[A(s,"salonBos")]||"–",so==="Mevcut soğutma kullanılabilir"?"Mevcut":so==="Yeni split klima gerekli"?"Yeni split":so||"–",
-        A(s,"jen")==="yes"?(g.count?`${g.count} adet${g.free!=null?` · boş ${fmt(g.free,0)} kVA`:""}`:"Var"):YN[A(s,"jen")]||"–",...(R.energy?[s.load?.on?`${energy(s).breaker} A`:"–"]:[])]}),{sz:19});
+        A(s,"kesinti")!==""?`${A(s,"kesinti")} sa/gün`:"–",YN[A(s,"salonBos")]||"–",
+        A(s,"jen")==="yes"?(g.count?`${g.count} adet${g.free!=null?` · boş ${fmt(g.free,0)} kVA`:""}`:"Var"):YN[A(s,"jen")]||"–",needTxt(needAC(s)),needTxt(needGen(s))]}),{sz:19});
     const nx=(prefs["next-"+R.d1]||"").trim();if(nx){D.h2("Sonraki adımlar");D.text(nx)}
     btn.textContent="Güzergâh haritası…";{const rc=await Promise.race([buildRoute().catch(e=>{console.error(e);return null}),new Promise(r=>setTimeout(()=>r(null),45000))]);if(rc)await routeToPdf(D).catch(e=>console.error(e))}btn.textContent="PDF hazırlanıyor…";
     for(const [i,s] of list.entries())await siteToPdf(D,s,i+1);
