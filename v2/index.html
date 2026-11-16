@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.8 · 16.11.2026";
+const VERSION="2.8.1 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -843,8 +843,6 @@ async function makeRouteImage(sites,legs){
   const F="-apple-system,system-ui,Arial,sans-serif";
   const line=(path,col,w,dash)=>{g.beginPath();path.forEach((p,i)=>{const [x,y]=XY(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.lineJoin="round";g.lineCap="round";g.setLineDash(dash||[]);g.strokeStyle=col;g.lineWidth=w;g.stroke();g.setLineDash([])};
   for(const l of legs){line(l.path,"#fff",13,l.road?null:[1,0]);line(l.path,l.col,7,l.road?null:[22,12])}
-  // via points
-  for(const l of legs){for(const p of l.viaPts||[]){const [x,y]=XY(p);g.beginPath();g.arc(x,y,7,0,7);g.fillStyle="#fff";g.fill();g.lineWidth=3;g.strokeStyle=l.col;g.stroke()}}
   // distance labels at path midpoint
   for(const l of legs){let half=pathKm(l.path)/2,acc=0,m=l.path[0];for(let i=1;i<l.path.length;i++){const d=hav(l.path[i-1],l.path[i]);if(acc+d>=half){const f=d?(half-acc)/d:0;m=[l.path[i-1][0]+(l.path[i][0]-l.path[i-1][0])*f,l.path[i-1][1]+(l.path[i][1]-l.path[i-1][1])*f];break}acc+=d}
     const [x,y]=XY(m),t=`${fmt(l.km,0)} km`;g.font=`bold 24px ${F}`;const w=g.measureText(t).width+22;g.fillStyle=l.col;g.beginPath();g.roundRect?g.roundRect(x-w/2,y-17,w,34,17):g.rect(x-w/2,y-17,w,34);g.fill();g.lineWidth=3;g.strokeStyle="#fff";g.stroke();g.fillStyle="#fff";g.fillText(t,x-w/2+11,y+8)}
