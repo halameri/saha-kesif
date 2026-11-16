@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="3.6 · 16.11.2026";
+const VERSION="3.7 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -1023,10 +1023,24 @@ function legVias(sites){const legs=sites.slice(1).map((b,i)=>{const a=sites[i];r
   for(const L of legs){if(L.method==="konum")L.auto=L.auto.filter(q=>owner.get(q).L===L);L.pts=[...L.pts,...L.auto];
     if(L.pts.length>25){const k=L.pts.length/25;L.pts=Array.from({length:25},(_,i)=>L.pts[Math.floor(i*k)])}}
   return legs}
+/* Yol servisi bölünmüş yolda karşı şeride düşünce "ileri git, dönüşten geri gel" diye gereksiz döngü çizer.
+   Gerçekte karşıdan karşıya geçildiği için: aynı yere 250 m'den yakın geri dönen 1,5 km'den uzun döngüler ve
+   başta/sonda sahanın önünden geçip dönen kuyruklar kesilir, saha noktasına düz bağlanır. */
+function trimLoops(path,A,B){const n0=path.length;if(n0<3)return path;
+  const kx=Math.cos(path[0][0]*Math.PI/180)*111.32,d=(p,q)=>Math.hypot((p[1]-q[1])*kx,(p[0]-q[0])*110.57);
+  // sonda: hedefe en yakın ilk geçiş noktasında kes
+  let mn=1e9;for(const q of path)mn=Math.min(mn,d(q,B));let j=path.findIndex(q=>d(q,B)<=mn+.12);if(j>=0&&j<path.length-1){let rest=0;for(let k=j+1;k<path.length;k++)rest+=d(path[k-1],path[k]);if(rest>d(path[j],B)*1.5+.4)path=[...path.slice(0,j+1),B]}
+  // başta: kaynağa en yakın son geçiş noktasından başlat
+  mn=1e9;for(const q of path)mn=Math.min(mn,d(q,A));let i=-1;path.forEach((q,k)=>{if(d(q,A)<=mn+.12)i=k});if(i>0){let pre=0;for(let k=1;k<=i;k++)pre+=d(path[k-1],path[k]);if(pre>d(A,path[i])*1.5+.4)path=[A,...path.slice(i)]}
+  // ortada: döngüler
+  const cum=[0];for(let k=1;k<path.length;k++)cum[k]=cum[k-1]+d(path[k-1],path[k]);
+  const out=[];for(let a=0;a<path.length;a++){out.push(path[a]);let jj=-1;for(let b=path.length-1;b>a+1;b--){if(cum[b]-cum[a]<1.5)break;if(d(path[a],path[b])<.25){jj=b;break}}if(jj>0)a=jj-1}
+  return out}
 async function osrmLeg(pts){const q=pts.map(p=>`${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(";");
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),15000);
   try{const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${q}?overview=full&geometries=geojson&continue_straight=false`,{signal:ctl.signal});if(!r.ok)throw 0;const j=await r.json();const rt=j.routes?.[0];if(!rt)throw 0;
-    return{path:rt.geometry.coordinates.map(c=>[c[1],c[0]]),km:rt.distance/1000,min:rt.duration/60,road:true}}finally{clearTimeout(t)}}
+    const raw=rt.geometry.coordinates.map(c=>[c[1],c[0]]),path=trimLoops(raw,pts[0],pts[pts.length-1]);
+    return{path,km:path.length<raw.length||path[0]!==raw[0]?pathKm(path):rt.distance/1000,rawKm:rt.distance/1000,min:rt.duration/60,road:true}}finally{clearTimeout(t)}}
 async function routeLegs(sites){const road=prefs.routeRoad!==false&&navigator.onLine!==false;const legs=[];
   const LV=legVias(sites);
   for(let i=1;i<sites.length;i++){const a=sites[i-1],b=sites[i],A1=parseCoord(a.coord),B1=parseCoord(b.coord),via=LV[i-1].pts;const pts=[A1,...via,B1];
