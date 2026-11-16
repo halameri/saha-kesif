@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="3.5 · 16.11.2026";
+const VERSION="3.5.1 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -229,7 +229,8 @@ function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast("Telefon hafızası dolu olabilir");return false}}
 const saveAll=()=>lsSet("sk2-surveys",surveys),savePrefs=()=>lsSet("sk2-prefs",prefs);
 function parseCoord(c){let t=String(c||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/٫/g,".").replace(/[،؛]/g,",");
-  const ok=(la,lo)=>isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180&&!(la===0&&lo===0)?[la,lo]:null;
+  const inIq=(a,b)=>a>=28.5&&a<=37.8&&b>=38.5&&b<=49;
+  const ok=(la,lo)=>{if(!inIq(la,lo)&&inIq(lo,la))[la,lo]=[lo,la];/* boylam-enlem ters yazılmışsa düzelt */return isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180&&!(la===0&&lo===0)?[la,lo]:null};
   let m=t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);if(m)return ok(+m[1],+m[2]);
   /* derece-dakika-saniye: 33°20'15"N 44°22'10"E (K/G/D/B de olur) */
   const D=[...t.matchAll(/(-?\d+(?:[.,]\d+)?)\s*[°º˚]\s*(?:(\d+(?:[.,]\d+)?)\s*['′’`]\s*)?(?:(\d+(?:[.,]\d+)?)\s*(?:["″”]|''|′′)\s*)?([NSEWKGDB])?/gi)];
