@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.9 · 16.11.2026";
+const VERSION="2.9.1 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -726,7 +726,7 @@ async function makeMapImage(lat,lon,z,label){
   const c=document.createElement("canvas");c.width=W;c.height=H;const g=c.getContext("2d");g.fillStyle="#e8e6e1";g.fillRect(0,0,W,H);
   const jobs=[];
   for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n;
-    jobs.push(fetch(`https://tile.openstreetmap.org/${z}/${X}/${ty}.png`).then(r=>{if(!r.ok)throw new Error("tile");return r.blob()}).then(b=>createImageBitmap(b)).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
+    jobs.push(getTile(z,X,ty).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
   await Promise.all(jobs);
   const mx=W/2,my=H/2;g.beginPath();g.arc(mx,my,46,0,2*Math.PI);g.strokeStyle="rgba(210,34,34,.55)";g.lineWidth=5;g.stroke();
   g.beginPath();g.moveTo(mx,my);g.bezierCurveTo(mx-26,my-30,mx-22,my-60,mx,my-60);g.bezierCurveTo(mx+22,my-60,mx+26,my-30,mx,my);g.closePath();g.fillStyle="#d22";g.fill();g.lineWidth=4;g.strokeStyle="#fff";g.stroke();
@@ -734,7 +734,7 @@ async function makeMapImage(lat,lon,z,label){
   const t1=label||"",t2=`${lat.toFixed(6)}, ${lon.toFixed(6)}`;const F="-apple-system,system-ui,Arial,sans-serif";
   g.font=`bold 26px ${F}`;const w1=g.measureText(t1).width;g.font=`20px ${F}`;const w2=g.measureText(t2).width;
   g.fillStyle="rgba(255,255,255,.92)";g.fillRect(12,12,Math.max(w1,w2)+28,t1?76:44);g.fillStyle="#1c2730";if(t1){g.font=`bold 26px ${F}`;g.fillText(t1,26,46)}g.font=`20px ${F}`;g.fillText(t2,26,t1?76:42);
-  const at="© OpenStreetMap contributors";g.font=`15px ${F}`;const aw=g.measureText(at).width;g.fillStyle="rgba(255,255,255,.85)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
+  const at="© OpenStreetMap contributors · © CARTO";g.font=`15px ${F}`;const aw=g.measureText(at).width;g.fillStyle="rgba(255,255,255,.85)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
   return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.85));
 }
 async function addMap(auto){
@@ -811,6 +811,17 @@ function reportInput(e){const el=e.target;
   if(el.id==="r-sum"){R.summary=el.value;R.summaryEdited=true}
   if(el.id==="r-next"){prefs["next-"+R.d1]=el.value;savePrefs()}
 }
+/* harita karoları: aynı anda en fazla 4 istek, hata olursa tekrar dene, olmazsa yedek altlık (CARTO); bellekte önbellek */
+const TILE_SRC=[(z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`,(z,x,y)=>`https://${"abcd"[(x+y)%4]}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`];
+const tileMem=new Map();let tileActive=0;const tileWait=[];
+function tileSlot(){return new Promise(r=>{if(tileActive<4){tileActive++;r()}else tileWait.push(r)})}
+function tileFree(){const n=tileWait.shift();if(n)n();else tileActive--}
+async function getTile(z,x,y){const k=`${z}/${x}/${y}`;if(tileMem.has(k))return tileMem.get(k);
+  const p=(async()=>{for(const src of TILE_SRC)for(let a=0;a<2;a++){await tileSlot();try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),12000);
+      const r=await fetch(src(z,x,y),{signal:ctl.signal});clearTimeout(t);if(r.ok)return await createImageBitmap(await r.blob())}catch(e){}finally{tileFree()}
+      await new Promise(r=>setTimeout(r,400*(a+1)))}
+    tileMem.delete(k);throw new Error("tile")})();
+  tileMem.set(k,p);if(tileMem.size>600)tileMem.delete(tileMem.keys().next().value);return p}
 /* ---------- 7b. Combined route map (all selected sites on one map) ---------- */
 const ROUTE_COL=["#d62728","#1f77b4","#2ca02c","#ff7f0e","#9467bd","#17becf","#e377c2","#8c564b","#bcbd22","#7f7f7f"];
 function hav(a,b){const r=Math.PI/180,dLa=(b[0]-a[0])*r,dLo=(b[1]-a[1])*r,x=Math.sin(dLa/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLo/2)**2;return 12742*Math.asin(Math.sqrt(x))}
@@ -852,7 +863,7 @@ async function makeRouteImage(sites,legs){
   const c=document.createElement("canvas");c.width=W;c.height=H;const g=c.getContext("2d");g.fillStyle="#eef0ea";g.fillRect(0,0,W,H);
   g.strokeStyle="#d9dcd3";g.lineWidth=1;for(let x=0;x<W;x+=100){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke()}for(let y=0;y<H;y+=100){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke()}
   const jobs=[];if(navigator.onLine!==false)for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n;
-    jobs.push(fetch(`https://tile.openstreetmap.org/${z}/${X}/${ty}.png`).then(r=>{if(!r.ok)throw 0;return r.blob()}).then(b=>createImageBitmap(b)).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
+    jobs.push(getTile(z,X,ty).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
   const res=await Promise.allSettled(jobs);const tilesOk=res.some(r=>r.status==="fulfilled");
   if(tilesOk){g.fillStyle="rgba(255,255,255,.18)";g.fillRect(0,0,W,H)}
   const F="-apple-system,system-ui,Arial,sans-serif";
@@ -871,7 +882,7 @@ async function makeRouteImage(sites,legs){
   const tot=legs.reduce((a,l)=>a+l.km,0),t1="Güzergâh haritası",t2=`${sites.length} saha · toplam ≈ ${fmt(tot,0)} km${legs.every(l=>l.road)?" (yol)":legs.some(l=>l.road)?"":" (düz hat / ara noktalar)"}`;
   g.font=`bold 28px ${F}`;const w1=g.measureText(t1).width;g.font=`21px ${F}`;const w2=g.measureText(t2).width;
   g.fillStyle="rgba(255,255,255,.94)";g.fillRect(14,14,Math.max(w1,w2)+32,82);g.fillStyle="#13324f";g.font=`bold 28px ${F}`;g.fillText(t1,30,48);g.fillStyle="#333";g.font=`21px ${F}`;g.fillText(t2,30,80);
-  const at=tilesOk?"© OpenStreetMap contributors":"Harita altlığı yüklenemedi (internet yok) – noktalar ölçekli",aw=(g.font=`15px ${F}`,g.measureText(at).width);g.fillStyle="rgba(255,255,255,.88)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
+  const at=tilesOk?"© OpenStreetMap contributors · © CARTO":"Harita altlığı yüklenemedi (internet yok) – noktalar ölçekli",aw=(g.font=`15px ${F}`,g.measureText(at).width);g.fillStyle="rgba(255,255,255,.88)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
   return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.88));
 }
 function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false,!!prefs.routeDots,rangePts().map(p=>[p[0],p[1]])])}
@@ -901,7 +912,7 @@ function routeOutHtml(rc){const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.
    <tr style="border-top:2px solid var(--line)"><td></td><td><b>Toplam</b></td><td style="text-align:right"><b>${fmt(tot,0)} km</b></td><td style="text-align:right">${fmt(air,0)} km</td></tr></table></div>
    ${rc.legs.some(l=>!l.road)?`<div class="hint">* Yol servisine ulaşılamadı ya da kapalı: düz hat / ara noktalar üzerinden ölçüldü.</div>`:""}`}
 async function showRoute(){const out=app.querySelector("#routeOut"),btn=app.querySelector("#r-map");if(!out)return;btn.disabled=true;btn.textContent="Harita hazırlanıyor…";
-  try{const rc=await buildRoute();if(rc&&view==="report")out.innerHTML=routeOutHtml(rc)}catch(e){console.error(e);toast("Harita oluşturulamadı")}finally{if(btn.isConnected){btn.disabled=false;btn.textContent="🗺 Haritayı oluştur / yenile"}}}
+  try{routeCache.sig="";const rc=await buildRoute();if(rc&&view==="report")out.innerHTML=routeOutHtml(rc)}catch(e){console.error(e);toast("Harita oluşturulamadı")}finally{if(btn.isConnected){btn.disabled=false;btn.textContent="🗺 Haritayı oluştur / yenile"}}}
 function rerenderRoute(auto){const p=app.querySelector("#routeP")||[...app.querySelectorAll("section.panel")].find(x=>x.querySelector("h2")?.textContent.includes("Güzergâh"));if(p){p.outerHTML=routePanelHtml();bindRoute();if(auto&&routeCache.blob)showRoute()}}
 function bindRoute(){const p=app.querySelector("#routeP");if(!p)return;
   p.querySelectorAll("[data-rup],[data-rdn]").forEach(b=>b.onclick=()=>{const ids=routeSites().map(s=>s.id),i=+(b.dataset.rup??b.dataset.rdn),j=b.dataset.rup!=null?i-1:i+1;[ids[i],ids[j]]=[ids[j],ids[i]];prefs.routeOrd=[...ids,...(prefs.routeOrd||[]).filter(x=>!ids.includes(x))].slice(0,300);savePrefs();rerenderRoute(true)});
