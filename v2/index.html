@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="3.3 · 16.11.2026";
+const VERSION="3.4 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -569,7 +569,7 @@ function renderEditor(){
     <label class="f" for="m-date">Tarih<input id="m-date" type="date" data-m="date" value="${esc(s.date)}"></label>
    </div>
    <label class="f" for="m-coord">GPS (enlem, boylam)<input id="m-coord" class="num" inputmode="decimal" data-m="coord" value="${esc(s.coord)}" placeholder="32.468763, 46.688981"></label>
-   <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><span class="hint" id="coordHint">${coordHint()}</span></div>
+   <div class="row"><button type="button" class="btn" id="gps">📍 Konumumu al</button><button type="button" class="btn" id="gpsMap">🗺 Haritada seç</button><button type="button" class="btn" id="gpsPh">📷 Fotoğraftan</button><span class="hint" id="coordHint">${coordHint()}</span></div>
    <div><div class="f" style="margin-bottom:6px">Harita (raporda ilk görsel)</div>
     ${photoStrip("harita","maps")}
     <div class="row" style="margin-top:6px"><button type="button" class="btn sm" id="mapBtn">🗺 ${photos(s,"harita").length?"Haritayı yenile":"Harita oluştur"}</button>${addPhotoBtn("harita","📱 Google Maps ekran görüntüsü")}</div>
@@ -589,6 +589,9 @@ function renderEditor(){
   </section>`;
   app.querySelector("#back").onclick=()=>{flush();renderList()};
   app.querySelector("#gps").onclick=getGps;
+  const afterCoord=c=>{const i=app.querySelector("#m-coord");if(i)i.value=cur.coord;const h=app.querySelector("#coordHint");if(h)h.innerHTML=coordHint();dirty();try{fillGov(true)}catch(e){}};
+  app.querySelector("#gpsMap").onclick=()=>openMapPicker(cur,c=>{setSiteCoord(cur,c,"haritadan");afterCoord()});
+  app.querySelector("#gpsPh").onclick=()=>{const g=photoGps(cur);if(g){setSiteCoord(cur,g,"fotoğraftan");afterCoord();return}toast("Sahada çektiğin bir fotoğrafı seç");pickGpsFile(c=>{setSiteCoord(cur,c,"fotoğraftan");afterCoord()})};
   app.querySelector("#mapBtn").onclick=()=>addMap(false);
   app.querySelector("#sumRe").onclick=()=>{s.summaryEdited=false;s.summary=siteSummary(s);app.querySelector("#sumTxt").value=s.summary;app.querySelector("#sumState").textContent="Otomatik";dirty()};
   app.querySelector("#del").onclick=askDelete;
@@ -649,8 +652,10 @@ function onClick(e){
 
 /* photos */
 async function addPhotos(g,files){
-  for(const f of files){try{toast("Fotoğraf kaydediliyor…");const blob=await shrinkTo(f,1600,.82);const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);(cur.photos[g]=cur.photos[g]||[]).push({id,cap:""});dirty()}catch(e){toast("Fotoğraf kaydedilemedi (hafıza dolu olabilir)")}}
+  let gotGps=null;
+  for(const f of files){try{toast("Fotoğraf kaydediliyor…");const gps=await exifGps(f);const blob=await shrinkTo(f,1600,.82);const id=uid();await idbPut(id,blob);urlCache[id]=URL.createObjectURL(blob);(cur.photos[g]=cur.photos[g]||[]).push(gps?{id,cap:"",gps}:{id,cap:""});if(gps)gotGps=gps;dirty()}catch(e){toast("Fotoğraf kaydedilemedi (hafıza dolu olabilir)")}}
   refreshStrip(g);toast(`${files.length} fotoğraf eklendi`);
+  if(gotGps&&!parseCoord(cur.coord)){cur.coord=`${gotGps[0].toFixed(5)}, ${gotGps[1].toFixed(5)}`;cur.coordSrc="fotoğraftan";const i=app.querySelector("#m-coord");if(i)i.value=cur.coord;dirty();setTimeout(()=>toast("Koordinat fotoğrafın konum bilgisinden alındı"),1600);try{fillGov(true)}catch(e){}}
 }
 function refreshStrip(g){const el=app.querySelector("#ph-"+CSS.escape(g));if(el){el.outerHTML=photoStrip(g,el.classList.contains("maps")?"maps":"");hydrate()}else if(view==="editor"){const k=g.startsWith("gen-")?"jen":g;if(ALL.find(x=>x.it.k===k))rerenderItem(k)}}
 const ov=document.getElementById("ov");
@@ -921,7 +926,68 @@ async function getTile(z,x,y){const k=`${z}/${x}/${y}`;if(tileMem.has(k))return 
       const r=await fetch(src(z,x,y),{signal:ctl.signal});clearTimeout(t);if(r.ok)return await createImageBitmap(await r.blob())}catch(e){}finally{tileFree()}
       await new Promise(r=>setTimeout(r,400*(a+1)))}
     tileMem.delete(k);throw new Error("tile")})();
-  tileMem.set(k,p);if(tileMem.size>600)tileMem.delete(tileMem.keys().next().value);return p}
+  p.then(im=>{p.done=im}).catch(()=>{});tileMem.set(k,p);if(tileMem.size>600)tileMem.delete(tileMem.keys().next().value);return p}
+/* EXIF GPS: fotoğraf dosyasının içindeki konum (varsa). Sadece telefonda okunur, hiçbir yere gönderilmez. */
+async function exifGps(file){try{const b=new DataView(await file.slice(0,262144).arrayBuffer());if(b.getUint16(0)!==0xFFD8)return null;let o=2;
+  while(o+4<b.byteLength){const mk=b.getUint16(o),len=b.getUint16(o+2);if(mk===0xFFE1&&b.getUint32(o+4)===0x45786966){const t=o+10,le=b.getUint16(t)===0x4949;
+      const u16=p=>b.getUint16(t+p,le),u32=p=>b.getUint32(t+p,le);const ifd=p=>{const n=u16(p),e={};for(let i=0;i<n;i++){const q=p+2+i*12;e[u16(q)]={type:u16(q+2),cnt:u32(q+4),val:q+8}}return e};
+      const e0=ifd(u32(4)),g=e0[0x8825];if(!g)return null;const G=ifd(u32(g.val));
+      const rat=en=>{if(!en)return null;const off=u32(en.val),r=[];for(let i=0;i<3;i++)r.push(u32(off+i*8)/(u32(off+i*8+4)||1));return r[0]+r[1]/60+r[2]/3600};
+      const ref=en=>en?String.fromCharCode(b.getUint8(en.val+t)):"";
+      let la=rat(G[2]),lo=rat(G[4]);if(la==null||lo==null)return null;if(ref(G[1])==="S")la=-la;if(ref(G[3])==="W")lo=-lo;return la||lo?[+la.toFixed(6),+lo.toFixed(6)]:null}
+    if((mk&0xFF00)!==0xFF00)break;o+=2+len}}catch(e){}return null}
+function photoGps(s){for(const arr of Object.values(s.photos||{}))for(const p of arr)if(p.gps)return p.gps;return null}
+function pickGpsFile(cb){const inp=document.createElement("input");inp.type="file";inp.accept="image/*";inp.onchange=async()=>{const f=inp.files[0];if(!f)return;const g=await exifGps(f);
+  if(g)cb(g);else toast("Bu fotoğrafta konum bilgisi yok (telefon konumu kaydetmemiş ya da paylaşırken silinmiş)")};inp.click()}
+/* Haritada konum seç: kayıtlı yol noktalarını ve sahaları gösterir; dokunduğun yer (ya da en yakın nokta) seçilir */
+function openMapPicker(sv,done){
+  const day=(prefs.routePts||[]).filter(q=>q.d===sv.date).sort((a,b)=>(a.t||0)-(b.t||0));
+  const sites=Object.values(surveys).filter(x=>x.id!==sv.id&&parseCoord(x.coord)&&(x.date===sv.date||repList().includes(x)));
+  const hm=t=>t?new Date(t).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"";
+  let chosen=parseCoord(sv.coord);
+  const all=[...day.map(q=>[q.la,q.lo]),...sites.map(x=>parseCoord(x.coord)),...(chosen?[chosen]:[])];
+  ov.innerHTML=`<div class="ov"><div class="bar"><b style="color:#fff">${esc(sv.name||"Saha")}</b><span style="color:#aab;font-size:.85rem">· haritada sahanın yerine dokun (turuncu: yol noktaları, lacivert: diğer sahalar)</span></div>
+   <div class="stage" id="mpS" style="position:relative"><canvas id="mp"></canvas></div>
+   <div class="bar"><button class="btn" id="mpIn">＋</button><button class="btn" id="mpOut">－</button><span id="mpSel" style="color:#cfd6dc;font-size:.85rem;flex:1"></span></div>
+   <div class="bar"><button class="btn" id="mpX">Vazgeç</button><button class="btn on" id="mpOk" style="margin-left:auto" disabled>✓ Bu konumu kullan</button></div></div>`;
+  const S=ov.querySelector("#mpS"),cv=ov.querySelector("#mp"),g=cv.getContext("2d"),dpr=Math.min(2,devicePixelRatio||1);
+  const Wc=S.clientWidth,Hc=S.clientHeight;cv.width=Wc*dpr;cv.height=Hc*dpr;cv.style.width=Wc+"px";cv.style.height=Hc+"px";cv.style.maxWidth="none";cv.style.maxHeight="none";
+  const wp=(la,lo,z)=>{const n=256*2**z,r=la*Math.PI/180;return[(lo+180)/360*n,(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n]};
+  const ll=(x,y,z)=>{const n=256*2**z,lo=x/n*360-180,la=Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI;return[la,lo]};
+  let z=15,cx,cy;
+  if(all.length){for(z=17;z>4;z--){const P=all.map(p=>wp(p[0],p[1],z)),xs=P.map(p=>p[0]),ys=P.map(p=>p[1]);if(Math.max(...xs)-Math.min(...xs)<Wc-60&&Math.max(...ys)-Math.min(...ys)<Hc-60)break}
+    const P=all.map(p=>wp(p[0],p[1],z));cx=(Math.min(...P.map(p=>p[0]))+Math.max(...P.map(p=>p[0])))/2;cy=(Math.min(...P.map(p=>p[1]))+Math.max(...P.map(p=>p[1])))/2}
+  else{z=6;[cx,cy]=wp(33,44,z)}
+  const scr=(la,lo)=>{const [x,y]=wp(la,lo,z);return[x-cx+Wc/2,y-cy+Hc/2]};
+  let pend=0;
+  function draw(){g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle="#e8eae4";g.fillRect(0,0,Wc,Hc);const n=2**z,x0=cx-Wc/2,y0=cy-Hc/2;
+    for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+Wc)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+Hc)/256);ty++){if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n,k=`${z}/${X}/${ty}`;
+      const tp=tileMem.get(k);if(tp&&tp.done){g.drawImage(tp.done,Math.round(tx*256-x0),Math.round(ty*256-y0))}else if(!tp||!tp.wait){const pr=getTile(z,X,ty);pr.wait=1;pend++;pr.then(im=>{pr.done=im;pend--;draw()}).catch(()=>{pend--})}}
+    g.font="bold 12px -apple-system,system-ui,sans-serif";
+    for(const x of sites){const [a,b]=scr(...parseCoord(x.coord));g.beginPath();g.arc(a,b,8,0,7);g.fillStyle="#13324f";g.fill();g.lineWidth=2;g.strokeStyle="#fff";g.stroke();g.fillStyle="#13324f";g.fillText(x.name||"",a+11,b+4)}
+    day.forEach((q,j)=>{const [a,b]=scr(q.la,q.lo);g.beginPath();g.arc(a,b,9,0,7);g.fillStyle="#e07a12";g.fill();g.lineWidth=2;g.strokeStyle="#fff";g.stroke();g.fillStyle="#fff";g.textAlign="center";g.fillText(j+1,a,b+4);g.textAlign="left";
+      const t=hm(q.t);if(t){g.fillStyle="rgba(255,255,255,.85)";const w=g.measureText(t).width;g.fillRect(a+11,b-7,w+6,15);g.fillStyle="#7a3e00";g.fillText(t,a+14,b+4)}});
+    if(chosen){const [a,b]=scr(...chosen);g.beginPath();g.moveTo(a,b);g.arc(a,b-22,10,Math.PI*.8,Math.PI*2.2);g.closePath();g.fillStyle="#d62728";g.fill();g.lineWidth=2;g.strokeStyle="#fff";g.stroke();g.beginPath();g.arc(a,b-22,4,0,7);g.fillStyle="#fff";g.fill()}
+    g.font="10px sans-serif";g.fillStyle="rgba(255,255,255,.8)";g.fillRect(Wc-150,Hc-14,150,14);g.fillStyle="#333";g.fillText("© OpenStreetMap · © CARTO",Wc-146,Hc-3);
+    ov.querySelector("#mpSel").textContent=chosen?`Seçilen: ${chosen[0].toFixed(5)}, ${chosen[1].toFixed(5)}`:"Henüz seçilmedi";ov.querySelector("#mpOk").disabled=!chosen}
+  let drag=null;const pts=new Map();
+  cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.offsetX,e.offsetY]);drag={x:e.offsetX,y:e.offsetY,cx,cy,moved:false,pinch:pts.size>1?Math.hypot(...[...pts.values()].reduce((a,b)=>[a[0]-b[0],a[1]-b[1]])):0}});
+  cv.addEventListener("pointermove",e=>{if(!drag||!pts.has(e.pointerId))return;pts.set(e.pointerId,[e.offsetX,e.offsetY]);
+    if(pts.size>1){const d=Math.hypot(...[...pts.values()].reduce((a,b)=>[a[0]-b[0],a[1]-b[1]]));if(drag.pinch&&d/drag.pinch>1.6){zoom(1);drag.pinch=d}else if(drag.pinch&&d/drag.pinch<.62){zoom(-1);drag.pinch=d}drag.moved=true;return}
+    const dx=e.offsetX-drag.x,dy=e.offsetY-drag.y;if(Math.hypot(dx,dy)>6)drag.moved=true;if(drag.moved){cx=drag.cx-dx;cy=drag.cy-dy;draw()}});
+  const up=e=>{pts.delete(e.pointerId);if(!drag)return;if(!drag.moved&&!pts.size){const x=e.offsetX,y=e.offsetY;let snap=null,bd=22;
+      day.forEach(q=>{const [a,b]=scr(q.la,q.lo),d=Math.hypot(a-x,b-y);if(d<bd){bd=d;snap=[q.la,q.lo]}});
+      chosen=snap||ll(cx-Wc/2+x,cy-Hc/2+y,z).map(v=>+v.toFixed(6));draw()}if(!pts.size)drag=null};
+  cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+  function zoom(d){const nz=Math.max(3,Math.min(18,z+d));if(nz===z)return;const f=2**(nz-z);cx*=f;cy*=f;z=nz;draw()}
+  cv.addEventListener("wheel",e=>{e.preventDefault();zoom(e.deltaY<0?1:-1)},{passive:false});
+  ov.querySelector("#mpIn").onclick=()=>zoom(1);ov.querySelector("#mpOut").onclick=()=>zoom(-1);
+  ov.querySelector("#mpX").onclick=()=>{ov.innerHTML=""};
+  ov.querySelector("#mpOk").onclick=()=>{if(!chosen)return;ov.innerHTML="";done(chosen)};
+  draw()}
+function setSiteCoord(sv,c,src){sv.coord=`${c[0].toFixed(5)}, ${c[1].toFixed(5)}`;sv.coordSrc=src;
+  const k=(prefs.routePts||[]).findIndex(q=>Math.abs(q.la-c[0])<1e-6&&Math.abs(q.lo-c[1])<1e-6);if(k>=0){prefs.routePts.splice(k,1);savePrefs()}
+  saveAll();toast(`${sv.name||"Saha"}: koordinat ${src} alındı`)}
 /* ---------- 7b. Combined route map (all selected sites on one map) ---------- */
 const ROUTE_COL=["#d62728","#1f77b4","#2ca02c","#ff7f0e","#9467bd","#17becf","#e377c2","#8c564b","#bcbd22","#7f7f7f"];
 function hav(a,b){const r=Math.PI/180,dLa=(b[0]-a[0])*r,dLo=(b[1]-a[1])*r,x=Math.sin(dLa/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLo/2)**2;return 12742*Math.asin(Math.sqrt(x))}
@@ -992,7 +1058,7 @@ async function buildRoute(){const sites=routeSites();if(sites.length<2)return nu
   routeCache={sig,sites,legs,blob,url:URL.createObjectURL(blob)};return routeCache}
 function legRows(legs){return legs.map(l=>[`${l.i}→${l.i+1}`,`${l.a.name||"?"} → ${l.b.name||"?"}`,`${fmt(l.km,0)} km${l.road?"":" *"}`,`${fmt(l.air,0)} km`])}
 function routePanelHtml(){const sites=routeSites(),missL=repList().filter(s=>!parseCoord(s.coord)),miss=missL.length;
-  const missHtml=miss?`<div class="hint" style="color:var(--warn,#b45309)">Koordinatı olmayan (haritada yok): ${missL.map(s=>`<b>${esc(s.name||"Adsız saha")}</b>${s.coord?` <small>(“${esc(String(s.coord).slice(0,40))}” okunamadı)</small>`:""} <button type="button" class="btn sm" data-ropen="${esc(s.id)}">Aç, koordinat ekle</button>${(prefs.routePts||[]).some(q=>q.d===s.date)?` <button type="button" class="btn sm" data-rpick="${esc(s.id)}">📍 Yol noktasından al</button>`:""}<div id="rpick-${esc(s.id)}"></div>`).join("")}</div>`:"";
+  const missHtml=miss?`<div class="hint" style="color:var(--warn,#b45309)">Koordinatı olmayan (haritada yok): ${missL.map(s=>`<b>${esc(s.name||"Adsız saha")}</b>${s.coord?` <small>(“${esc(String(s.coord).slice(0,40))}” okunamadı)</small>`:""} <button type="button" class="btn sm" data-ropen="${esc(s.id)}">Aç, koordinat ekle</button><button type="button" class="btn sm" data-rmap="${esc(s.id)}">🗺 Haritada seç</button><button type="button" class="btn sm" data-rphoto="${esc(s.id)}">📷 Fotoğraftan al</button>${(prefs.routePts||[]).some(q=>q.d===s.date)?` <button type="button" class="btn sm" data-rpick="${esc(s.id)}">📍 Yol noktası listesi</button>`:""}<div id="rpick-${esc(s.id)}"></div>`).join("")}</div>`:"";
   if(sites.length<2)return `<section class="panel"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası</h2><p class="muted" style="margin:0">Ortak harita için koordinatı girilmiş en az 2 saha seçilmeli.</p>${missHtml}</section>`;
   const via=prefs.routeVia||{};
   return `<section class="panel" id="routeP"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası ve mesafeler</h2>
@@ -1016,6 +1082,9 @@ async function showRoute(){const out=app.querySelector("#routeOut"),btn=app.quer
   try{routeCache.sig="";const rc=await buildRoute();if(rc&&view==="report")out.innerHTML=routeOutHtml(rc)}catch(e){console.error(e);toast("Harita oluşturulamadı")}finally{if(btn.isConnected){btn.disabled=false;btn.textContent="🗺 Haritayı oluştur / yenile"}}}
 function rerenderRoute(auto){const p=app.querySelector("#routeP")||[...app.querySelectorAll("section.panel")].find(x=>x.querySelector("h2")?.textContent.includes("Güzergâh"));if(p){p.outerHTML=routePanelHtml();bindRoute();if(auto&&routeCache.blob)showRoute()}}
 function bindRoute(){app.querySelectorAll("[data-ropen]").forEach(b=>b.onclick=()=>openSurvey(b.dataset.ropen));
+  app.querySelectorAll("[data-rmap]").forEach(b=>b.onclick=()=>{const sv=surveys[b.dataset.rmap];openMapPicker(sv,c=>{setSiteCoord(sv,c,"haritadan");rerenderRoute(false)})});
+  app.querySelectorAll("[data-rphoto]").forEach(b=>b.onclick=()=>{const sv=surveys[b.dataset.rphoto],g=photoGps(sv);
+    if(g){setSiteCoord(sv,g,"fotoğraftan");rerenderRoute(false);return}toast("Sahada çektiğin bir fotoğrafı seç (orijinali, Fotoğraflar'dan)");pickGpsFile(c=>{setSiteCoord(sv,c,"fotoğraftan");rerenderRoute(false)})});
   app.querySelectorAll("[data-rpick]").forEach(b=>b.onclick=()=>{const sv=surveys[b.dataset.rpick],box=app.querySelector("#rpick-"+CSS.escape(sv.id));
     const pts=(prefs.routePts||[]).map((q,k)=>({...q,k})).filter(q=>q.d===sv.date).sort((a,b)=>(a.t||0)-(b.t||0));
     const hm=t=>t?new Date(t).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"–";
