@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="3.1 · 16.11.2026";
+const VERSION="3.2 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -228,7 +228,15 @@ function toast(m,ms=2600){const t=document.getElementById("toast");t.textContent
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast("Telefon hafızası dolu olabilir");return false}}
 const saveAll=()=>lsSet("sk2-surveys",surveys),savePrefs=()=>lsSet("sk2-prefs",prefs);
-function parseCoord(c){const m=String(c||"").match(/(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)/);if(!m)return null;const la=parseFloat(m[1].replace(",",".")),lo=parseFloat(m[2].replace(",","."));return Math.abs(la)<=90&&Math.abs(lo)<=180?[la,lo]:null}
+function parseCoord(c){let t=String(c||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/٫/g,".").replace(/[،؛]/g,",");
+  const ok=(la,lo)=>isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180&&!(la===0&&lo===0)?[la,lo]:null;
+  let m=t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);if(m)return ok(+m[1],+m[2]);
+  /* derece-dakika-saniye: 33°20'15"N 44°22'10"E (K/G/D/B de olur) */
+  const D=[...t.matchAll(/(-?\d+(?:[.,]\d+)?)\s*[°º˚]\s*(?:(\d+(?:[.,]\d+)?)\s*['′’`]\s*)?(?:(\d+(?:[.,]\d+)?)\s*(?:["″”]|''|′′)\s*)?([NSEWKGDB])?/gi)];
+  if(D.length>=2){const v=x=>{const n=y=>parseFloat(String(y||0).replace(",","."));let d=Math.abs(n(x[1]))+n(x[2])/60+n(x[3])/3600;if(String(x[1]).startsWith("-")||/[SWGB]/i.test(x[4]||""))d=-d;return d};
+    let a=v(D[0]),b=v(D[1]);if(/[EWDB]/i.test(D[0][4]||"")&&/[NSKG]/i.test(D[1][4]||""))[a,b]=[b,a];return ok(a,b)}
+  m=t.match(/(-?\d+(?:[.,]\d+)?)\s*[°]?\s*[NSKG]?\s*[,; /]\s*(-?\d+(?:[.,]\d+)?)/i)||t.match(/(-?\d+\.\d+)\D+?(-?\d+\.\d+)/);if(!m)return null;
+  return ok(parseFloat(m[1].replace(",",".")),parseFloat(m[2].replace(",",".")))}
 /* IndexedDB for photos */
 let idbP=null;const urlCache={};
 function idb(){return idbP||(idbP=new Promise((res,rej)=>{const r=indexedDB.open("sk2-foto",1);r.onupgradeneeded=()=>r.result.createObjectStore("p");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
@@ -983,11 +991,12 @@ async function buildRoute(){const sites=routeSites();if(sites.length<2)return nu
   const legs=await routeLegs(sites),blob=await makeRouteImage(sites,legs);if(routeCache.url)URL.revokeObjectURL(routeCache.url);
   routeCache={sig,sites,legs,blob,url:URL.createObjectURL(blob)};return routeCache}
 function legRows(legs){return legs.map(l=>[`${l.i}→${l.i+1}`,`${l.a.name||"?"} → ${l.b.name||"?"}`,`${fmt(l.km,0)} km${l.road?"":" *"}`,`${fmt(l.air,0)} km`])}
-function routePanelHtml(){const sites=routeSites(),miss=repList().length-sites.length;
-  if(sites.length<2)return `<section class="panel"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası</h2><p class="muted" style="margin:0">Ortak harita için koordinatı girilmiş en az 2 saha seçilmeli.${miss?` (${miss} sahada koordinat yok)`:""}</p></section>`;
+function routePanelHtml(){const sites=routeSites(),missL=repList().filter(s=>!parseCoord(s.coord)),miss=missL.length;
+  const missHtml=miss?`<div class="hint" style="color:var(--warn,#b45309)">Koordinatı olmayan (haritada yok): ${missL.map(s=>`<b>${esc(s.name||"Adsız saha")}</b>${s.coord?` <small>(“${esc(String(s.coord).slice(0,40))}” okunamadı)</small>`:""} <button type="button" class="btn sm" data-ropen="${esc(s.id)}">Aç, koordinat ekle</button>`).join(" · ")}</div>`:"";
+  if(sites.length<2)return `<section class="panel"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası</h2><p class="muted" style="margin:0">Ortak harita için koordinatı girilmiş en az 2 saha seçilmeli.</p>${missHtml}</section>`;
   const via=prefs.routeVia||{};
   return `<section class="panel" id="routeP"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası ve mesafeler</h2>
-   <div class="hint">Seçilen sahalar tek haritada; her ara yol farklı renkte. Ziyaret sırasını oklarla değiştir (raporda da bu sıra kullanılır).${miss?` ${miss} sahada koordinat olmadığı için haritada yok.`:""}</div>
+   <div class="hint">Seçilen sahalar tek haritada; her ara yol farklı renkte. Ziyaret sırasını oklarla değiştir (raporda da bu sıra kullanılır).</div>${missHtml}
    <ol class="rlist" style="padding-left:0;list-style:none;margin:8px 0">${sites.map((s,i)=>`<li style="display:flex;align-items:center;gap:6px;margin:4px 0"><b style="min-width:1.6em">${i+1}.</b><span style="flex:1">${esc(s.name||"Adsız saha")} <small class="muted">${fmtDate(s.date)}</small></span><button type="button" class="btn sm" data-rup="${i}" ${i?"":"disabled"} aria-label="Yukarı">↑</button><button type="button" class="btn sm" data-rdn="${i}" ${i<sites.length-1?"":"disabled"} aria-label="Aşağı">↓</button></li>`).join("")}</ol>
    <label class="chk" for="r-road"><input type="checkbox" id="r-road" ${prefs.routeRoad!==false?"checked":""}><span><b>Gerçek yol üzerinden çiz</b><small>İnternet gerekir; yalnızca koordinatlar yol servisine (OSRM) gönderilir. Kapalıysa düz hat çizilir.</small></span></label>
    <div class="hint" style="margin-top:8px"><b>Geçtiğimiz yol:</b> yolculukta önemli yerlerde (kavşak, köprü, ilçe girişi) ana ekrandaki <b>📍 Yol noktası kaydet</b>'e bas. Sıra ve hangi ara yola ait olduğu otomatik bulunur. Bu raporda kayıtlı nokta: <b>${rangePts().length}</b></div>
@@ -1006,7 +1015,7 @@ function routeOutHtml(rc){const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.
 async function showRoute(){const out=app.querySelector("#routeOut"),btn=app.querySelector("#r-map");if(!out)return;btn.disabled=true;btn.textContent="Harita hazırlanıyor…";
   try{routeCache.sig="";const rc=await buildRoute();if(rc&&view==="report")out.innerHTML=routeOutHtml(rc)}catch(e){console.error(e);toast("Harita oluşturulamadı")}finally{if(btn.isConnected){btn.disabled=false;btn.textContent="🗺 Haritayı oluştur / yenile"}}}
 function rerenderRoute(auto){const p=app.querySelector("#routeP")||[...app.querySelectorAll("section.panel")].find(x=>x.querySelector("h2")?.textContent.includes("Güzergâh"));if(p){p.outerHTML=routePanelHtml();bindRoute();if(auto&&routeCache.blob)showRoute()}}
-function bindRoute(){const p=app.querySelector("#routeP");if(!p)return;
+function bindRoute(){app.querySelectorAll("[data-ropen]").forEach(b=>b.onclick=()=>openSurvey(b.dataset.ropen));const p=app.querySelector("#routeP");if(!p)return;
   p.querySelectorAll("[data-rup],[data-rdn]").forEach(b=>b.onclick=()=>{const ids=routeSites().map(s=>s.id),i=+(b.dataset.rup??b.dataset.rdn),j=b.dataset.rup!=null?i-1:i+1;[ids[i],ids[j]]=[ids[j],ids[i]];prefs.routeOrd=[...ids,...(prefs.routeOrd||[]).filter(x=>!ids.includes(x))].slice(0,300);savePrefs();rerenderRoute(true)});
   p.querySelector("#r-pt").onclick=()=>takeRoutePt(()=>rerenderRoute(false));
   p.querySelector("#r-ptdel")?.addEventListener("click",e=>{const b=e.target;if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Silinsin mi?";return}prefs.routePts=(prefs.routePts||[]).filter(p=>!(R.mode==="day"?p.d===R.d1:(p.d>=R.d1&&p.d<=R.d2)));savePrefs();rerenderRoute(false)});
