@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.8.1 · 16.11.2026";
+const VERSION="2.8.2 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -789,6 +789,7 @@ function renderReport(){
 function reportInput(e){const el=e.target;
   if((el.id==="r-d1"||el.id==="r-d2")&&e.type==="change"&&el.value){R[el.id==="r-d1"?"d1":"d2"]=el.value;if(R.mode==="day")R.d2=R.d1;R.summaryEdited=false;renderReport();return}
   if(el.id==="r-road"){prefs.routeRoad=el.checked;savePrefs();return}
+  if(el.id==="r-dots"){prefs.routeDots=el.checked;savePrefs();return}
   if(el.dataset.rvia!=null){prefs.routeVia=prefs.routeVia||{};prefs.routeVia[el.dataset.rvia]=el.value;savePrefs();return}
   if(el.dataset.rsel){R.sel[el.dataset.rsel]=el.checked;rerenderRoute(false);if(!R.summaryEdited){R.summary=overallSummary(repList(),rangeLabel());app.querySelector("#r-sum").value=R.summary}return}
   if(el.id==="r-author"){prefs.author=el.value;savePrefs()}if(el.id==="r-unit"){prefs.unit=el.value;savePrefs()}if(el.id==="r-project"){prefs.project=el.value;savePrefs()}
@@ -843,6 +844,7 @@ async function makeRouteImage(sites,legs){
   const F="-apple-system,system-ui,Arial,sans-serif";
   const line=(path,col,w,dash)=>{g.beginPath();path.forEach((p,i)=>{const [x,y]=XY(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.lineJoin="round";g.lineCap="round";g.setLineDash(dash||[]);g.strokeStyle=col;g.lineWidth=w;g.stroke();g.setLineDash([])};
   for(const l of legs){line(l.path,"#fff",13,l.road?null:[1,0]);line(l.path,l.col,7,l.road?null:[22,12])}
+  if(prefs.routeDots)for(const l of legs)for(const p of l.viaPts||[]){const [x,y]=XY(p);g.beginPath();g.arc(x,y,4.5,0,7);g.fillStyle="#fff";g.fill();g.lineWidth=2.5;g.strokeStyle=l.col;g.stroke()}
   // distance labels at path midpoint
   for(const l of legs){let half=pathKm(l.path)/2,acc=0,m=l.path[0];for(let i=1;i<l.path.length;i++){const d=hav(l.path[i-1],l.path[i]);if(acc+d>=half){const f=d?(half-acc)/d:0;m=[l.path[i-1][0]+(l.path[i][0]-l.path[i-1][0])*f,l.path[i-1][1]+(l.path[i][1]-l.path[i-1][1])*f];break}acc+=d}
     const [x,y]=XY(m),t=`${fmt(l.km,0)} km`;g.font=`bold 24px ${F}`;const w=g.measureText(t).width+22;g.fillStyle=l.col;g.beginPath();g.roundRect?g.roundRect(x-w/2,y-17,w,34,17):g.rect(x-w/2,y-17,w,34);g.fill();g.lineWidth=3;g.strokeStyle="#fff";g.stroke();g.fillStyle="#fff";g.fillText(t,x-w/2+11,y+8)}
@@ -858,7 +860,7 @@ async function makeRouteImage(sites,legs){
   const at=tilesOk?"© OpenStreetMap contributors":"Harita altlığı yüklenemedi (internet yok) – noktalar ölçekli",aw=(g.font=`15px ${F}`,g.measureText(at).width);g.fillStyle="rgba(255,255,255,.88)";g.fillRect(W-aw-18,H-26,aw+18,26);g.fillStyle="#333";g.fillText(at,W-aw-9,H-8);
   return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("blob")),"image/jpeg",.88));
 }
-function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false,rangePts().map(p=>[p[0],p[1]])])}
+function routeSig(sites){return JSON.stringify([sites.map(s=>s.id+s.coord+s.name),prefs.routeVia||{},prefs.routeRoad!==false,!!prefs.routeDots,rangePts().map(p=>[p[0],p[1]])])}
 async function buildRoute(){const sites=routeSites();if(sites.length<2)return null;const sig=routeSig(sites);
   if(routeCache.sig===sig&&routeCache.blob)return routeCache;
   const legs=await routeLegs(sites),blob=await makeRouteImage(sites,legs);if(routeCache.url)URL.revokeObjectURL(routeCache.url);
@@ -872,6 +874,7 @@ function routePanelHtml(){const sites=routeSites(),miss=repList().length-sites.l
    <ol class="rlist" style="padding-left:0;list-style:none;margin:8px 0">${sites.map((s,i)=>`<li style="display:flex;align-items:center;gap:6px;margin:4px 0"><b style="min-width:1.6em">${i+1}.</b><span style="flex:1">${esc(s.name||"Adsız saha")} <small class="muted">${fmtDate(s.date)}</small></span><button type="button" class="btn sm" data-rup="${i}" ${i?"":"disabled"} aria-label="Yukarı">↑</button><button type="button" class="btn sm" data-rdn="${i}" ${i<sites.length-1?"":"disabled"} aria-label="Aşağı">↓</button></li>`).join("")}</ol>
    <label class="chk" for="r-road"><input type="checkbox" id="r-road" ${prefs.routeRoad!==false?"checked":""}><span><b>Gerçek yol üzerinden çiz</b><small>İnternet gerekir; yalnızca koordinatlar yol servisine (OSRM) gönderilir. Kapalıysa düz hat çizilir.</small></span></label>
    <div class="hint" style="margin-top:8px"><b>Geçtiğimiz yol:</b> yolculukta önemli yerlerde (kavşak, köprü, ilçe girişi) ana ekrandaki <b>📍 Yol noktası kaydet</b>'e bas. Sıra ve hangi ara yola ait olduğu otomatik bulunur. Bu raporda kayıtlı nokta: <b>${rangePts().length}</b></div>
+   <label class="chk" for="r-dots"><input type="checkbox" id="r-dots" ${prefs.routeDots?"checked":""}><span><b>Yol noktalarını küçük işaretle göster</b><small>Kapalıysa noktalar sadece yolu çizmek ve mesafeyi hesaplamak için kullanılır</small></span></label>
    <div class="row"><button type="button" class="btn sm" id="r-pt">📍 Şimdi nokta kaydet</button>${rangePts().length?`<button type="button" class="btn ghost sm danger" id="r-ptdel">Bu tarihlerin noktalarını sil</button>`:""}</div>
    <details style="margin:6px 0" ${Object.values(via).some(x=>x&&x.trim())?"open":""}><summary>Elle ara nokta ekle (isteğe bağlı)</summary><div class="hint">Gerekirse her satıra bir koordinat (ör. 32.51, 45.82) veya Google Maps bağlantısı yapıştır; sırası önemli değil, otomatik sıralanır.</div>
     ${sites.slice(1).map((b,i)=>{const a=sites[i];return `<label class="f" for="rv-${i}"><span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${ROUTE_COL[i%ROUTE_COL.length]};margin-right:6px"></span>${i+1}→${i+2}: ${esc(a.name||"?")} → ${esc(b.name||"?")}</span><textarea id="rv-${i}" data-rvia="${esc(legKey(a,b))}" style="min-height:48px" placeholder="32.51, 45.82">${esc(via[legKey(a,b)]||"")}</textarea></label>`}).join("")}</details>
