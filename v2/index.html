@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="3.2 · 16.11.2026";
+const VERSION="3.3 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -992,7 +992,7 @@ async function buildRoute(){const sites=routeSites();if(sites.length<2)return nu
   routeCache={sig,sites,legs,blob,url:URL.createObjectURL(blob)};return routeCache}
 function legRows(legs){return legs.map(l=>[`${l.i}→${l.i+1}`,`${l.a.name||"?"} → ${l.b.name||"?"}`,`${fmt(l.km,0)} km${l.road?"":" *"}`,`${fmt(l.air,0)} km`])}
 function routePanelHtml(){const sites=routeSites(),missL=repList().filter(s=>!parseCoord(s.coord)),miss=missL.length;
-  const missHtml=miss?`<div class="hint" style="color:var(--warn,#b45309)">Koordinatı olmayan (haritada yok): ${missL.map(s=>`<b>${esc(s.name||"Adsız saha")}</b>${s.coord?` <small>(“${esc(String(s.coord).slice(0,40))}” okunamadı)</small>`:""} <button type="button" class="btn sm" data-ropen="${esc(s.id)}">Aç, koordinat ekle</button>`).join(" · ")}</div>`:"";
+  const missHtml=miss?`<div class="hint" style="color:var(--warn,#b45309)">Koordinatı olmayan (haritada yok): ${missL.map(s=>`<b>${esc(s.name||"Adsız saha")}</b>${s.coord?` <small>(“${esc(String(s.coord).slice(0,40))}” okunamadı)</small>`:""} <button type="button" class="btn sm" data-ropen="${esc(s.id)}">Aç, koordinat ekle</button>${(prefs.routePts||[]).some(q=>q.d===s.date)?` <button type="button" class="btn sm" data-rpick="${esc(s.id)}">📍 Yol noktasından al</button>`:""}<div id="rpick-${esc(s.id)}"></div>`).join("")}</div>`:"";
   if(sites.length<2)return `<section class="panel"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası</h2><p class="muted" style="margin:0">Ortak harita için koordinatı girilmiş en az 2 saha seçilmeli.</p>${missHtml}</section>`;
   const via=prefs.routeVia||{};
   return `<section class="panel" id="routeP"><h2 style="font-size:1.1rem">🗺 Güzergâh haritası ve mesafeler</h2>
@@ -1015,7 +1015,15 @@ function routeOutHtml(rc){const tot=rc.legs.reduce((a,l)=>a+l.km,0),air=rc.legs.
 async function showRoute(){const out=app.querySelector("#routeOut"),btn=app.querySelector("#r-map");if(!out)return;btn.disabled=true;btn.textContent="Harita hazırlanıyor…";
   try{routeCache.sig="";const rc=await buildRoute();if(rc&&view==="report")out.innerHTML=routeOutHtml(rc)}catch(e){console.error(e);toast("Harita oluşturulamadı")}finally{if(btn.isConnected){btn.disabled=false;btn.textContent="🗺 Haritayı oluştur / yenile"}}}
 function rerenderRoute(auto){const p=app.querySelector("#routeP")||[...app.querySelectorAll("section.panel")].find(x=>x.querySelector("h2")?.textContent.includes("Güzergâh"));if(p){p.outerHTML=routePanelHtml();bindRoute();if(auto&&routeCache.blob)showRoute()}}
-function bindRoute(){app.querySelectorAll("[data-ropen]").forEach(b=>b.onclick=()=>openSurvey(b.dataset.ropen));const p=app.querySelector("#routeP");if(!p)return;
+function bindRoute(){app.querySelectorAll("[data-ropen]").forEach(b=>b.onclick=()=>openSurvey(b.dataset.ropen));
+  app.querySelectorAll("[data-rpick]").forEach(b=>b.onclick=()=>{const sv=surveys[b.dataset.rpick],box=app.querySelector("#rpick-"+CSS.escape(sv.id));
+    const pts=(prefs.routePts||[]).map((q,k)=>({...q,k})).filter(q=>q.d===sv.date).sort((a,b)=>(a.t||0)-(b.t||0));
+    const hm=t=>t?new Date(t).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"–";
+    const others=routeSites().map(x=>[x.name||"?",parseCoord(x.coord)]);
+    const near=q=>{let best=null;for(const [n,c] of others){const d=hav(c,[q.la,q.lo]);if(!best||d<best[1])best=[n,d]}return best?` · en yakın saha: ${esc(best[0])}, ${fmt(best[1],best[1]<10?1:0)} km`:""};
+    box.innerHTML=`<div class="hint" style="margin:6px 0">${esc(sv.name||"Saha")} için kayıtlı yol noktasını seç (sahadan çıkışta kaydettiğin nokta):</div>`+pts.map((q,j)=>`<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><span style="flex:1"><b>${j+1}.</b> ${hm(q.t)} <small class="muted">${q.la.toFixed(5)}, ${q.lo.toFixed(5)}${near(q)}</small></span><button type="button" class="btn sm" data-ruse="${q.k}">Bunu kullan</button></div>`).join("");
+    box.querySelectorAll("[data-ruse]").forEach(u=>u.onclick=()=>{const q=prefs.routePts[+u.dataset.ruse];sv.coord=`${q.la.toFixed(5)}, ${q.lo.toFixed(5)}`;sv.coordSrc="yol noktası";
+      prefs.routePts.splice(+u.dataset.ruse,1);savePrefs();saveAll();toast(`${sv.name||"Saha"}: koordinat yol noktasından alındı`);rerenderRoute(false)})});const p=app.querySelector("#routeP");if(!p)return;
   p.querySelectorAll("[data-rup],[data-rdn]").forEach(b=>b.onclick=()=>{const ids=routeSites().map(s=>s.id),i=+(b.dataset.rup??b.dataset.rdn),j=b.dataset.rup!=null?i-1:i+1;[ids[i],ids[j]]=[ids[j],ids[i]];prefs.routeOrd=[...ids,...(prefs.routeOrd||[]).filter(x=>!ids.includes(x))].slice(0,300);savePrefs();rerenderRoute(true)});
   p.querySelector("#r-pt").onclick=()=>takeRoutePt(()=>rerenderRoute(false));
   p.querySelector("#r-ptdel")?.addEventListener("click",e=>{const b=e.target;if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Silinsin mi?";return}prefs.routePts=(prefs.routePts||[]).filter(p=>!(R.mode==="day"?p.d===R.d1:(p.d>=R.d1&&p.d<=R.d2)));savePrefs();rerenderRoute(false)});
