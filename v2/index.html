@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="2.9.1 · 16.11.2026";
+const VERSION="2.9.2 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -167,7 +167,7 @@ const SEC=[
   {k:"sogutma",kind:"ch",q:"Bizim ekipman için soğutma nasıl sağlanacak?",s:"Soğutma",o:["Mevcut soğutma kullanılabilir","Yeni split klima gerekli","Bilinmiyor"],ph:1,phAlways:1,
    tip:"Mevcut klimaların sayısına, çalışıp çalışmadığına ve bizim ekipmanı da soğutup soğutamayacağına bak. Klimaların fotoğrafını çek.",
    qn:["Salonda merkezi klima var","Salonda split klimalar var","Mevcut klimalar yetersiz görünüyor","Klimalar jeneratöre bağlı","Klima dış ünitesi için yer var"]},
-  {k:"isiEk",kind:"ch",q:"Sistem salonuna kurulursak mevcut soğutma 1–3 kW (≈ 3.400–10.000 BTU) ek ısıyı karşılar mı?",s:"Mevcut soğutma 1–3 kW ek ısıyı karşılar mı",o:["Evet","Hayır – ayrı soğutma gerekli","Bilinmiyor"],
+  {k:"isiEk",kind:"ch",q:"Sistem salonuna kurulursak mevcut soğutma 1–3 kW (≈ 3.400–10.000 BTU) ek ısıyı karşılar mı?",s:"Mevcut soğutma ek ısıyı karşılar mı",o:["Evet","Hayır – ayrı soğutma gerekli","Bilinmiyor"],
    tip:"Ekipmanımız aldığı elektriğin hemen hepsini ısıya çevirir: 1 kW ≈ 3.400 BTU. Klima sorumlusuna bu ek ısıyı mevcut klimaların kaldırıp kaldıramayacağını sor."}
  ]},
  {id:"talep",t:"Kurulum yeri ve talep edilen güç",items:[
@@ -324,15 +324,15 @@ function siteSummary(s){
   else if(duT||enT)P.push(cap([duT,enT].filter(Boolean).join("; "))+".");
   /* 3) soğutma */
   const so=A(s,"sogutma"),ie=A(s,"isiEk"),ieNo=ie==="Hayır – ayrı soğutma gerekli";
-  if(ieNo&&so==="Yeni split klima gerekli")P.push("Sistem salonuna kurulmamız halinde mevcut soğutma 1–3 kW ek ısıyı karşılayamayacağından ekipmanlarımız için yeni bir split klima eklenmesi gerekmektedir.");
-  else if(ie==="Evet"&&so==="Mevcut soğutma kullanılabilir")P.push("Ekipmanlarımızın soğutulması için mevcut soğutma sistemi kullanılabilecektir; sistem salonuna kurulmamız halinde gelecek 1–3 kW ek ısıyı da karşılayabildiği bildirilmiştir.");
-  else if(ie==="Evet"&&so==="Yeni split klima gerekli")P.push("Sistem salonuna kurulmamız halinde mevcut soğutma 1–3 kW ek ısıyı karşılayabilmektedir; ayrı bir odaya kurulmamız halinde ise yeni bir split klima gerekmektedir.");
+  if(ieNo&&so==="Yeni split klima gerekli")P.push("Sistem salonuna kurulmamız halinde mevcut soğutma ek ısıyı karşılayamayacağından ekipmanlarımız için yeni bir split klima eklenmesi gerekmektedir.");
+  else if(ie==="Evet"&&so==="Mevcut soğutma kullanılabilir")P.push("Ekipmanlarımızın soğutulması için mevcut soğutma sistemi kullanılabilecektir; sistem salonuna kurulmamız halinde gelecek ek ısıyı da karşılayabildiği bildirilmiştir.");
+  else if(ie==="Evet"&&so==="Yeni split klima gerekli")P.push("Sistem salonuna kurulmamız halinde mevcut soğutma ek ısıyı karşılayabilmektedir; ayrı bir odaya kurulmamız halinde ise yeni bir split klima gerekmektedir.");
   else{
     if(so==="Mevcut soğutma kullanılabilir")P.push("Ekipmanlarımızın soğutulması için mevcut soğutma sistemi kullanılabilecektir.");
     else if(so==="Yeni split klima gerekli")P.push("Ekipmanlarımızın soğutulması için yeni bir split klima eklenmesi gerekmektedir.");
     else if(so==="Bilinmiyor")P.push("Soğutmanın nasıl sağlanacağı henüz netleşmemiştir.");
-    if(ie==="Evet")P.push("Sistem salonuna kurulmamız halinde mevcut soğutmanın 1–3 kW ek ısıyı karşılayabileceği bildirilmiştir.");
-    else if(ieNo)P.push("Sistem salonuna kurulmamız halinde mevcut soğutma 1–3 kW ek ısıyı karşılayamayacağından ayrı soğutma gerekmektedir.");}
+    if(ie==="Evet")P.push("Sistem salonuna kurulmamız halinde mevcut soğutmanın ek ısıyı karşılayabileceği bildirilmiştir.");
+    else if(ieNo)P.push("Sistem salonuna kurulmamız halinde mevcut soğutma ek ısıyı karşılayamayacağından ayrı soğutma gerekmektedir.");}
   /* 4) jeneratör */
   const j=A(s,"jen"),g=genStats(s),many=g.count>1;
   if(j==="no")P.push("Sahada jeneratör bulunmamaktadır.");
@@ -940,7 +940,7 @@ function shortText(){
     if(A(s,"jen")==="yes")L.push(`• Jeneratör: ${g.count?g.gens.map(x=>`${x.kvaN??"?"} kVA ${x.role==="Yedek"?"yedek":"asıl"}${x.pctN!=null?` %${x.pctN}`:""}`).join(", "):"var"}${g.free!=null?` · boş ≈ ${fmt(g.free,0)} kVA`:""}`);else if(A(s,"jen")==="no")L.push("• Jeneratör: yok");
     if(A(s,"jen")!=="no"){const x=[A(s,"ats")?`otomatik devreye girme: ${A(s,"ats").toLowerCase()}`:"",A(s,"yakit")!==""?`yakıt ~${A(s,"yakit")} saat yetiyor`:""].filter(Boolean);if(x.length)L.push(`• ${x.join(" · ").replace(/^./,c=>c.toUpperCase())}`)}
     {const tl=talep(s);if(tl.yer||tl.ok)L.push(`• Kurulum yeri: ${tl.yer||"belli değil"}${tl.ok?` · talep: ${talepTxt(tl)}`:""}${A(s,"jenVer")?` · jeneratörden verilebilir mi: ${A(s,"jenVer").toLowerCase()}`:""}`)}
-    if(A(s,"isiEk"))L.push(`• Salonda 1–3 kW ek ısı: ${A(s,"isiEk")}`);
+    if(A(s,"isiEk"))L.push(`• Mevcut soğutma ek ısıyı karşılar mı: ${A(s,"isiEk")}`);
     if(s.load?.on&&R.energy){const e=energy(s);L.push(`• İhtiyaç: ${fmt(e.peakW/1000)} kW · ${fmt(e.A220,0)} A → talep ${e.breaker} A (220 V)`)}});
   {const rs=routeSites();if(rs.length>1){const rc=routeCache.sig===routeSig(rs)?routeCache:null;L.push("","Güzergâh / mesafeler:");
     for(let i=1;i<rs.length;i++){const l=rc?.legs[i-1],air=hav(parseCoord(rs[i-1].coord),parseCoord(rs[i].coord));L.push(`• ${rs[i-1].name||"?"} → ${rs[i].name||"?"}: ${l?`${fmt(l.km,0)} km${l.road?" yol":""}`:`${fmt(air,0)} km kuş uçuşu`}`)}}}
