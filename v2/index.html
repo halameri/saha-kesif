@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.0 · 16.11.2026";
+const VERSION="4.0.1 · 16.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -846,7 +846,7 @@ async function makeMapImage(lat,lon,z,label){
   const jobs=[];
   for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n;
     jobs.push(getTile(z,X,ty).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
-  await Promise.all(jobs);
+  await Promise.race([Promise.allSettled(jobs),new Promise(r=>setTimeout(r,15000))]);
   const mx=W/2,my=H/2;g.beginPath();g.arc(mx,my,46,0,2*Math.PI);g.strokeStyle="rgba(210,34,34,.55)";g.lineWidth=5;g.stroke();
   g.beginPath();g.moveTo(mx,my);g.bezierCurveTo(mx-26,my-30,mx-22,my-60,mx,my-60);g.bezierCurveTo(mx+22,my-60,mx+26,my-30,mx,my);g.closePath();g.fillStyle="#d22";g.fill();g.lineWidth=4;g.strokeStyle="#fff";g.stroke();
   g.beginPath();g.arc(mx,my-40,8,0,2*Math.PI);g.fillStyle="#fff";g.fill();
@@ -937,7 +937,7 @@ const tileMem=new Map();let tileActive=0;const tileWait=[];
 function tileSlot(){return new Promise(r=>{if(tileActive<4){tileActive++;r()}else tileWait.push(r)})}
 function tileFree(){const n=tileWait.shift();if(n)n();else tileActive--}
 async function getTile(z,x,y){const k=`${z}/${x}/${y}`;if(tileMem.has(k))return tileMem.get(k);
-  const p=(async()=>{for(const src of TILE_SRC)for(let a=0;a<2;a++){await tileSlot();try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),12000);
+  const p=(async()=>{for(const src of TILE_SRC)for(let a=0;a<1;a++){await tileSlot();try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),8000);
       const r=await fetch(src(z,x,y),{signal:ctl.signal});clearTimeout(t);if(r.ok)return await createImageBitmap(await r.blob())}catch(e){}finally{tileFree()}
       await new Promise(r=>setTimeout(r,400*(a+1)))}
     tileMem.delete(k);throw new Error("tile")})();
@@ -1073,7 +1073,8 @@ async function makeRouteImage(sites,legs){
   g.strokeStyle="#d9dcd3";g.lineWidth=1;for(let x=0;x<W;x+=100){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke()}for(let y=0;y<H;y+=100){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke()}
   const jobs=[];if(navigator.onLine!==false)for(let tx=Math.floor(x0/256);tx<=Math.floor((x0+W)/256);tx++)for(let ty=Math.floor(y0/256);ty<=Math.floor((y0+H)/256);ty++){if(ty<0||ty>=n)continue;const X=((tx%n)+n)%n;
     jobs.push(getTile(z,X,ty).then(im=>g.drawImage(im,Math.round(tx*256-x0),Math.round(ty*256-y0))))}
-  const res=await Promise.allSettled(jobs);const tilesOk=res.some(r=>r.status==="fulfilled");
+  /* karolar için en fazla 15 sn beklenir; gelmeyenler boş kalır, harita yine çizilir */
+  let nOk=0;jobs.forEach(j=>j.then(()=>nOk++,()=>{}));await Promise.race([Promise.allSettled(jobs),new Promise(r=>setTimeout(r,15000))]);const tilesOk=nOk>0;
   if(tilesOk){g.fillStyle="rgba(255,255,255,.18)";g.fillRect(0,0,W,H)}
   const F="-apple-system,system-ui,Arial,sans-serif";
   const line=(path,col,w,dash)=>{g.beginPath();path.forEach((p,i)=>{const [x,y]=XY(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.lineJoin="round";g.lineCap="round";g.setLineDash(dash||[]);g.strokeStyle=col;g.lineWidth=w;g.stroke();g.setLineDash([])};
@@ -1298,7 +1299,7 @@ async function makePdf(){
         A(s,"kesinti")!==""?`${A(s,"kesinti")} sa/gün`:"–",YN[A(s,"salonBos")]||"–",so==="Mevcut soğutma kullanılabilir"?"Mevcut":so==="Yeni split klima gerekli"?"Yeni split":so||"–",
         A(s,"jen")==="yes"?(g.count?`${g.count} adet${g.free!=null?` · boş ${fmt(g.free,0)} kVA`:""}`:"Var"):YN[A(s,"jen")]||"–",...(R.energy?[s.load?.on?`${energy(s).breaker} A`:"–"]:[])]}),{sz:19});
     const nx=(prefs["next-"+R.d1]||"").trim();if(nx){D.h2("Sonraki adımlar");D.text(nx)}
-    btn.textContent="Güzergâh haritası…";await routeToPdf(D);btn.textContent="PDF hazırlanıyor…";
+    btn.textContent="Güzergâh haritası…";{const rc=await Promise.race([buildRoute().catch(e=>{console.error(e);return null}),new Promise(r=>setTimeout(()=>r(null),45000))]);if(rc)await routeToPdf(D).catch(e=>console.error(e))}btn.textContent="PDF hazırlanıyor…";
     for(const [i,s] of list.entries())await siteToPdf(D,s,i+1);
     const blobs=await D.done();const pdf=await pdfFromJpegs(blobs);
     const fn=`${multi?"saha-raporu":"gunluk-rapor"}_${R.d1}${multi?"_"+R.d2:""}.pdf`;
