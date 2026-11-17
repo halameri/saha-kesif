@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.1.1 · 16.11.2026";
+const VERSION="4.1.2 · 17.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -876,7 +876,9 @@ async function addMap(auto){
    ========================================================= */
 let R={mode:"day",d1:null,d2:null,sel:{},photos:true,energy:true,summary:"",summaryEdited:false};
 function inRange(s){return R.mode==="day"?s.date===R.d1:(s.date>=R.d1&&s.date<=R.d2)}
-function repList(){const ord=prefs.routeOrd||[];return Object.values(surveys).filter(s=>inRange(s)&&R.sel[s.id]!==false).sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia>=0&&ib>=0)return ia-ib;return (a.date||"").localeCompare(b.date||"")||String(a.name).localeCompare(String(b.name),"tr")})}
+function repList(){const ord=prefs.routeOrd||[];return Object.values(surveys).filter(s=>inRange(s)&&R.sel[s.id]!==false).sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia>=0&&ib>=0)return ia-ib;/* aynı gün: ziyaret saatine göre (sahadaki ilk fotoğraf; fotoğraf yoksa kaydın açıldığı an) */
+  const va=visitTime(a),vb=visitTime(b);return (a.date||"").localeCompare(b.date||"")||(va&&vb?va-vb:0)||String(a.name).localeCompare(String(b.name),"tr")})}
+function visitTime(s){return siteTimes(s)?.t0||idTime(s.id)}
 function rangeLabel(){if(R.mode==="day")return `${fmtDate(R.d1)} tarihinde`;return R.d1===R.d2?`${fmtDate(R.d1)} tarihinde`:`${fmtDate(R.d1)} – ${fmtDate(R.d2)} tarihleri arasında`}
 function renderReport(){
   view="report";cur=null;
