@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.1.2 · 17.11.2026";
+const VERSION="4.2 · 17.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -182,7 +182,9 @@ const SEC=[
    tip:"Elle çalıştırılıyorsa jeneratör açılana kadar akülerimiz yükü taşır."},
   {k:"yakit",kind:"num",q:"Yakıt deposu kesintisiz çalışmada kaç saat yetiyor?",s:"Yakıtın yettiği süre (kesintisiz)",u:"saat"},
   {k:"jenVer",kind:"ch",q:"Talep ettiğimiz güç sahanın jeneratöründen verilebilir mi?",s:"Talep edilen güç jeneratörden verilebilir mi",o:["Evet","Hayır","Bilinmiyor"],
-   tip:"Talep edilen güç “Kurulum yeri ve talep edilen güç” bölümünde yazıyor."}
+   tip:"Talep edilen güç “Kurulum yeri ve talep edilen güç” bölümünde yazıyor."},
+  {k:"stby",kind:"ch",q:"Saha yönetimi, yedek (standby) olarak kullanmak için bizden ayrı bir jeneratör istiyor mu?",s:"Bizden yedek (standby) jeneratör isteniyor mu",o:["Evet","Hayır","Bilinmiyor"],
+   tip:"Sahada yedek jeneratör yoksa, kuracağımız jeneratörü yedek olarak da kullanmak isteyebilirler."}
  ]}
 ];
 /* talep edilen güç: kurulum yerine göre normal (nominal) ve en fazla (max) kW; elle yazılırsa o kullanılır */
@@ -198,7 +200,7 @@ function talep(s){const yer=A(s,"yer"),d=talepDef(s),u=V(s,"yer.u")==="A"?"A":"k
 const phTxt=t=>t.ph==="3"?"3 faz 380 V, faz başı":"1 faz 220 V";
 /* özet tablo: yeni klima / kendi jeneratörümüz gerekiyor mu (true / false / null=bilinmiyor) */
 function needAC(s){const so=A(s,"sogutma"),ie=A(s,"isiEk");if(so==="Yeni split klima gerekli"||ie==="Hayır – ayrı soğutma gerekli")return true;if(so==="Mevcut soğutma kullanılabilir"&&ie!=="Bilinmiyor")return false;return null}
-function needGen(s){if(A(s,"jen")==="no")return true;const v=A(s,"jenVer");if(v==="Hayır")return true;if(s.load?.on){try{if(energy(s).genOk===false)return true}catch(e){}}if(v==="Evet")return false;return null}
+function needGen(s){if(A(s,"jen")==="no"||A(s,"stby")==="Evet")return true;const v=A(s,"jenVer");if(v==="Hayır")return true;if(s.load?.on){try{if(energy(s).genOk===false)return true}catch(e){}}if(v==="Evet")return false;return null}
 const needTxt=v=>v===true?{t:"Gerekli",bold:true}:v===false?"Gerekmiyor":"–";
 /* rapor cümlesi için: ≈ yerine "yaklaşık" */
 const rA=x=>x>=20?Math.round(x/5)*5:Math.round(x);
@@ -377,6 +379,8 @@ function siteSummary(s){
     const lim=tl.max!=null?` (en fazla ${fmt(tl.max)} kW)`:"";
     if(jv==="Evet")P.push(`Talep ettiğimiz gücün${lim} sahanın jeneratöründen karşılanabileceği bildirilmiştir.`);
     else if(jv==="Hayır")P.push(`Talep ettiğimiz gücün${lim} sahanın jeneratöründen karşılanamayacağı bildirilmiştir.`);}
+  if(A(s,"stby")==="Evet"){const noBk=!(s.gens||[]).some(x=>x.role==="Yedek");
+    P.push(`${noBk?"Sahada yedek jeneratör bulunmadığından s":"S"}aha yönetimi, yedek (standby) olarak kullanılmak üzere tarafımızdan ayrı bir jeneratör kurulmasını talep etmektedir.`)}
   /* 5) enerji hesabı */
   if(s.load?.on){const e=energy(s);
     P.push(`Bu lokasyonda öngörülen ${fmt(e.dcA)} A (-48 V DC) yükümüz, akü şarjı${e.splitOn?" ve soğutma":""} ile birlikte en kötü durumda yaklaşık ${fmt(e.peakW/1000)} kW (220 V'ta yaklaşık ${fmt(e.A220,0)} A, ${fmt(e.kVA)} kVA) güç gerektirmektedir; güvenlik payıyla ${e.breaker} A besleme talep edilmelidir.`);
@@ -417,8 +421,9 @@ function overallSummary(list,label){
   const jvY=nm(s=>A(s,"jenVer")==="Evet"),jvN=nm(s=>A(s,"jenVer")==="Hayır");
   if(jvY.length)P.push(`${where(jvY)} talep ettiğimiz güç sahanın jeneratöründen karşılanabilecektir.`);
   if(jvN.length)P.push(`${where(jvN)} talep ettiğimiz güç sahanın jeneratöründen karşılanamadığından kendi jeneratörümüzün kurulması gerekmektedir.`);
+  const sb=nm(s=>A(s,"stby")==="Evet");if(sb.length)P.push(`${where(sb)} saha yönetimi, yedek (standby) olarak kullanılmak üzere tarafımızdan ayrı bir jeneratör talep etmektedir.`);
   const noGen=nm(s=>A(s,"jen")==="no");if(noGen.length)P.push(`${where(noGen)} jeneratör bulunmadığından kendi jeneratörümüzün kurulması gerekmektedir.`);
-  const weakGen=nm(s=>needGen(s)&&A(s,"jen")!=="no"&&A(s,"jenVer")!=="Hayır");if(weakGen.length)P.push(`${where(weakGen)} jeneratörün boş kapasitesi yetersiz göründüğünden kendi jeneratörümüzün kurulması gerekebilir.`);
+  const weakGen=nm(s=>needGen(s)&&A(s,"jen")!=="no"&&A(s,"jenVer")!=="Hayır"&&A(s,"stby")!=="Evet");if(weakGen.length)P.push(`${where(weakGen)} jeneratörün boş kapasitesi yetersiz göründüğünden kendi jeneratörümüzün kurulması gerekebilir.`);
   const en=list.filter(s=>s.load?.on).map(s=>({s,e:energy(s)}));
   if(en.length){const ws=en.map(x=>x.e.peakW/1000),bs=[...new Set(en.map(x=>x.e.breaker))];
     P.push(`Enerji hesabı yapılan sahalarda ihtiyacımız saha başına en kötü durumda yaklaşık ${fmt(Math.min(...ws))}${Math.max(...ws)-Math.min(...ws)>0.05?`–${fmt(Math.max(...ws))}`:""} kW olup ${bs.length===1?`${bs[0]} A`:`${Math.min(...bs)}–${Math.max(...bs)} A`} besleme talep edilmektedir.`);
@@ -1169,6 +1174,7 @@ function shortText(){
     if(A(s,"jen")==="yes")L.push(`• Jeneratör: ${g.count?g.gens.map(x=>`${x.kvaN??"?"} kVA ${x.role==="Yedek"?"yedek":"asıl"}${x.pctN!=null?` %${x.pctN}`:""}`).join(", "):"var"}${g.free!=null?` · boş ≈ ${fmt(g.free,0)} kVA`:""}`);else if(A(s,"jen")==="no")L.push("• Jeneratör: yok");
     if(A(s,"jen")!=="no"){const x=[A(s,"ats")?`otomatik devreye girme: ${A(s,"ats").toLowerCase()}`:"",A(s,"yakit")!==""?`yakıt ~${A(s,"yakit")} saat yetiyor`:""].filter(Boolean);if(x.length)L.push(`• ${x.join(" · ").replace(/^./,c=>c.toUpperCase())}`)}
     {const tl=talep(s);if(tl.yer||tl.ok)L.push(`• Kurulum yeri: ${tl.yer||"belli değil"}${tl.ok?` · talep: ${talepTxt(tl)}`:""}${A(s,"jenVer")?` · jeneratörden verilebilir mi: ${A(s,"jenVer").toLowerCase()}`:""}`)}
+    if(A(s,"stby")==="Evet")L.push("• Bizden yedek (standby) jeneratör isteniyor");
     if(A(s,"isiEk"))L.push(`• Mevcut soğutma ek ısıyı karşılar mı: ${A(s,"isiEk")}`);
     if(s.load?.on&&R.energy){const e=energy(s);L.push(`• İhtiyaç: ${fmt(e.peakW/1000)} kW · ${fmt(e.A220,0)} A → talep ${e.breaker} A (220 V)`)}});
   {const rs=routeSites(),rc=rs.length>1&&routeCache.sig===routeSig(rs)?routeCache:null;if(rc){L.push("","Güzergâh / mesafeler:");
