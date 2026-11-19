@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.2 · 17.11.2026";
+const VERSION="4.3 · 19.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -881,7 +881,9 @@ async function addMap(auto){
    ========================================================= */
 let R={mode:"day",d1:null,d2:null,sel:{},photos:true,energy:true,summary:"",summaryEdited:false};
 function inRange(s){return R.mode==="day"?s.date===R.d1:(s.date>=R.d1&&s.date<=R.d2)}
-function repList(){const ord=prefs.routeOrd||[];return Object.values(surveys).filter(s=>inRange(s)&&R.sel[s.id]!==false).sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia>=0&&ib>=0)return ia-ib;/* aynı gün: ziyaret saatine göre (sahadaki ilk fotoğraf; fotoğraf yoksa kaydın açıldığı an) */
+function repList(){return sortSites(Object.values(surveys).filter(s=>inRange(s)&&R.sel[s.id]!==false))}
+/* rapor sırası: elle verilen sıra (oklarla) > tarih > ziyaret saati > ad */
+function sortSites(arr){const ord=prefs.routeOrd||[];return arr.sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);if(ia>=0&&ib>=0)return ia-ib;/* aynı gün: ziyaret saatine göre (sahadaki ilk fotoğraf; fotoğraf yoksa kaydın açıldığı an) */
   const va=visitTime(a),vb=visitTime(b);return (a.date||"").localeCompare(b.date||"")||(va&&vb?va-vb:0)||String(a.name).localeCompare(String(b.name),"tr")})}
 function visitTime(s){return siteTimes(s)?.t0||idTime(s.id)}
 function rangeLabel(){if(R.mode==="day")return `${fmtDate(R.d1)} tarihinde`;return R.d1===R.d2?`${fmtDate(R.d1)} tarihinde`:`${fmtDate(R.d1)} – ${fmtDate(R.d2)} tarihleri arasında`}
@@ -890,7 +892,7 @@ function renderReport(){
   const dates=[...new Set(Object.values(surveys).map(s=>s.date).filter(Boolean))].sort();
   if(!R.d1){R.d1=dates.includes(today())?today():dates[dates.length-1]||today();R.d2=R.d1}
   if(R.mode==="multi"&&R.d2<R.d1)R.d2=R.d1;
-  const all=Object.values(surveys).filter(inRange).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const all=sortSites(Object.values(surveys).filter(inRange));
   if(!R.summaryEdited)R.summary=overallSummary(repList(),rangeLabel());
   app.innerHTML=`
   <div class="topbar"><button class="btn ghost" id="back" aria-label="Geri">←</button><div class="title"><b>Rapor</b><span>PDF olarak hazırlanır</span></div></div>
@@ -901,7 +903,7 @@ function renderReport(){
     ${R.mode==="multi"?`<label class="f" for="r-d2">Bitiş<input type="date" id="r-d2" value="${esc(R.d2)}"></label>`:""}
    </div>
    ${dates.length?`<div class="hint">Keşif olan günler: ${dates.slice(-8).map(fmtDate).join(", ")}</div>`:""}
-   ${all.length?`<div class="checks">${all.map(s=>`<label class="chk" for="rs-${s.id}"><input type="checkbox" id="rs-${s.id}" data-rsel="${s.id}" ${R.sel[s.id]!==false?"checked":""}><span><b>${esc(s.name||"Adsız saha")}</b><small>${fmtDate(s.date)} · ${s.type?TYPES[s.type]:"tip seçilmedi"}</small></span></label>`).join("")}</div>`:`<p class="muted" style="margin:0">Bu aralıkta keşif yok.</p>`}
+   ${all.length?`${all.length>1?`<div class="hint">Raporda ve tablolarda bu sıra kullanılır; oklarla değiştir.</div>`:""}<div class="checks">${all.map((s,i)=>`<div style="display:flex;align-items:center;gap:6px"><b style="min-width:1.5em;text-align:right">${i+1}.</b><label class="chk" for="rs-${s.id}" style="flex:1"><input type="checkbox" id="rs-${s.id}" data-rsel="${s.id}" ${R.sel[s.id]!==false?"checked":""}><span><b>${esc(s.name||"Adsız saha")}</b><small>${fmtDate(s.date)} · ${s.type?TYPES[s.type]:"tip seçilmedi"}</small></span></label>${all.length>1?`<button type="button" class="btn sm" data-sup="${i}" ${i?"":"disabled"} aria-label="Yukarı">↑</button><button type="button" class="btn sm" data-sdn="${i}" ${i<all.length-1?"":"disabled"} aria-label="Aşağı">↓</button>`:""}</div>`).join("")}</div>`:`<p class="muted" style="margin:0">Bu aralıkta keşif yok.</p>`}
   </section>
   ${routePanelHtml()}
   <section class="panel">
@@ -924,6 +926,8 @@ function renderReport(){
   <pre id="r-pre" hidden style="white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:.85rem"></pre>`;
   app.querySelector("#back").onclick=renderList;
   app.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{R.mode=b.dataset.mode;R.summaryEdited=false;renderReport()});
+  app.querySelectorAll("[data-sup],[data-sdn]").forEach(b=>b.onclick=()=>{const ids=all.map(x=>x.id),i=+(b.dataset.sup??b.dataset.sdn),j=b.dataset.sup!=null?i-1:i+1;[ids[i],ids[j]]=[ids[j],ids[i]];
+    prefs.routeOrd=[...ids,...(prefs.routeOrd||[]).filter(x=>!ids.includes(x))].slice(0,300);savePrefs();const y=scrollY;renderReport();scrollTo(0,y)});
   app.querySelector("#r-re").onclick=()=>{R.summaryEdited=false;R.summary=overallSummary(repList(),rangeLabel());app.querySelector("#r-sum").value=R.summary};
   app.querySelector("#r-pdf").onclick=makePdf;
   app.querySelector("#r-txt").onclick=copyShort;
@@ -1150,7 +1154,7 @@ function bindRoute(){app.querySelectorAll("[data-ropen]").forEach(b=>b.onclick=(
     box.innerHTML=`<div class="hint" style="margin:6px 0">${esc(sv.name||"Saha")} için kayıtlı yol noktasını seç (sahadan çıkışta kaydettiğin nokta):</div>`+pts.map((q,j)=>`<div style="display:flex;align-items:center;gap:6px;margin:3px 0"><span style="flex:1"><b>${j+1}.</b> ${hm(q.t)} <small class="muted">${q.la.toFixed(5)}, ${q.lo.toFixed(5)}${near(q)}</small></span><button type="button" class="btn sm" data-ruse="${q.k}">Bunu kullan</button></div>`).join("");
     box.querySelectorAll("[data-ruse]").forEach(u=>u.onclick=()=>{const q=prefs.routePts[+u.dataset.ruse];sv.coord=`${q.la.toFixed(5)}, ${q.lo.toFixed(5)}`;sv.coordSrc="yol noktası";
       prefs.routePts.splice(+u.dataset.ruse,1);savePrefs();saveAll();toast(`${sv.name||"Saha"}: koordinat yol noktasından alındı`);rerenderRoute(false)})});const p=app.querySelector("#routeP");if(!p)return;
-  p.querySelectorAll("[data-rup],[data-rdn]").forEach(b=>b.onclick=()=>{const ids=routeSites().map(s=>s.id),i=+(b.dataset.rup??b.dataset.rdn),j=b.dataset.rup!=null?i-1:i+1;[ids[i],ids[j]]=[ids[j],ids[i]];prefs.routeOrd=[...ids,...(prefs.routeOrd||[]).filter(x=>!ids.includes(x))].slice(0,300);savePrefs();rerenderRoute(true)});
+  p.querySelectorAll("[data-rup],[data-rdn]").forEach(b=>b.onclick=()=>{const rs=routeSites().map(s=>s.id),i=+(b.dataset.rup??b.dataset.rdn),j=b.dataset.rup!=null?i-1:i+1,full=sortSites(Object.values(surveys).filter(inRange)).map(s=>s.id),a=full.indexOf(rs[i]),c=full.indexOf(rs[j]);[full[a],full[c]]=[full[c],full[a]];prefs.routeOrd=[...full,...(prefs.routeOrd||[]).filter(x=>!full.includes(x))].slice(0,300);savePrefs();const y=scrollY;renderReport();scrollTo(0,y);if(routeCache.blob)showRoute()});
   p.querySelector("#r-pt").onclick=()=>takeRoutePt(()=>rerenderRoute(false));
   p.querySelector("#r-ptdel")?.addEventListener("click",e=>{const b=e.target;if(!b.dataset.armed){b.dataset.armed=1;b.textContent="Silinsin mi?";return}prefs.routePts=(prefs.routePts||[]).filter(p=>!(R.mode==="day"?p.d===R.d1:(p.d>=R.d1&&p.d<=R.d2)));savePrefs();rerenderRoute(false)});
   p.querySelector("#r-map").onclick=showRoute;
