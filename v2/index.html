@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.3 · 19.11.2026";
+const VERSION="4.4 · 22.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -449,13 +449,14 @@ function renderList(){
   ${arr.length?`<div class="row" style="justify-content:space-between"><h2 style="font-size:1.1rem">Keşifler</h2><button class="btn ghost sm" id="editList">${listEdit?"Bitti":"Kayıt sil"}</button></div>
    ${days.map(d=>`<div class="dayh">${fmtDate(d)||"Tarihsiz"}</div><div class="cards">${arr.filter(s=>s.date===d).map(s=>{const p=progress(s);return `<div class="cardrow"><button class="card" data-id="${esc(s.id)}"><b>${esc(s.name||"Adsız saha")} ${s.type?`<span class="pill ${s.type==="tt"?"tt":"it"}">${s.type==="tt"?"Yeni TT":"İTPC"}</span>`:'<span class="pill">Tip seçilmedi</span>'}${s.imported?' <span class="pill">Eski sürüm</span>':""}</b><span>${esc([s.gov,`${p.d}/${p.t} soru`,photoCount(s)?`${photoCount(s)} fotoğraf`:""].filter(Boolean).join(" · "))}</span></button>${listEdit?`<button class="btn danger" data-del="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`).join("")}`
   :`<div class="empty"><b>Henüz keşif yok</b><span class="muted" style="max-width:40ch">Sahaya varınca “+ Yeni saha”ya bas, saha tipini seç ve soruları doldur. Gün sonunda “Rapor (PDF)” ile raporu hazırla.</span></div>`}
-  <div class="row" style="margin-top:18px"><button class="btn" id="bk2">Yedek al</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label><button class="btn" id="imp">Eski sürümden aktar</button></div>
+  <div class="row" style="margin-top:18px"><button class="btn" id="bk2">Yedek al</button><button class="btn" id="notes">Notları dışa aktar</button><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label><button class="btn" id="imp">Eski sürümden aktar</button></div>
   <p class="hint" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kur. "}İnternet gerekmez; kayıtlar ve fotoğraflar sadece bu telefonda. Her akşam yedek al.<br>Sürüm ${VERSION}</p>`;
   app.querySelector("#new").onclick=newSurvey;
   app.querySelector("#rep").onclick=()=>renderReport();
   app.querySelector("#rpt").onclick=()=>takeRoutePt(()=>renderList());
   app.querySelector("#bk")?.addEventListener("click",backup);
   app.querySelector("#bk2").onclick=backup;
+  app.querySelector("#notes").onclick=exportNotes;
   app.querySelector("#imp").onclick=renderImport;
   app.querySelector("#rs").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)restore(f)};
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
@@ -1339,6 +1340,20 @@ async function backup(){
   for(const s of Object.values(surveys))for(const arr of Object.values(s.photos||{}))for(const p of arr)for(const id of [p.id,p.orig,p.cab?.src].filter(Boolean)){try{const b=await idbGet(id);if(b)ph[id]=await blobToData(b)}catch(e){}}
   const data=JSON.stringify({app:"saha-kesif-2",v:1,at:new Date().toISOString(),surveys,prefs,photos:ph});
   await saveFile({filename:`saha-kesif-2-yedek_${today()}.json`,data,type:"application/json",onDone:()=>{prefs.lastBackup=Date.now();prefs.unsaved=0;savePrefs();toast("Yedek alındı ✓");if(view==="list")renderList()}});
+}
+/* Fotoğrafsız, koordinatsız küçük dosya: sahaların cevapları, sayıları, notları ve rapor metni. Geri yüklemede kullanılmaz. */
+async function exportNotes(){
+  const list=Object.values(surveys).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||String(a.name).localeCompare(String(b.name),"tr"));
+  const sites=list.map(s=>{const cevap={};
+    for(const {sec,it} of ALL){if(!shown(s,it,sec))continue;const a=A(s,it.k);if(a===""||a==null)continue;
+      cevap[it.s||it.q]=it.kind==="yn"?YN[a]:it.kind==="num"?`${a} ${it.u||""}`.trim():a;
+      for(const [k,v] of Object.entries(s.v||{}))if(k.startsWith(it.k+".")&&v!=="")cevap[`${it.s||it.q} – ${k.slice(it.k.length+1)}`]=v;
+      if(s.n?.[it.k])cevap[`${it.s||it.q} – not`]=s.n[it.k]}
+    return{saha:s.name||"Adsız saha",tarih:s.date||"",tip:TYPES[s.type]||"",il:s.gov||"",cevaplar:cevap,
+      jeneratorler:(s.gens||[]).map(g=>({kVA:g.kva,kullanim_yuzde:g.pct,rol:g.role,not:g.note})).filter(g=>g.kVA||g.not),
+      genel_not:s.genNote||"",rapor_metni:s.summaryEdited?s.summary:siteSummary(s)}});
+  const data=JSON.stringify({app:"saha-kesif-2-notlar",at:new Date().toISOString(),not:"Fotoğraf ve GPS koordinatı içermez. Geri yükleme dosyası değildir.",sahalar:sites},null,1);
+  await saveFile({filename:`saha-notlari_${today()}.json`,data,type:"application/json",onDone:()=>toast(`${sites.length} sahanın notları dışa aktarıldı`)});
 }
 async function restore(file){
   try{const d=JSON.parse(await file.text());
