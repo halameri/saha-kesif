@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.5 · 23.11.2026";
+const VERSION="4.6 · 23.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -449,7 +449,9 @@ function renderList(){
   ${arr.length?`<div class="row" style="justify-content:space-between"><h2 style="font-size:1.1rem">Keşifler</h2><button class="btn ghost sm" id="editList">${listEdit?"Bitti":"Kayıt sil"}</button></div>
    ${days.map(d=>`<div class="dayh">${fmtDate(d)||"Tarihsiz"}</div><div class="cards">${arr.filter(s=>s.date===d).map(s=>{const p=progress(s);return `<div class="cardrow"><button class="card" data-id="${esc(s.id)}"><b>${esc(s.name||"Adsız saha")} ${s.type?`<span class="pill ${s.type==="tt"?"tt":"it"}">${s.type==="tt"?"Yeni TT":"İTPC"}</span>`:'<span class="pill">Tip seçilmedi</span>'}${s.imported?' <span class="pill">Eski sürüm</span>':""}</b><span>${esc([s.gov,`${p.d}/${p.t} soru`,photoCount(s)?`${photoCount(s)} fotoğraf`:""].filter(Boolean).join(" · "))}</span></button>${listEdit?`<button class="btn danger" data-del="${esc(s.id)}">Sil</button>`:""}</div>`}).join("")}</div>`).join("")}`
   :`<div class="empty"><b>Henüz keşif yok</b><span class="muted" style="max-width:40ch">Sahaya varınca “+ Yeni saha”ya bas, saha tipini seç ve soruları doldur. Gün sonunda “Rapor (PDF)” ile raporu hazırla.</span></div>`}
-  <div class="row" style="margin-top:18px"><button class="btn" id="bk2">Yedek al</button><button class="btn" id="notes">Notları dışa aktar</button><button class="btn" id="coords">Koordinatları kopyala</button></div><pre id="coordPre" hidden style="white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:.85rem;user-select:text"></pre><div class="row"><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label><button class="btn" id="imp">Eski sürümden aktar</button></div>
+  <div class="row" style="margin-top:18px"><button class="btn" id="bk2">Yedek al</button><button class="btn" id="notes">Notları dışa aktar</button></div>
+  <section class="panel" style="margin-top:12px"><h2 style="font-size:1.05rem;margin:0 0 4px">📍 Koordinatlar</h2><div class="hint">Sadece saha adı, tarih, il ve koordinat dışa aktarılır; fotoğraf ve not gitmez.</div>
+   <div class="row"><button class="btn" id="coords">Kopyala</button><button class="btn" id="coordCsv">Excel (CSV) indir</button><button class="btn" id="coordKml">Google Earth / Haritalar (KML) indir</button></div></section><pre id="coordPre" hidden style="white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:.85rem;user-select:text"></pre><div class="row"><label class="btn upload" for="rs">Yedekten yükle<input type="file" id="rs" accept=".json,application/json"></label><button class="btn" id="imp">Eski sürümden aktar</button></div>
   <p class="hint" style="margin-top:8px">${standalone?"":"iPhone: Paylaş ⬆ › Ana Ekrana Ekle ile kur. "}İnternet gerekmez; kayıtlar ve fotoğraflar sadece bu telefonda. Her akşam yedek al.<br>Sürüm ${VERSION}</p>`;
   app.querySelector("#new").onclick=newSurvey;
   app.querySelector("#rep").onclick=()=>renderReport();
@@ -458,6 +460,8 @@ function renderList(){
   app.querySelector("#bk2").onclick=backup;
   app.querySelector("#notes").onclick=exportNotes;
   app.querySelector("#coords").onclick=copyCoords;
+  app.querySelector("#coordCsv").onclick=()=>exportCoords("csv");
+  app.querySelector("#coordKml").onclick=()=>exportCoords("kml");
   app.querySelector("#imp").onclick=renderImport;
   app.querySelector("#rs").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)restore(f)};
   app.querySelector("#editList")?.addEventListener("click",()=>{listEdit=!listEdit;renderList()});
@@ -1190,12 +1194,22 @@ function shortText(){
 }
 /* sadece saha adı + tarih + koordinat (+ Google Maps linki), düz metin */
 async function copyCoords(){
-  const list=Object.values(surveys).filter(s=>parseCoord(s.coord)).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||String(a.name).localeCompare(String(b.name),"tr"));
+  const list=coordList();
   if(!list.length){toast("Koordinatı girilmiş saha yok");return}
   const t=list.map(s=>{const c=parseCoord(s.coord);return `${s.name||"Adsız saha"} (${fmtDate(s.date)}): ${c[0].toFixed(6)}, ${c[1].toFixed(6)} · https://maps.google.com/?q=${c[0].toFixed(6)},${c[1].toFixed(6)}`}).join("\n");
   const pre=app.querySelector("#coordPre");
   try{await navigator.clipboard.writeText(t);toast(`${list.length} sahanın koordinatı kopyalandı`)}catch(e){toast("Aşağıdaki metni seçip kopyala")}
   if(pre){pre.textContent=t;pre.hidden=false}
+}
+function coordList(){return Object.values(surveys).filter(s=>parseCoord(s.coord)).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||String(a.name).localeCompare(String(b.name),"tr"))}
+async function exportCoords(kind){
+  const list=coordList();if(!list.length){toast("Koordinatı girilmiş saha yok");return}
+  const x=t=>String(t??"").replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"})[c]);
+  if(kind==="csv"){const q=t=>`"${String(t??"").replace(/"/g,'""')}"`;
+    const rows=[["Merkez","Tarih","İl","Enlem","Boylam","Harita linki"],...list.map(s=>{const c=parseCoord(s.coord);return[s.name||"Adsız saha",fmtDate(s.date),s.gov||"",c[0].toFixed(6),c[1].toFixed(6),`https://maps.google.com/?q=${c[0].toFixed(6)},${c[1].toFixed(6)}`]})];
+    await saveFile({filename:`saha-koordinatlari_${today()}.csv`,data:"\ufeff"+rows.map(r=>r.map(q).join(";")).join("\r\n"),type:"text/csv",onDone:()=>toast(`${list.length} sahanın koordinatı dışa aktarıldı`)})}
+  else{const pm=list.map(s=>{const c=parseCoord(s.coord);return `<Placemark><name>${x(s.name||"Adsız saha")}</name><description>${x([fmtDate(s.date),s.gov].filter(Boolean).join(" · "))}</description><Point><coordinates>${c[1].toFixed(6)},${c[0].toFixed(6)},0</coordinates></Point></Placemark>`}).join("");
+    await saveFile({filename:`saha-koordinatlari_${today()}.kml`,data:`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Saha koordinatları</name>${pm}</Document></kml>`,type:"application/vnd.google-earth.kml+xml",onDone:()=>toast(`${list.length} saha KML olarak dışa aktarıldı`)})}
 }
 async function copyShort(){const t=shortText(),pre=app.querySelector("#r-pre");try{await navigator.clipboard.writeText(t);toast("Kopyalandı · WhatsApp'a yapıştır")}catch(e){pre.textContent=t;pre.hidden=false;const sel=getSelection(),rg=document.createRange();rg.selectNodeContents(pre);sel.removeAllRanges();sel.addRange(rg);toast("Metni seçtim, Kopyala'ya bas")}}
 
