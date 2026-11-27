@@ -175,8 +175,9 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 <section id="tab-hesap" class="tabp">
 <p class="lead">Her site için <b>DC yükü</b> ve <b>salon</b> bilgisini gir. Akü, klima, DC sistem, jeneratör ve AC yük ekibin Saha Yük Profili tablosundaki yönteme göre kendiliğinden çıkar.</p>
 <details class="how"><summary><b>Sonuçlar nasıl okunur?</b> (Normal, En fazla, Talep)</summary><ol>
- <li><b>Normal (min):</b> Elektrik varken, akü doluyken şebekeden çekilen akım. Sadece DC yük + çalışan klima.<br><small>Örnek: 20 A DC → 20 × 54 V ÷ 0,95 = 1.137 W → 220 V'ta ≈ 5,2 A. Klima 10 A ise normal ≈ 15 A.</small></li>
- <li><b>En fazla (max):</b> Kesinti bitip elektrik geldiğinde, akü şarj olurken çekilen akım. DC yük + akü şarjı (0,1C) + klima (ayarlara göre yedek klima dahil). Sadece akü dolana kadar sürer.</li>
+ <li><b>Normal (min):</b> Elektrik varken, akü doluyken şebekeden çekilen akım. Sadece DC yük + çalışan klima.<br><small>Örnek: 20 A DC → 20 × 54 V ÷ 0,95 = 1.137 W → 220 V'ta ≈ 5,2 A. 24.000 BTU split klima: 24.000 ÷ 9,5 EER = 2.526 W → ≈ 11,5 A. Normal ≈ 5,2 + 11,5 ≈ 17 A.</small></li>
+ <li><b>Klima tüketimi:</b> Klimanın çektiği elektrik = soğutma kapasitesi (BTU/h) ÷ EER. Split için EER 9,5, DX (hassas) için 10 (1 kcal/h = 3,968 BTU/h). Örnek: 38.000 kcal/h DX → 150.784 ÷ 10 = 15,1 kW → 3 fazda faz başı ≈ 23 A.</li>
+ <li><b>En fazla (max):</b> Kesinti bitip elektrik geldiğinde, akü şarj olurken çekilen akım. DC yük + akü şarjı (0,1C) + çalışan klima (yedek klima çalışmaz, sayılmaz). Sadece akü dolana kadar sürer.</li>
  <li><b>Talep edilecek:</b> En fazla akım × 1,25 güvenlik payı → bir üst standart sigorta. Jeneratör de en fazla değere göre seçilir.</li>
 </ol></details>
 
@@ -203,7 +204,7 @@ const DEF_A={dcv:54,eff:0.95,chg:0.1,chgMax:0,
  dod:1,aging:1,dodPb:1,agingPb:1,liStd:150,liMax:8,pbMin:2,batMax:4,
  liSizes:"50; 100; 150; 200; 300",pb2Sizes:"200; 300; 400; 500; 600; 800; 1000; 1200; 1500; 2000; 2500; 3000",pb12Sizes:"100; 150; 190; 200",
  hSmall:15,hBig:10,hLimit:100,
- roomW:2000,coolM:1.2,splitMin:24000,splitA:10,dxA:33.2,dxStd:38000,dxStdA:54,acAll:1,
+ roomW:2000,coolM:1.2,splitMin:24000,splitEer:9.5,dxEer:10,dxStd:38000,acAll:0,av:2,
  rects:"7,2; 72",v1:220,v3:380,monoMax:63,dcMonoMax:10,safety:1.25,gmax:0.8,derate:0.9,gens:"33,45,60,80,100,150,200,250,300,400,500",
  svc:80,manW:60,manH:175,trN:2,trW:70,trD:70,trH:200,dcH:200,rackH:100,dxH:195,dxW:130,dxD:75,dxFront:1,dcBigW:60,dcBigD:60,lineGap:20,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2};
 const A_LABELS=[
@@ -212,7 +213,7 @@ const A_LABELS=[
  ["liStd","Standart lityum grup boyu (Ah)"],["liMax","Otomatikte lityum en fazla grup (fazlası jel)"],["pbMin","Jel: en az paralel grup"],["batMax","Jel: en fazla paralel grup"],
  ["chg","Akü şarj oranı (C)"],["chgMax","Şarj akımı sınırı (A, 0 = sınır yok)"],["dcv","DC çalışma gerilimi (V)"],["eff","Rectifier verimi"],
  ["roomW","Klima: odanın dışarıdan aldığı ısı (W)"],["coolM","Klima pay katsayısı (×)"],["splitMin","En küçük split klima (BTU)"],
- ["splitA","Split klima akımı (A, 24.000 BTU başına, monofaze)"],["dxStd","Standart DX klima (kcal/h, büyük salonlar)"],["dxStdA","Standart DX klimanın akımı (A, faz başı)"],["dxA","Diğer DX boyları için akım (A/faz, 20.000 kcal/h başına)"],["acAll","Max yükte yedek klima da sayılsın (1 = evet, 0 = hayır)"],
+ ["splitEer","Split klima verimi EER (BTU/h ÷ W) – çektiği güç = BTU ÷ EER"],["dxStd","Standart DX klima (kcal/h, büyük salonlar)"],["dxEer","DX (hassas) klima verimi EER (BTU/h ÷ W, 1 kcal/h = 3,968 BTU/h)"],["acAll","Max yükte yedek klima da sayılsın (1 = evet, 0 = hayır)"],
  ["v1","Monofaze gerilim (V)"],["v3","Trifaze gerilim (V)"],["monoMax","Monofaze en fazla akım (A, üstü trifaze)"],["dcMonoMax","DC sistem tek faz en fazla (kW, üstü 3 faz girişli)"],["safety","Sigorta güvenlik payı (×)"],
  ["gmax","Jeneratör en fazla yüklenme"],["derate","Jeneratör sıcaklık düşümü"],
  ["cabG","DC kabin altına sığan akü grubu"],["cabW","DC kabin eni (cm)"],["cabD","DC kabin derinliği (cm)"],["rackG","Akü rafına sığan grup"],["rackW","Akü rafı eni (cm)"],["rackD","Akü rafı derinliği (cm)"],
@@ -225,7 +226,7 @@ const AC={split:{label:"Split",unit:"BTU",sizes:[12000,18000,24000,30000,36000,4
 const DEF_ROWS=[{name:"Test1",dc:"25",salon:"bag",hours:"",ac:"",acs:"",acn:"",bt:"",mod:"",rect:""},{name:"Test2",dc:"25",salon:"mev",hours:"",ac:"",acs:"",acn:"",bt:"",mod:"",rect:""}];
 const KEY="enerji-yuk-hesabi-v4",OLDKEY="enerji-yuk-hesabi-v3";
 let st=load();
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.rows)return{a:{...DEF_A,...s.a},rows:s.rows}}catch(e){}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.rows){const sa={...DEF_A,...s.a};if(sa.av!==2){sa.acAll=0;sa.av=2}return{a:sa,rows:s.rows}}}catch(e){}
   /* eski sürümden sadece siteleri al (kabuller değişti) */
   try{const o=JSON.parse(localStorage.getItem(OLDKEY));if(o&&o.rows&&o.rows.length)return{a:{...DEF_A},rows:o.rows.map(r=>({name:r.name,dc:r.dc,salon:r.scheme==="N+1"?"bag":"mev",hours:r.hours||"",ac:r.ac==="hassas"?"dx":"",acs:"",bt:r.bt||"",mod:r.mod||"",rect:""}))}}catch(e){}
   return{a:{...DEF_A},rows:DEF_ROWS.map(r=>({...r}))}}
@@ -315,8 +316,10 @@ function calc(r){
   if(uS&&!uN)autoRun=Math.max(1,Math.ceil(need/acs-1e-9));
   const acN=uN||(autoRun+(bag?1:0)),acRun=uN?Math.max(1,acN-(bag&&acN>1?1:0)):autoRun;
   const acShort=acRun*acs<need-1e-6,acCount=num(a.acAll)?acN:acRun,acUser=!!(uS||uN),autoN=autoRun+(bag?1:0);
-  const autoA=acT==="split"?acs/24000*(num(a.splitA)||0):(acs===num(a.dxStd)&&num(a.dxStdA)>0?num(a.dxStdA):acs/20000*(num(a.dxA)||0));
-  const unitA=num(r.acA)>0?num(r.acA):autoA;
+  /* klimanın çektiği elektrik gücü = soğutma kapasitesi (BTU/h) ÷ EER */
+  const btu=acT==="split"?acs:acs*3.968,eer=acT==="split"?(num(a.splitEer)||9.5):(num(a.dxEer)||10),autoW=btu/eer;
+  const autoA=acT==="split"?autoW/a.v1:autoW/(1.732*a.v3);
+  const unitA=num(r.acA)>0?num(r.acA):autoA,unitW=num(r.acA)>0?unitA*(acT==="split"?a.v1:1.732*a.v3):autoW,acWn=acRun*unitW;
   /* besleme: DX varsa veya monofaze toplam sınırı aşarsa trifaze */
   const monoTot=dcW/a.v1+(acT==="split"?acCount*unitA:Infinity);
   const dcTri=units*rSize>(num(a.dcMonoMax)||10),tri=dcTri||!(monoTot<=(num(a.monoMax)||63));
@@ -330,7 +333,7 @@ function calc(r){
   const acAn=!tri?acRun*unitA:(acT==="dx"?acRun*unitA:Math.ceil(acRun/3)*unitA),totN=acAn+dcAn,kvaN=(tri?1.732*a.v3:a.v1)*totN/1000;
   const brk=BREAKERS.find(b=>b>=tot*a.safety-1e-9)||Math.ceil(tot*a.safety);
   const gNeed=kva/(a.gmax*a.derate),gs=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=gs.find(x=>x>=gNeed)||null,genMin=gen!=null&&gen===gs[0]&&gNeed<gen*0.8;
-  return{dcWn,dcAn,acAn,totN,kvaN,row:r,B,bag,dc,h,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,dcW,heatW,needW,need,acT,acs,acRun,acN,acCount,unitA,tri,acA,dcA,tot,kva,brk,gNeed,gen,genMin,dcTri,autoA,acShort,acUser,autoS,autoN};
+  return{btu,eer,unitW,acWn,dcWn,dcAn,acAn,totN,kvaN,row:r,B,bag,dc,h,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,dcW,heatW,needW,need,acT,acs,acRun,acN,acCount,unitA,tri,acA,dcA,tot,kva,brk,gNeed,gen,genMin,dcTri,autoA,acShort,acUser,autoS,autoN};
 }
 function rectSizes(){const l=list("rects");return l.length?l:[7.2]}
 const mimari=c=>`DC, ${c.bag?"1+1 ":""}Klima, Akü, Jeneratör`;
@@ -351,7 +354,7 @@ const IC={
  gen:'<rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="9" cy="12.5" r="3"/><path d="M15 10h4M15 13h4M15 16h4M6 19v2M18 19v2"/>'};
 const ico=(k,cls)=>`<span class="fi ${cls}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg></span>`;
 function flowHtml(c){
-  const a=st.a,bt=BAT[c.B.t],T=AC[c.acT],V=c.tri?`1,73 × ${a.v3} V`:`${a.v1} V`;
+  const a=st.a,bt=BAT[c.B.t],T=AC[c.acT],V=c.tri?`(1,73 × ${a.v3} V)`:`${a.v1} V`;
   const step=(k,cls,title,body,res)=>`<li class="fs">${ico(k,cls)}<div class="fb"><div class="ft">${title}</div><div class="fc">${body}</div></div><div class="fr">${res}</div></li><li class="fa" aria-hidden="true">↓</li>`;
   const fac=[c.B.dod!==1?` ÷ ${f(c.B.dod,2)} (kullanılabilir)`:"",bt.pb&&c.B.rate<1?` ÷ ${f(c.B.rate,2)} (${f(c.h,0)} saatte alınabilen)`:"",c.B.aging!==1?` × ${f(c.B.aging,2)} (yaşlanma)`:""].join("");
   const Ar=area(c),lay=`<br>${Ar.calc}`;
@@ -362,8 +365,8 @@ function flowHtml(c){
    ${step("dev","c1","DC yük",`${f(c.dc,0)} A × ${a.dcv} V = ${f(c.dc*a.dcv,0)} W`,`${f(c.dc,0)} ADC`)}
    ${step("bat","c2","Akü – "+bt.label,`${f(c.dc,0)} A × ${f(c.h,0)} saat${fac} = ${f(c.needAh,0)} Ah<br>${f(c.needAh,0)} ÷ ${f(c.mod,0)} Ah → ${c.mods} grup = ${f(c.ah,0)} Ah${bt.per>1?` · her grup ${bt.per} ${bt.unit} seri = 48 V, toplam ${c.mods*bt.per} ${bt.unit}`:""}${lay}<br>Şarj akımı: ${f(c.ah,0)} Ah × ${f(a.chg,2)} = ${f(c.chA,0)} A`,`${batTxt(c)}<small>≈ ${f(c.real)} saat</small>`)}
    ${step("rec","c4","DC sistem",`(${f(c.dc,0)} A yük + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW,2)} kW → listedeki ilk uygun boy<br>Doluluk: ${f(c.dcKW,2)} ÷ ${f(c.units*c.rSize)} kW = %${f(c.rLoad*100,0)}`,`${c.units}×${f(c.rSize)} kW`)}
-   ${step("snow","c3","Klima",`Odadaki ısı: ${f(c.dc*a.dcv,0)} W ÷ ${f(a.eff,2)} = ${f(c.heatW,0)} W; × ${f(num(a.coolM)||1,2)} + ${f(num(a.roomW)||0,0)} W dışarıdan = ${f(c.needW,0)} W = ${f(c.need,0)} ${T.unit}<br>${c.acRun} çalışan × ${f(c.acs,0)} ${T.unit}${c.bag?" + 1 yedek (bağımsız salon 1+1)":" (mevcut salon, yedek yok)"}<br>Akım: ${c.acCount} × ${f(c.unitA,1)} A${c.acT==="dx"?"/faz":""} = ${f(c.acA,1)} A`,`${c.acN}×${f(c.acs/1000,0)}k ${T.unit}<small>${T.label}</small>`)}
-   ${step("plug","c5","Normal AC yük (A) – "+besl(c),`Akü dolu, şarj yok:<br>· DC: ${f(c.dc,0)} A × ${a.dcv} V ÷ ${f(a.eff,2)} = ${f(c.dcWn,0)} W → ${f(c.dcWn,0)} ÷ ${V} = ${f(c.dcAn,1)} A<br>· Klima: ${c.acRun} çalışan × ${f(c.unitA,1)} A = ${f(c.acAn,1)} A<br>· Toplam: ${f(c.dcAn,1)} + ${f(c.acAn,1)} = <b>${f(c.totN,1)} A</b>`,`<b>${f(c.totN,1)} A</b><small>normal</small>`)}
+   ${step("snow","c3","Klima",`Odadaki ısı: ${f(c.dc*a.dcv,0)} W ÷ ${f(a.eff,2)} = ${f(c.heatW,0)} W; × ${f(num(a.coolM)||1,2)} + ${f(num(a.roomW)||0,0)} W dışarıdan = ${f(c.needW,0)} W = ${f(c.need,0)} ${T.unit}<br>${c.acRun} çalışan × ${f(c.acs,0)} ${T.unit}${c.bag?" + 1 yedek (bağımsız salon 1+1)":" (mevcut salon, yedek yok)"}<br>Çektiği güç (1 klima): ${f(c.btu,0)} BTU/h ÷ ${f(c.eer,1)} EER = ${f(c.unitW,0)} W → ${f(c.unitW,0)} ÷ ${c.acT==="dx"?"(1,732 × "+a.v3+" V)":a.v1+" V"} = ${f(c.unitA,1)} A${c.acT==="dx"?"/faz":""}<br>Çalışan: ${c.acRun} × ${f(c.unitW,0)} W = ${f(c.acWn,0)} W${c.acCount>c.acRun?` · yedek de sayılırsa ${c.acCount} klima`:" · yedek klima çalışmaz, sayılmaz"}`,`${c.acN}×${f(c.acs/1000,0)}k ${T.unit}<small>${T.label}</small>`)}
+   ${step("plug","c5","Normal AC yük (A) – "+besl(c),`Akü dolu, şarj yok:<br>· DC: ${f(c.dc,0)} A × ${a.dcv} V ÷ ${f(a.eff,2)} = ${f(c.dcWn,0)} W → ${f(c.dcWn,0)} ÷ ${V} = ${f(c.dcAn,1)} A<br>· Klima: ${c.acRun} çalışan × ${f(c.unitW,0)} W = ${f(c.acWn,0)} W → ${f(c.acAn,1)} A${c.tri&&c.acT==="split"?" (split klimalar fazlara dağıtılır)":""}<br>· Toplam: ${f(c.dcAn,1)} + ${f(c.acAn,1)} = <b>${f(c.totN,1)} A</b>`,`<b>${f(c.totN,1)} A</b><small>normal</small>`)}
    ${step("plug","c5","En fazla AC yük (A) – "+besl(c),`DC sistemin şebekeden çektiği akım:<br>· DC tarafı: (${f(c.dc,0)} A yük + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW*1000,0)} W<br>· Kayıpla şebekeden alınan: ${f(c.dcKW*1000,0)} W ÷ ${f(a.eff,2)} verim = ${f(c.dcW,0)} W<br>· Akım: ${f(c.dcW,0)} W ÷ ${V} = <b>${f(c.dcA,1)} A</b>${c.tri?" (faz başı)":""}<br>Klima: ${f(c.acA,1)} A<br>Toplam: ${f(c.dcA,1)} + ${f(c.acA,1)} = ${f(c.tot,1)} A${c.tri?" (faz başı)":""}${bar}`,`${f(c.tot,1)} A<small>${besl(c)}</small>`)}
    ${step("fuse","c6","Talep edilecek sigorta",`${f(c.tot,1)} A × ${f(a.safety,2)} = ${f(c.tot*a.safety,1)} A → bir üst standart boy`,`<b>${c.brk} A</b><small>${besl(c)}</small>`)}
    <li class="fs">${ico("gen","c7")}<div class="fb"><div class="ft">Jeneratör</div><div class="fc">${V} × ${f(c.tot,1)} A = ${f(c.kva)} kVA; ÷ (${f(a.gmax,2)} en fazla yük × ${f(a.derate,2)} sıcaklık) = ${f(c.gNeed)} kVA → ${c.genMin?"listedeki en küçük boy":"bir üst standart boy"}</div></div><div class="fr">${c.gen?c.gen+" kVA":"–"}</div></li>
@@ -391,7 +394,7 @@ function cardHtml(r,i){
      <dt>Enerji besleme</dt><dd>${besl(c)}<small>${c.tri?`3 faz ${st.a.v3} V, değerler faz başı`:`${st.a.v1} V`}</small></dd>
      <dt>DC – normal</dt><dd>${f(c.dcAn,1)} A<small>sadece yük: ${f(c.dc,0)} A × ${st.a.dcv} V ÷ ${st.a.eff} = ${f(c.dcWn,0)} W (akü dolu)</small></dd>
      <dt>DC – şarj sırasında</dt><dd>${f(c.dcA,1)} A<small>yük + akü şarjı ${f(c.chA,0)} A · sadece kesintiden sonra, akü dolana kadar · ${c.dcTri?"DC sistem 3 faz girişli":"DC sistem tek faza da bağlanabilir"}</small></dd>
-     <dt>Klima</dt><dd>${f(c.acAn,1)} A${c.acA>c.acAn+0.05?` → en fazla ${f(c.acA,1)} A`:""}<small>${c.acRun} çalışan klima × ${f(c.unitA,1)} A${c.acA>c.acAn+0.05?" · en fazlada yedek klima da sayıldı (Ayarlar)":""}</small></dd>
+     <dt>Klima</dt><dd>${f(c.acAn,1)} A${c.acA>c.acAn+0.05?` → en fazla ${f(c.acA,1)} A`:""}<small>${c.acRun} çalışan klima × ${f(c.unitW,0)} W (${f(c.btu,0)} BTU ÷ ${f(c.eer,1)}) = ${f(c.acWn,0)} W${c.acA>c.acAn+0.05?" · en fazlada yedek klima da sayıldı (Ayarlar)":""}</small></dd>
      <div class="big" style="display:contents"><dt>Normal (min)</dt><dd>${f(c.totN,1)} A${c.tri?" / faz":""}<small>DC yük + klima · ${f(c.kvaN,1)} kVA</small></dd></div>
      <dt>En fazla (max)</dt><dd>${f(c.tot,1)} A${c.tri?" / faz":""}<small>kesinti sonrası şarj + klima · ${f(totKW(c),1)} kW · ${f(c.kva,1)} kVA (tüm fazlar)</small></dd>
      <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.brk} A · ${besl(c)}</dd></div>
@@ -422,7 +425,7 @@ function cardHtml(r,i){
 function teamRows(){const cs=st.rows.map(r=>({r,c:calc(r)}));const v=(fn)=>cs.map(({r,c})=>c?fn(c,r):"");
   return [["Site",cs.map(x=>x.r.name||"")],["Saha Yük Profili",v(c=>`${f(c.dc,0)} ADC`)],["Salon Bilgisi",v(c=>c.bag?"Bağımsız Salon":"Mevcut Salona kurulum")],["Mimari",v(mimari)],
    ["Akü",v(batTxt)],["Akü Backup süresi",v(c=>`${f(c.h,0)} saat`)],["Klima",v(acTxt)],["DC",v(c=>`${c.units}*${kw(c.rSize)} kw`)],["Jeneratör",v(c=>c.gen?`1x${c.gen} kva`:"–")],
-   ["AC yük (Amp) – normal / en fazla",v(()=>"")],["Enerji besleme",v(besl)],["DC – normal (sadece yük)",v(c=>f(c.dcAn,1))],["DC – şarj sırasında (yük + şarj)",v(c=>f(c.dcA,1))],["Klima – normal (çalışan)",v(c=>f(c.acAn,1))],["Klima – en fazla",v(c=>f(c.acA,1))],["Normal (min) – şarjsız",v(c=>f(c.totN,1)+(c.tri?" (faz başı)":""))],["Toplam – en fazla (şarj dahil)",v(c=>f(c.tot,1)+(c.tri?" (faz başı)":""))],["Toplam güç (kW)",v(c=>f(totKW(c),1))],["Toplam görünür güç (kVA)",v(c=>f(c.kva,1))],["Talep edilecek sigorta",v(c=>`${c.brk} A`)],["",v(()=>"")],["Salon içi Alan İhtiyacı",v(()=>"")],["Klima",v(c=>area(c).kl.txt)],["Transmisyon/fiber",v(c=>area(c).tr)],["DC",v(c=>area(c).dc)],["Akü",v(c=>area(c).aku)],["DC+Akü",v(c=>area(c).line)]]}
+   ["AC yük (Amp) – normal / en fazla",v(()=>"")],["Enerji besleme",v(besl)],["DC – normal (sadece yük)",v(c=>f(c.dcAn,1))],["DC – şarj sırasında (yük + şarj)",v(c=>f(c.dcA,1))],["Klima – 1 ünite (W → A)",v(c=>`${f(c.unitW,0)} W → ${f(c.unitA,1)} A`)],["Klima – normal (çalışan)",v(c=>f(c.acAn,1))],["Klima – en fazla",v(c=>f(c.acA,1))],["Normal (min) – şarjsız",v(c=>f(c.totN,1)+(c.tri?" (faz başı)":""))],["Toplam – en fazla (şarj dahil)",v(c=>f(c.tot,1)+(c.tri?" (faz başı)":""))],["Toplam güç (kW)",v(c=>f(totKW(c),1))],["Toplam görünür güç (kVA)",v(c=>f(c.kva,1))],["Talep edilecek sigorta",v(c=>`${c.brk} A`)],["",v(()=>"")],["Salon içi Alan İhtiyacı",v(()=>"")],["Klima",v(c=>area(c).kl.txt)],["Transmisyon/fiber",v(c=>area(c).tr)],["DC",v(c=>area(c).dc)],["Akü",v(c=>area(c).aku)],["DC+Akü",v(c=>area(c).line)]]}
 function summary(){if(window.onCalcChange)try{onCalcChange()}catch(e){console.error(e)}const R=teamRows();
   document.getElementById("sumH").innerHTML=`<tr><th>${R[0][0]}</th>${R[0][1].map(n=>`<th>${esc(n)}</th>`).join("")}</tr>`;
   document.getElementById("sumB").innerHTML=R.slice(1).map(([k,vals])=>`<tr class="${k==="AC yük (Amp) – normal / en fazla"||k==="Salon içi Alan İhtiyacı"?"sec":""}${k.startsWith("Toplam –")||k.startsWith("Normal (min)")||k==="Talep edilecek sigorta"||k.startsWith("Toplam güç")||k.startsWith("Toplam görünür")?" kk":""}"><td>${k}</td>${vals.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join("")}
