@@ -128,7 +128,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.9 · 27.11.2026";
+const VERSION="5.0 · 27.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -298,8 +298,8 @@ function energy(s){
   /* gerekli soğutma: odadaki ısı (rectifier girişi) × 1,2 pay + 2.000 W dışarıdan */
   const needW=rectW*1.2+2000,needBTU=needW*3.412;
   let splitW=0,coolDesc="dahil değil",coolCalc="";
-  if(mode==="pue"){const pue=num(L.pue)||1.7,dx=needBTU>48000,n=Math.max(1,Math.ceil(needBTU/(dx?38000*3.968:24000)-0.02));splitW=dcW*(pue-1);
-    coolDesc=`PUE ${fmt(pue,2)}`;coolCalc=`${fmt(dcW/1000)} kW × ${fmt(pue-1,2)} · klima: ${n} × ${dx?"38.000 kcal/h DX":"24.000 BTU split"} (ısı ≈ ${fmt(Math.ceil(needBTU/1000)*1000,0)} BTU)`}
+  if(mode==="pue"){const pue=num(L.pue)||1.7;splitW=dcW*(pue-1);const capB=splitW*AC_TYPES.split.eer,dx=capB>48000,n=Math.max(1,Math.ceil(capB/(dx?38000*3.968:24000)-0.02));
+    coolDesc=`PUE ${fmt(pue,2)}`;coolCalc=`${fmt(dcW/1000)} kW × ${fmt(pue-1,2)} = ${fmt(splitW/1000)} kW → kapasite ${fmt(splitW,0)} W × ${fmt(AC_TYPES.split.eer)} EER ≈ ${fmt(Math.round(capB/1000)*1000,0)} BTU → klima: ${n} × ${dx?"38.000 kcal/h DX":"24.000 BTU split"}`}
   else if(mode==="isi"){const dx=needBTU>48000,eer=dx?AC_TYPES.hassas.eer:AC_TYPES.split.eer,DXB=38000*3.968,n=Math.max(1,Math.ceil(needBTU/(dx?DXB:24000)-0.02)),capBTU=n*(dx?DXB:24000);splitW=capBTU/eer;
     coolDesc=dx?`${n} × 38.000 kcal/h DX klima`:`${n} × 24.000 BTU split`;
     coolCalc=`ısı ${fmt(rectW/1000)} kW × 1,2 + 2 kW = ${fmt(needW/1000)} kW ≈ ${fmt(Math.ceil(needBTU/1000)*1000,0)} BTU${dx?` → ${n} × 38.000 kcal/h (${fmt(capBTU,0)} BTU) ÷ ${fmt(eer)} EER`:` → ${n} × 24.000 BTU; tüketim ${fmt(capBTU,0)} ÷ ${fmt(eer)} EER`}`}
@@ -552,7 +552,7 @@ function coolHtml(){
   return `<div class="f" style="color:var(--ink)">Soğutma yükü</div>
    <label class="f">Hesap yöntemi${sel("coolMode",COOL_MODES,c.mode)}</label>
    ${c.mode==="auto"?`<div class="hint">Soğutma sorusunda “Yeni split klima gerekli” seçiliyse aşağıdaki klima hesaba eklenir${A(cur,"sogutma")==="Yeni split klima gerekli"?" (şu an ekleniyor)":" (şu an eklenmiyor)"}. Soğutma PUE ile hesaplanır; belirli bir klima için “Klima tipi ve kapasitesi”ni seç.</div>`:""}
-   ${pueOn?`<label class="f" style="max-width:240px">PUE${sel("pue",[["1.7","1,7"],["1.8","1,8"],["1.9","1,9"],["2","2,0"]],pv)}</label><div class="hint">Soğutma gücü = DC yük gücü × (PUE − 1). Örn. 300 A × 54 V = 16,2 kW × 0,7 = 11,3 kW. Klima adedi/boyu odadaki ısıdan otomatik seçilir.</div>`:""}
+   ${pueOn?`<label class="f" style="max-width:240px">PUE${sel("pue",[["1.7","1,7"],["1.8","1,8"],["1.9","1,9"],["2","2,0"]],pv)}</label><div class="hint">Soğutma gücü = DC yük gücü × (PUE − 1). Örn. 300 A × 54 V = 16,2 kW × 0,7 = 11,3 kW. Klima da buna göre seçilir: kapasite = soğutma gücü × 9,5 EER → BTU → standart klima (24.000 BTU split veya 38.000 kcal/h DX).</div>`:""}
    ${isi?`<div class="hint">Isı = DC yük ÷ 0,95 (rectifier girişi, hepsi ısıya döner) × 1,2 pay + 2 kW dışarıdan gelen ısı → BTU (× 3,412). Tüketim = BTU ÷ EER (split 9,5, 48.000 BTU üstü 38.000 kcal/h DX, EER 10).</div>`:""}
    ${showKlima?`<div class="grid2">
      <label class="f">Klima tipi${sel("acType",Object.entries(AC_TYPES).map(([k,v])=>[k,v.l]),c.type)}</label>
