@@ -45,6 +45,15 @@ h2{font-size:1.1rem;margin:26px 0 10px;color:var(--navy)}
 .need .big dt{padding-left:8px;border-radius:6px 0 0 6px;color:var(--ink);font-weight:700}
 .need .big dd{padding-right:8px;border-radius:0 6px 6px 0;font-size:1.15rem}
 .warn{color:var(--bad)!important}
+.res3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px 2px}
+.res3>div{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:var(--surface);min-width:0}
+.res3 .k{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.res3 .v{font-size:1.35rem;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0}
+.res3 .s{font-size:.75rem;color:var(--muted);line-height:1.3}
+.res3 .hi{background:var(--ok-soft);border-color:transparent}
+.how{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px 14px;margin:0 0 16px;max-width:760px;font-size:.9rem}
+.how b{color:var(--navy)}.how ol{margin:6px 0 0;padding-left:20px}.how li{margin:3px 0}
+@media (max-width:380px){.res3{grid-template-columns:1fr}}
 details.det{padding:4px 14px 12px}
 details.det summary{cursor:pointer;font-size:.85rem;color:var(--muted);font-weight:600;padding:6px 0}
 details.det table{width:100%;border-collapse:collapse;font-size:.85rem}
@@ -157,14 +166,19 @@ details.assume summary{cursor:pointer;padding:12px 14px;font-weight:700}
 </style></head><body>
 <div class="wrap">
 <header><div><small>Enerji birimi · Irak Network Projesi</small><h1>Enerji Yük Hesabı</h1></div>
- <div class="row noprint"><button class="btn primary" id="add">+ Site ekle</button><button class="btn" id="copy">Excel'e kopyala</button><button class="btn" id="print">Yazdır / PDF</button></div></header>
+ <div class="row noprint"><button class="btn primary" id="add">+ Site ekle</button><button class="btn" id="copy">Excel'e kopyala</button><button class="btn" id="print">Yazdır / PDF</button><button class="btn" id="steps">Hesap adımlarını göster</button></div></header>
 <nav class="tabs noprint" role="tablist" aria-label="Bölümler">
  <button role="tab" data-tab="hesap" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"/></svg>Hesap</button>
  <button role="tab" data-tab="salon" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>Salon</button>
  <button role="tab" data-tab="rehber" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>kW · kVA</button>
 </nav>
 <section id="tab-hesap" class="tabp">
-<p class="lead">Her site için <b>DC yükü</b> ve <b>salon</b> bilgisini gir. Akü, klima, DC sistem, jeneratör ve Max AC yük ekibin Saha Yük Profili tablosundaki yönteme göre kendiliğinden çıkar.</p>
+<p class="lead">Her site için <b>DC yükü</b> ve <b>salon</b> bilgisini gir. Akü, klima, DC sistem, jeneratör ve AC yük ekibin Saha Yük Profili tablosundaki yönteme göre kendiliğinden çıkar.</p>
+<details class="how"><summary><b>Sonuçlar nasıl okunur?</b> (Normal, En fazla, Talep)</summary><ol>
+ <li><b>Normal (min):</b> Elektrik varken, akü doluyken şebekeden çekilen akım. Sadece DC yük + çalışan klima.<br><small>Örnek: 20 A DC → 20 × 54 V ÷ 0,95 = 1.137 W → 220 V'ta ≈ 5,2 A. Klima 10 A ise normal ≈ 15 A.</small></li>
+ <li><b>En fazla (max):</b> Kesinti bitip elektrik geldiğinde, akü şarj olurken çekilen akım. DC yük + akü şarjı (0,1C) + klima (ayarlara göre yedek klima dahil). Sadece akü dolana kadar sürer.</li>
+ <li><b>Talep edilecek:</b> En fazla akım × 1,25 güvenlik payı → bir üst standart sigorta. Jeneratör de en fazla değere göre seçilir.</li>
+</ol></details>
 
 <div class="cards" id="cards"></div>
 
@@ -349,7 +363,8 @@ function flowHtml(c){
    ${step("bat","c2","Akü – "+bt.label,`${f(c.dc,0)} A × ${f(c.h,0)} saat${fac} = ${f(c.needAh,0)} Ah<br>${f(c.needAh,0)} ÷ ${f(c.mod,0)} Ah → ${c.mods} grup = ${f(c.ah,0)} Ah${bt.per>1?` · her grup ${bt.per} ${bt.unit} seri = 48 V, toplam ${c.mods*bt.per} ${bt.unit}`:""}${lay}<br>Şarj akımı: ${f(c.ah,0)} Ah × ${f(a.chg,2)} = ${f(c.chA,0)} A`,`${batTxt(c)}<small>≈ ${f(c.real)} saat</small>`)}
    ${step("rec","c4","DC sistem",`(${f(c.dc,0)} A yük + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW,2)} kW → listedeki ilk uygun boy<br>Doluluk: ${f(c.dcKW,2)} ÷ ${f(c.units*c.rSize)} kW = %${f(c.rLoad*100,0)}`,`${c.units}×${f(c.rSize)} kW`)}
    ${step("snow","c3","Klima",`Odadaki ısı: ${f(c.dc*a.dcv,0)} W ÷ ${f(a.eff,2)} = ${f(c.heatW,0)} W; × ${f(num(a.coolM)||1,2)} + ${f(num(a.roomW)||0,0)} W dışarıdan = ${f(c.needW,0)} W = ${f(c.need,0)} ${T.unit}<br>${c.acRun} çalışan × ${f(c.acs,0)} ${T.unit}${c.bag?" + 1 yedek (bağımsız salon 1+1)":" (mevcut salon, yedek yok)"}<br>Akım: ${c.acCount} × ${f(c.unitA,1)} A${c.acT==="dx"?"/faz":""} = ${f(c.acA,1)} A`,`${c.acN}×${f(c.acs/1000,0)}k ${T.unit}<small>${T.label}</small>`)}
-   ${step("plug","c5","Max AC yük (A) – "+besl(c),`DC sistemin şebekeden çektiği akım:<br>· DC tarafı: (${f(c.dc,0)} A yük + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW*1000,0)} W<br>· Kayıpla şebekeden alınan: ${f(c.dcKW*1000,0)} W ÷ ${f(a.eff,2)} verim = ${f(c.dcW,0)} W<br>· Akım: ${f(c.dcW,0)} W ÷ ${V} = <b>${f(c.dcA,1)} A</b>${c.tri?" (faz başı)":""}<br>Klima: ${f(c.acA,1)} A<br>Toplam: ${f(c.dcA,1)} + ${f(c.acA,1)} = ${f(c.tot,1)} A${c.tri?" (faz başı)":""}${bar}`,`${f(c.tot,1)} A<small>${besl(c)}</small>`)}
+   ${step("plug","c5","Normal AC yük (A) – "+besl(c),`Akü dolu, şarj yok:<br>· DC: ${f(c.dc,0)} A × ${a.dcv} V ÷ ${f(a.eff,2)} = ${f(c.dcWn,0)} W → ${f(c.dcWn,0)} ÷ ${V} = ${f(c.dcAn,1)} A<br>· Klima: ${c.acRun} çalışan × ${f(c.unitA,1)} A = ${f(c.acAn,1)} A<br>· Toplam: ${f(c.dcAn,1)} + ${f(c.acAn,1)} = <b>${f(c.totN,1)} A</b>`,`<b>${f(c.totN,1)} A</b><small>normal</small>`)}
+   ${step("plug","c5","En fazla AC yük (A) – "+besl(c),`DC sistemin şebekeden çektiği akım:<br>· DC tarafı: (${f(c.dc,0)} A yük + ${f(c.chA,0)} A şarj) × ${a.dcv} V = ${f(c.dcKW*1000,0)} W<br>· Kayıpla şebekeden alınan: ${f(c.dcKW*1000,0)} W ÷ ${f(a.eff,2)} verim = ${f(c.dcW,0)} W<br>· Akım: ${f(c.dcW,0)} W ÷ ${V} = <b>${f(c.dcA,1)} A</b>${c.tri?" (faz başı)":""}<br>Klima: ${f(c.acA,1)} A<br>Toplam: ${f(c.dcA,1)} + ${f(c.acA,1)} = ${f(c.tot,1)} A${c.tri?" (faz başı)":""}${bar}`,`${f(c.tot,1)} A<small>${besl(c)}</small>`)}
    ${step("fuse","c6","Talep edilecek sigorta",`${f(c.tot,1)} A × ${f(a.safety,2)} = ${f(c.tot*a.safety,1)} A → bir üst standart boy`,`<b>${c.brk} A</b><small>${besl(c)}</small>`)}
    <li class="fs">${ico("gen","c7")}<div class="fb"><div class="ft">Jeneratör</div><div class="fc">${V} × ${f(c.tot,1)} A = ${f(c.kva)} kVA; ÷ (${f(a.gmax,2)} en fazla yük × ${f(a.derate,2)} sıcaklık) = ${f(c.gNeed)} kVA → ${c.genMin?"listedeki en küçük boy":"bir üst standart boy"}</div></div><div class="fr">${c.gen?c.gen+" kVA":"–"}</div></li>
   </ol></details>`;
@@ -359,7 +374,12 @@ function acOptions(r){const ts=AC[r.ac]?[r.ac]:Object.keys(AC);
   return `<option value="">Otomatik</option>`+ts.map(t=>`<optgroup label="${AC[t].label}">${AC[t].sizes.map(x=>`<option value="${t}:${x}"${r.ac===t&&num(r.acs)===x?" selected":""}>${f(x,0)} ${AC[t].unit}</option>`).join("")}</optgroup>`).join("")}
 function cardHtml(r,i){
   const c=calc(r),dcn=num(r.dc);
-  const need=c?`<div class="need"><div class="t">Saha yük profili</div><dl>
+  const tiles=c?`<div class="res3" aria-label="Özet sonuç">
+   <div class="hi"><div class="k">Normal (min)</div><div class="v">${f(c.totN,1)} A</div><div class="s">${c.tri?"faz başı · ":""}DC ${f(c.dcAn,1)} + klima ${f(c.acAn,1)} A<br>akü dolu, şarj yok</div></div>
+   <div><div class="k">En fazla (max)</div><div class="v">${f(c.tot,1)} A</div><div class="s">${c.tri?"faz başı · ":""}DC ${f(c.dcA,1)} + klima ${f(c.acA,1)} A<br>kesinti sonrası şarjda</div></div>
+   <div><div class="k">Talep edilecek</div><div class="v">${c.brk} A</div><div class="s">${besl(c)} · ${f(c.kva,1)} kVA<br>jeneratör ${c.gen?c.gen+" kVA":"–"}</div></div>
+  </div>`:"";
+  const need=c?`${tiles}<div class="need"><div class="t">Saha yük profili</div><dl>
      <dt>Mimari</dt><dd>${mimari(c)}</dd>
      <dt>Akü</dt><dd class="${c.short?"warn":""}">${batTxt(c)}<small>${f(c.ah,0)} Ah${BAT[c.B.t].per>1?` · toplam ${c.mods*BAT[c.B.t].per} ${BAT[c.B.t].unit}`:""} · ≈ ${f(c.real)} saat dayanır${BAT[c.B.t].pb&&c.mods>(num(st.a.batMax)||4)?`<br><b class="warn">${c.mods} paralel grup çok fazla (en fazla ${num(st.a.batMax)||4} önerilir) – daha büyük boy seç</b>`:""}</small></dd>
      <dt>Akü backup süresi</dt><dd>${f(c.h,0)} saat</dd>
@@ -402,7 +422,7 @@ function cardHtml(r,i){
 function teamRows(){const cs=st.rows.map(r=>({r,c:calc(r)}));const v=(fn)=>cs.map(({r,c})=>c?fn(c,r):"");
   return [["Site",cs.map(x=>x.r.name||"")],["Saha Yük Profili",v(c=>`${f(c.dc,0)} ADC`)],["Salon Bilgisi",v(c=>c.bag?"Bağımsız Salon":"Mevcut Salona kurulum")],["Mimari",v(mimari)],
    ["Akü",v(batTxt)],["Akü Backup süresi",v(c=>`${f(c.h,0)} saat`)],["Klima",v(acTxt)],["DC",v(c=>`${c.units}*${kw(c.rSize)} kw`)],["Jeneratör",v(c=>c.gen?`1x${c.gen} kva`:"–")],
-   ["AC yük (Amp) – normal / en fazla",v(()=>"")],["Klima",v(c=>f(c.acA,1))],["Enerji besleme",v(besl)],["DC (yük + şarj)",v(c=>f(c.dcA,1))],["Normal (min) – şarjsız",v(c=>f(c.totN,1)+(c.tri?" (faz başı)":""))],["Toplam – en fazla (şarj dahil)",v(c=>f(c.tot,1)+(c.tri?" (faz başı)":""))],["Toplam güç (kW)",v(c=>f(totKW(c),1))],["Toplam görünür güç (kVA)",v(c=>f(c.kva,1))],["Talep edilecek sigorta",v(c=>`${c.brk} A`)],["",v(()=>"")],["Salon içi Alan İhtiyacı",v(()=>"")],["Klima",v(c=>area(c).kl.txt)],["Transmisyon/fiber",v(c=>area(c).tr)],["DC",v(c=>area(c).dc)],["Akü",v(c=>area(c).aku)],["DC+Akü",v(c=>area(c).line)]]}
+   ["AC yük (Amp) – normal / en fazla",v(()=>"")],["Enerji besleme",v(besl)],["DC – normal (sadece yük)",v(c=>f(c.dcAn,1))],["DC – şarj sırasında (yük + şarj)",v(c=>f(c.dcA,1))],["Klima – normal (çalışan)",v(c=>f(c.acAn,1))],["Klima – en fazla",v(c=>f(c.acA,1))],["Normal (min) – şarjsız",v(c=>f(c.totN,1)+(c.tri?" (faz başı)":""))],["Toplam – en fazla (şarj dahil)",v(c=>f(c.tot,1)+(c.tri?" (faz başı)":""))],["Toplam güç (kW)",v(c=>f(totKW(c),1))],["Toplam görünür güç (kVA)",v(c=>f(c.kva,1))],["Talep edilecek sigorta",v(c=>`${c.brk} A`)],["",v(()=>"")],["Salon içi Alan İhtiyacı",v(()=>"")],["Klima",v(c=>area(c).kl.txt)],["Transmisyon/fiber",v(c=>area(c).tr)],["DC",v(c=>area(c).dc)],["Akü",v(c=>area(c).aku)],["DC+Akü",v(c=>area(c).line)]]}
 function summary(){if(window.onCalcChange)try{onCalcChange()}catch(e){console.error(e)}const R=teamRows();
   document.getElementById("sumH").innerHTML=`<tr><th>${R[0][0]}</th>${R[0][1].map(n=>`<th>${esc(n)}</th>`).join("")}</tr>`;
   document.getElementById("sumB").innerHTML=R.slice(1).map(([k,vals])=>`<tr class="${k==="AC yük (Amp) – normal / en fazla"||k==="Salon içi Alan İhtiyacı"?"sec":""}${k.startsWith("Toplam –")||k.startsWith("Normal (min)")||k==="Talep edilecek sigorta"||k.startsWith("Toplam güç")||k.startsWith("Toplam görünür")?" kk":""}"><td>${k}</td>${vals.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join("")}
@@ -434,4 +454,12 @@ renderAssume();render();
 <script src="extra.js?v=7"></script>
 <script>/* eski servis çalışanı bu sayfanın dosyalarını önbellekten veriyordu: güncelle, değişince bir kez yenile */
 if("serviceWorker" in navigator){navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});let once=0;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!once){once=1;location.reload()}})}</script>
+<script>
+/* sunum için: bütün hesap adımlarını tek tuşla aç/kapat; yazdırırken hepsi açık */
+(function(){const b=document.getElementById("steps");if(!b)return;let open=false;
+ const apply=()=>{document.querySelectorAll("details.det,details.how").forEach(d=>d.open=open);b.textContent=open?"Hesap adımlarını gizle":"Hesap adımlarını göster"};
+ b.addEventListener("click",()=>{open=!open;apply()});
+ new MutationObserver(()=>{if(open)document.querySelectorAll("details.det:not([open])").forEach(d=>d.open=true)}).observe(document.getElementById("cards")||document.body,{childList:true,subtree:true});
+ addEventListener("beforeprint",()=>document.querySelectorAll("details.det,details.how").forEach(d=>d.open=true));})();
+</script>
 </body></html>
