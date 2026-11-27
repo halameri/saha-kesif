@@ -125,7 +125,7 @@ details.tip p{margin:6px 0 0;background:var(--sunk);border-radius:6px;padding:8p
 
 <script>
 "use strict";
-const VERSION="4.6 · 23.11.2026";
+const VERSION="4.7 · 27.11.2026";
 /* =========================================================
    1. FORM DEFINITION
    kind: yn = Evet/Hayır/Bilmiyorum, ch = seçenek, num = sayı
@@ -215,7 +215,7 @@ const ALL=[];SEC.forEach(sec=>sec.items.forEach(it=>ALL.push({sec,it})));
 const GEN_QN=["Etiket fotoğrafı çekildi","Yakıt tankı ayrı","Jeneratör kabinli (sessiz tip)","Jeneratör eski görünüyor"];
 const GENERAL_QN=["Bina görevlisi eşlik etti","Sahada kısa süre kalınabildi","Bazı alanlara giriş izni verilmedi","Fotoğraf çekimi kısıtlıydı","Bilgiler tahminidir, teyit edilmeli"];
 /* energy constants */
-const DCV=54,EFF=0.95,PF=0.8,CH=0.1,BREAKERS=[16,20,25,32,40,50,63,80,100];
+const DCV=54,EFF=0.95,PF=0.8,CH=0.1,BREAKERS=[16,20,25,32,40,50,63,80,100,125,160,200,250,315,400,500,630],MONO_MAX=63;
 /* akü tipleri: kullanılabilir oran (DoD) ve yaşlanma payı – yaklaşık değerler */
 const BAT_TYPES={"Lityum":{l:"Lityum (LiFePO4)",dod:0.9,aging:1.05},"Kuru akü":{l:"Kuru akü (AGM / VRLA)",dod:0.8,aging:1.25},"Jel":{l:"Jel akü (GEL)",dod:0.8,aging:1.2},"HT":{l:"HT akü (yüksek sıcaklık)",dod:0.8,aging:1.2},"Sulu":{l:"Sulu akü (OPzS / açık tip)",dod:0.8,aging:1.25}};
 const batKey=v=>BAT_TYPES[v]?v:v==="Kurşun-asit"?"Kuru akü":"Lityum";
@@ -300,11 +300,16 @@ function energy(s){
   const splitOn=splitW>0;
   const normalW=rectW+splitW,peakW=rectW+chgW+splitW;
   const A220=peakW/220,kVA=peakW/1000/PF,phase=peakW/(1.732*380);
-  const breaker=BREAKERS.find(b=>b>=A220*1.25)||Math.ceil(A220*1.25);
+  /* 220 V'ta 63 A'yı aşarsa tek faz olmaz: 3 faz 380 V, faz başı akıma göre sigorta */
+  const tri=A220>MONO_MAX,reqA=tri?phase:A220;
+  const breaker=BREAKERS.find(b=>b>=reqA*1.25)||Math.ceil(reqA*1.25);
+  const brkTxt=tri?`${breaker} A · 3 faz 380 V`:`${breaker} A · 220 V`;
+  /* gerekli soğutma: odadaki ısı (rectifier girişi) × 1,2 pay + 2.000 W dışarıdan */
+  const needBTU=(rectW*1.2+2000)*3.412,haveBTU=mode==="klima"?cc.btu*cc.run:null,coolOk=haveBTU==null?null:haveBTU>=needBTU*0.98;
   const worst=num(A(s,"enuzun"))??num(A(s,"kesinti"));
   const worstSrc=num(A(s,"enuzun"))!=null?"en uzun tek kesinti":"günlük kesinti";
   const g=genStats(s);
-  return{dcA,hours,li,batLabel,batt,battNeed,backupReal,splitOn,coolDesc,coolMode:mode,splitW,dcW,rectW,chgA,chgW,normalW,peakW,A220,kVA,phase,breaker,worst,worstSrc,
+  return{dcA,hours,li,batLabel,batt,battNeed,backupReal,splitOn,coolDesc,coolMode:mode,splitW,dcW,rectW,chgA,chgW,normalW,peakW,A220,kVA,phase,breaker,tri,brkTxt,needBTU,haveBTU,coolOk,worst,worstSrc,
     backupOk:worst==null?null:worst<=hours,genOk:g.free==null?null:g.free>=kVA,genFree:g.free};
 }
 
@@ -383,7 +388,7 @@ function siteSummary(s){
     P.push(`${noBk?"Sahada yedek jeneratör bulunmadığından s":"S"}aha yönetimi, yedek (standby) olarak kullanılmak üzere tarafımızdan ayrı bir jeneratör kurulmasını talep etmektedir.`)}
   /* 5) enerji hesabı */
   if(s.load?.on){const e=energy(s);
-    P.push(`Bu lokasyonda öngörülen ${fmt(e.dcA)} A (-48 V DC) yükümüz, akü şarjı${e.splitOn?" ve soğutma":""} ile birlikte en kötü durumda yaklaşık ${fmt(e.peakW/1000)} kW (220 V'ta yaklaşık ${fmt(e.A220,0)} A, ${fmt(e.kVA)} kVA) güç gerektirmektedir; güvenlik payıyla ${e.breaker} A besleme talep edilmelidir.`);
+    P.push(`Bu lokasyonda öngörülen ${fmt(e.dcA)} A (-48 V DC) yükümüz, akü şarjı${e.splitOn?" ve soğutma":""} ile birlikte en kötü durumda yaklaşık ${fmt(e.peakW/1000)} kW (${e.tri?`3 faz 380 V'ta faz başı yaklaşık ${fmt(e.phase,0)} A`:`220 V'ta yaklaşık ${fmt(e.A220,0)} A`}, ${fmt(e.kVA)} kVA) güç gerektirmektedir; güvenlik payıyla ${e.tri?`3 faz ${e.breaker} A`:`${e.breaker} A`} besleme talep edilmelidir.`);
     if(e.genOk===true)P.push("Jeneratörlerin boş kapasitesi bu ihtiyacı karşılamaya yeterli görünmektedir.");
     else if(e.genOk===false)P.push("Jeneratörlerin boş kapasitesi bu ihtiyaç için yetersiz görünmektedir.");
     if(e.backupOk===false)P.push(`${e.worstSrc==="en uzun tek kesinti"?"Tek seferdeki en uzun kesinti":"Günlük kesinti süresi"} (${fmt(e.worst)} saat) ${fmt(e.hours,0)} saatlik akü yedeklemesini aştığından jeneratör desteği gereklidir.`);
@@ -425,8 +430,8 @@ function overallSummary(list,label){
   const noGen=nm(s=>A(s,"jen")==="no");if(noGen.length)P.push(`${where(noGen)} jeneratör bulunmadığından kendi jeneratörümüzün kurulması gerekmektedir.`);
   const weakGen=nm(s=>needGen(s)&&A(s,"jen")!=="no"&&A(s,"jenVer")!=="Hayır"&&A(s,"stby")!=="Evet");if(weakGen.length)P.push(`${where(weakGen)} jeneratörün boş kapasitesi yetersiz göründüğünden kendi jeneratörümüzün kurulması gerekebilir.`);
   const en=list.filter(s=>s.load?.on).map(s=>({s,e:energy(s)}));
-  if(en.length){const ws=en.map(x=>x.e.peakW/1000),bs=[...new Set(en.map(x=>x.e.breaker))];
-    P.push(`Enerji hesabı yapılan sahalarda ihtiyacımız saha başına en kötü durumda yaklaşık ${fmt(Math.min(...ws))}${Math.max(...ws)-Math.min(...ws)>0.05?`–${fmt(Math.max(...ws))}`:""} kW olup ${bs.length===1?`${bs[0]} A`:`${Math.min(...bs)}–${Math.max(...bs)} A`} besleme talep edilmektedir.`);
+  if(en.length){const ws=en.map(x=>x.e.peakW/1000),bs=[...new Set(en.map(x=>x.e.brkTxt))];
+    P.push(`Enerji hesabı yapılan sahalarda ihtiyacımız saha başına en kötü durumda yaklaşık ${fmt(Math.min(...ws))}${Math.max(...ws)-Math.min(...ws)>0.05?`–${fmt(Math.max(...ws))}`:""} kW olup ${bs.length===1?bs[0]:bs.join(", ")} besleme talep edilmektedir.`);
     const over=en.filter(x=>x.e.backupOk===false).map(x=>x.s.name);
     if(over.length)P.push(`${over.join(", ")} ${over.length>1?"sahalarında":"sahasında"} kesinti süresi akü yedeklemesini aştığı için jeneratör desteği gereklidir.`);}
   return P.join(" ");
@@ -572,13 +577,16 @@ function energyOutHtml(e){
    <tr><td>Soğutma – ${esc(e.coolDesc)}</td><td>${fmt(e.splitW,0)} W · ${fmt(e.splitW/220)} A</td></tr>
    <tr><td>Normal çalışma (akü dolu)</td><td>${fmt(e.normalW/1000)} kW · ${fmt(e.normalW/220)} A</td></tr>
    <tr class="tot"><td>En kötü durum (şarj + klima)</td><td>${fmt(e.peakW/1000)} kW · ${fmt(e.A220)} A · ${fmt(e.kVA)} kVA</td></tr>
-   <tr class="tot"><td>Talep (güvenlik payıyla)</td><td>${e.breaker} A · 220 V</td></tr>
-   <tr><td>3 faz besleme olursa</td><td>faz başı ≈ ${fmt(e.phase,0)} A</td></tr>
+   ${e.tri?`<tr><td>3 faz 380 V (220 V'ta ${fmt(e.A220,0)} A tek faza sığmaz)</td><td>faz başı ≈ ${fmt(e.phase,0)} A</td></tr>`:""}
+   <tr class="tot"><td>Talep (güvenlik payıyla ×1,25)</td><td>${e.brkTxt}</td></tr>
+   ${e.tri?"":`<tr><td>3 faz besleme olursa</td><td>faz başı ≈ ${fmt(e.phase,0)} A</td></tr>`}
+   <tr><td>Gerekli soğutma (ısı × 1,2 + 2 kW)</td><td>≈ ${fmt(Math.ceil(e.needBTU/1000)*1000,0)} BTU</td></tr>
    <tr><td>Rectifier kapasitesi (yük + şarj, N+1)</td><td>≥ ${Math.ceil((e.dcA+e.chgA)/10)*10} A</td></tr>
    <tr><td>Önerilen akü – ${esc(e.batLabel)}, ${fmt(e.hours,0)} saat</td><td>${fmt(e.battNeed,0)} Ah</td></tr>
    <tr><td>Seçilen akü ile yedekleme (yaşlanma payı dahil)</td><td>≈ ${fmt(e.backupReal)} saat</td></tr>
   </tbody></table>
   ${e.backupOk===false?`<div class="flag bad">⚠️ ${e.worstSrc==="en uzun tek kesinti"?"En uzun kesinti":"Günlük kesinti"} (${fmt(e.worst)} saat) akü yedeklemesini (${fmt(e.hours,0)} saat) aşıyor. Jeneratör desteği gerekli.</div>`:e.backupOk===true?`<div class="flag ok">✓ Kesinti süresi (${fmt(e.worst)} saat) akü yedeklemesi içinde.</div>`:""}
+  ${e.coolOk===false?`<div class="flag bad">⚠️ Seçilen klima (${fmt(e.haveBTU,0)} BTU) yetersiz; bu yük için ≈ ${fmt(Math.ceil(e.needBTU/1000)*1000,0)} BTU gerekir. Kapasiteyi/adedi artır veya hassas (DX) klima seç.</div>`:""}
   ${e.genOk===false?`<div class="flag bad">⚠️ Jeneratör boş kapasitesi (≈ ${fmt(e.genFree,0)} kVA) ihtiyaçtan (${fmt(e.kVA)} kVA) az.</div>`:e.genOk===true?`<div class="flag ok">✓ Jeneratör boş kapasitesi (≈ ${fmt(e.genFree,0)} kVA) ihtiyaç için yeterli.</div>`:""}`;
 }
 function renderEditor(){
@@ -1186,7 +1194,7 @@ function shortText(){
     {const tl=talep(s);if(tl.yer||tl.ok)L.push(`• Kurulum yeri: ${tl.yer||"belli değil"}${tl.ok?` · talep: ${talepTxt(tl)}`:""}${A(s,"jenVer")?` · jeneratörden verilebilir mi: ${A(s,"jenVer").toLowerCase()}`:""}`)}
     if(A(s,"stby")==="Evet")L.push("• Bizden yedek (standby) jeneratör isteniyor");
     if(A(s,"isiEk"))L.push(`• Mevcut soğutma ek ısıyı karşılar mı: ${A(s,"isiEk")}`);
-    if(s.load?.on&&R.energy){const e=energy(s);L.push(`• İhtiyaç: ${fmt(e.peakW/1000)} kW · ${fmt(e.A220,0)} A → talep ${e.breaker} A (220 V)`)}});
+    if(s.load?.on&&R.energy){const e=energy(s);L.push(`• İhtiyaç: ${fmt(e.peakW/1000)} kW · ${e.tri?`faz başı ${fmt(e.phase,0)} A`:`${fmt(e.A220,0)} A`} → talep ${e.brkTxt}`)}});
   {const rs=routeSites(),rc=rs.length>1&&routeCache.sig===routeSig(rs)?routeCache:null;if(rc){L.push("","Güzergâh / mesafeler:");
     for(const l of rc.legs)L.push(`• ${l.a.name||"?"} → ${l.b.name||"?"}: ${fmt(l.km,0)} km`);L.push(`• Toplam: ${fmt(rc.legs.reduce((a,l)=>a+l.km,0),0)} km`)}}
   const nx=(prefs["next-"+R.d1]||"").trim();if(nx)L.push("",`Sonraki adımlar: ${nx}`);
@@ -1307,12 +1315,12 @@ async function siteToPdf(D,s,idx){
       [`Soğutma – ${e.coolDesc}`,`${fmt(e.splitW,0)} W · ${fmt(e.splitW/220)} A`],
       ["Normal çalışma (akü dolu)",`${fmt(e.normalW/1000)} kW · ${fmt(e.normalW/220)} A`],
       [{t:"En kötü durum (şarj + klima)",bold:true},{t:`${fmt(e.peakW/1000)} kW · ${fmt(e.A220)} A · ${fmt(e.kVA)} kVA`,bold:true}],
-      [{t:"Talep (güvenlik payıyla, 220 V)",bold:true},{t:`${e.breaker} A`,bold:true}],
-      ["3 faz besleme olursa",`faz başı ≈ ${fmt(e.phase,0)} A`],
+      [e.tri?"3 faz 380 V – faz başı akım":"3 faz besleme olursa",`faz başı ≈ ${fmt(e.phase,0)} A`],
+      [{t:"Talep (güvenlik payıyla ×1,25)",bold:true},{t:e.brkTxt,bold:true}],
       ["Rectifier kapasitesi (yük + şarj, N+1)",`≥ ${Math.ceil((e.dcA+e.chgA)/10)*10} A`],
       [`Akü – ${e.batLabel} / yedekleme`,`${fmt(e.batt,0)} Ah · ≈ ${fmt(e.backupReal)} saat`]],
-      {fills:[null,null,null,null,null,C.ok,C.ok]});
-    const fl=[];if(e.backupOk===false)fl.push(`Kesinti (${fmt(e.worst)} saat) akü yedeklemesini (${fmt(e.hours,0)} saat) aşıyor; jeneratör desteği gerekli.`);if(e.genOk===false)fl.push(`Jeneratör boş kapasitesi (≈${fmt(e.genFree,0)} kVA) ihtiyaçtan (${fmt(e.kVA)} kVA) az.`);
+      {fills:[null,null,null,null,null,C.ok,null,C.ok]});
+    const fl=[];if(e.backupOk===false)fl.push(`Kesinti (${fmt(e.worst)} saat) akü yedeklemesini (${fmt(e.hours,0)} saat) aşıyor; jeneratör desteği gerekli.`);if(e.coolOk===false)fl.push(`Seçilen klima (${fmt(e.haveBTU,0)} BTU) yetersiz; gerekli ≈ ${fmt(Math.ceil(e.needBTU/1000)*1000,0)} BTU.`);if(e.genOk===false)fl.push(`Jeneratör boş kapasitesi (≈${fmt(e.genFree,0)} kVA) ihtiyaçtan (${fmt(e.kVA)} kVA) az.`);
     for(const f of fl)D.box("⚠ "+f,{fill:C.bad,bar:"#b8432c"})}
   if(s.genNote){D.h3("Genel not");D.text(s.genNote,{sz:22})}
   if(R.photos){const items=[];
