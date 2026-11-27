@@ -298,9 +298,9 @@ function energy(s){
   /* gerekli soğutma: odadaki ısı (rectifier girişi) × 1,2 pay + 2.000 W dışarıdan */
   const needW=rectW*1.2+2000,needBTU=needW*3.412;
   let splitW=0,coolDesc="dahil değil",coolCalc="";
-  if(mode==="isi"){const dx=needBTU>48000,eer=dx?AC_TYPES.hassas.eer:AC_TYPES.split.eer,n=Math.max(1,Math.ceil(needBTU/24000-0.02)),capBTU=dx?needBTU:n*24000;splitW=capBTU/eer;
-    coolDesc=dx?"hassas/DX klima":`${n} × 24.000 BTU split`;
-    coolCalc=`ısı ${fmt(rectW/1000)} kW × 1,2 + 2 kW = ${fmt(needW/1000)} kW ≈ ${fmt(Math.ceil(needBTU/1000)*1000,0)} BTU${dx?` ÷ ${fmt(eer)} EER`:` → ${n} × 24.000 BTU; tüketim ${fmt(capBTU,0)} ÷ ${fmt(eer)} EER`}`}
+  if(mode==="isi"){const dx=needBTU>48000,eer=dx?AC_TYPES.hassas.eer:AC_TYPES.split.eer,DXB=38000*3.968,n=Math.max(1,Math.ceil(needBTU/(dx?DXB:24000)-0.02)),capBTU=n*(dx?DXB:24000);splitW=capBTU/eer;
+    coolDesc=dx?`${n} × 38.000 kcal/h DX klima`:`${n} × 24.000 BTU split`;
+    coolCalc=`ısı ${fmt(rectW/1000)} kW × 1,2 + 2 kW = ${fmt(needW/1000)} kW ≈ ${fmt(Math.ceil(needBTU/1000)*1000,0)} BTU${dx?` → ${n} × 38.000 kcal/h (${fmt(capBTU,0)} BTU) ÷ ${fmt(eer)} EER`:` → ${n} × 24.000 BTU; tüketim ${fmt(capBTU,0)} ÷ ${fmt(eer)} EER`}`}
   else if(mode==="klima"){const t=AC_TYPES[cc.type]||AC_TYPES.split,unitW=cc.btu/t.eer;splitW=unitW*cc.run;coolCalc=`${cc.run} × ${fmt(cc.btu,0)} BTU ÷ ${fmt(t.eer)} EER`;
     coolDesc=`${cc.total>1?cc.total+" × ":""}${fmt(cc.btu,0)} BTU ${t.l.split(" (")[0].toLowerCase()}${cc.total>cc.run?` (${cc.run} çalışan, ${cc.total-cc.run} yedek)`:cc.run>1?` (${cc.run} çalışan)`:""}`}
   else if(mode==="kat"){splitW=rectW*cc.mult;coolDesc=`sistem yükünün ${fmt(cc.mult)} katı`}
@@ -550,7 +550,7 @@ function coolHtml(){
   return `<div class="f" style="color:var(--ink)">Soğutma yükü</div>
    <label class="f">Hesap yöntemi${sel("coolMode",COOL_MODES,c.mode)}</label>
    ${c.mode==="auto"?`<div class="hint">Soğutma sorusunda “Yeni split klima gerekli” seçiliyse aşağıdaki klima hesaba eklenir${A(cur,"sogutma")==="Yeni split klima gerekli"?" (şu an ekleniyor)":" (şu an eklenmiyor)"}. Klima DC yükten otomatik boyutlanır; belirli bir klima için “Klima tipi ve kapasitesi”ni seç.</div>`:""}
-   ${isi?`<div class="hint">Isı = DC yük ÷ 0,95 (rectifier girişi, hepsi ısıya döner) × 1,2 pay + 2 kW dışarıdan gelen ısı → BTU (× 3,412). Tüketim = BTU ÷ EER (split 9,5, 48.000 BTU üstü hassas/DX 10).</div>`:""}
+   ${isi?`<div class="hint">Isı = DC yük ÷ 0,95 (rectifier girişi, hepsi ısıya döner) × 1,2 pay + 2 kW dışarıdan gelen ısı → BTU (× 3,412). Tüketim = BTU ÷ EER (split 9,5, 48.000 BTU üstü 38.000 kcal/h DX, EER 10).</div>`:""}
    ${showKlima?`<div class="grid2">
      <label class="f">Klima tipi${sel("acType",Object.entries(AC_TYPES).map(([k,v])=>[k,v.l]),c.type)}</label>
      <label class="f">Kapasite (BTU)${sel("btu",BTUS.map(b=>[b,`${fmt(b,0)} BTU (${fmt(b/12000)} ton)`]),c.btu)}</label>

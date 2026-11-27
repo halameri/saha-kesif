@@ -45,6 +45,10 @@ h2{font-size:1.1rem;margin:26px 0 10px;color:var(--navy)}
 .need .big dt{padding-left:8px;border-radius:6px 0 0 6px;color:var(--ink);font-weight:700}
 .need .big dd{padding-right:8px;border-radius:0 6px 6px 0;font-size:1.15rem}
 .warn{color:var(--bad)!important}
+.etab-w{padding:12px 14px 2px}.ebes{font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.etab{width:100%;border-collapse:collapse;font-size:.9rem}.etab th{font-size:.74rem;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:2px solid var(--line)}.etab th:first-child{text-align:left}
+.etab td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}.etab td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.etab td small{display:block;font-weight:400;color:var(--muted);font-size:.78rem;margin-top:2px}.etab tr.tot td{background:var(--ok-soft);font-weight:800}.etab tr.big td{font-size:1rem}
 .res3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px 2px}
 .res3>div{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:var(--surface);min-width:0}
 .res3 .k{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
@@ -377,11 +381,17 @@ function acOptions(r){const ts=AC[r.ac]?[r.ac]:Object.keys(AC);
   return `<option value="">Otomatik</option>`+ts.map(t=>`<optgroup label="${AC[t].label}">${AC[t].sizes.map(x=>`<option value="${t}:${x}"${r.ac===t&&num(r.acs)===x?" selected":""}>${f(x,0)} ${AC[t].unit}</option>`).join("")}</optgroup>`).join("")}
 function cardHtml(r,i){
   const c=calc(r),dcn=num(r.dc);
-  const tiles=c?`<div class="res3" aria-label="Özet sonuç">
-   <div class="hi"><div class="k">Normal (min)</div><div class="v">${f(c.totN,1)} A</div><div class="s">${c.tri?"faz başı · ":""}DC ${f(c.dcAn,1)} + klima ${f(c.acAn,1)} A<br>akü dolu, şarj yok</div></div>
-   <div><div class="k">En fazla (max)</div><div class="v">${f(c.tot,1)} A</div><div class="s">${c.tri?"faz başı · ":""}DC ${f(c.dcA,1)} + klima ${f(c.acA,1)} A<br>kesinti sonrası şarjda</div></div>
-   <div><div class="k">Talep edilecek</div><div class="v">${c.brk} A</div><div class="s">${besl(c)} · ${f(c.kva,1)} kVA<br>jeneratör ${c.gen?c.gen+" kVA":"–"}</div></div>
-  </div>`:"";
+  const tiles=c?(()=>{const a=st.a,ef=f(a.eff,2),chW=c.chA*a.dcv/a.eff,acMaxW=c.acCount*c.unitW,maxW=c.dcW+acMaxW,minW=c.dcWn+c.acWn,aH=c.tri?"A / faz":"A";
+   const row=(n,t,sub,w,amp,cls="")=>`<tr class="${cls}"><td><b>${n?n+". ":""}${t}</b>${sub?`<small>${sub}</small>`:""}</td><td>${f(w/1000,1)}</td><td>${f(amp,1)}</td></tr>`;
+   return `<div class="etab-w"><div class="ebes">Besleme: <b>${c.tri?`3 faz ${a.v3} V`:`tek faz ${a.v1} V`}</b>${c.tri?" · akımlar faz başı":""}</div>
+   <table class="etab"><thead><tr><th>Kalem</th><th>kW</th><th>${aH}</th></tr></thead><tbody>
+    ${row(1,"DC yük → rectifier girişi",`${f(c.dc,0)} A × ${a.dcv} V = ${f(c.dc*a.dcv/1000,1)} kW ÷ ${ef} verim`,c.dcWn,c.dcAn)}
+    ${row(2,"Soğutma",`${c.acRun} × ${f(c.acs,0)} ${AC[c.acT].unit} ${AC[c.acT].label} · ${f(c.btu,0)} BTU ÷ ${f(c.eer,1)} EER = ${f(c.unitW,0)} W${c.bag?" · yedek klima sayılmaz":""}`,c.acWn,c.acAn)}
+    ${row("","Minimum – şarjsız","elektrik varken, akü dolu",minW,c.totN,"tot")}
+    ${row(3,"Akü şarjı",`sadece kesinti sonrası · ${f(c.ah,0)} Ah × ${f(a.chg,2)}C = ${f(c.chA,0)} A × ${a.dcv} V ÷ ${ef}`,chW+(acMaxW-c.acWn),c.tot-c.totN)}
+    ${row("","Maksimum – şarjlı","minimum + şarj",maxW,c.tot,"tot")}
+    <tr class="tot big"><td><b>Talep edilecek</b><small>maksimum ${f(c.tot,1)} A × ${f(a.safety,2)} → standart sigorta · jeneratör ${c.gen?c.gen+" kVA":"–"}</small></td><td colspan="2">${c.brk} A · ${c.tri?"3 faz":"tek faz"}</td></tr>
+   </tbody></table></div>`})():"";
   const need=c?`${tiles}<div class="need"><div class="t">Saha yük profili</div><dl>
      <dt>Mimari</dt><dd>${mimari(c)}</dd>
      <dt>Akü</dt><dd class="${c.short?"warn":""}">${batTxt(c)}<small>${f(c.ah,0)} Ah${BAT[c.B.t].per>1?` · toplam ${c.mods*BAT[c.B.t].per} ${BAT[c.B.t].unit}`:""} · ≈ ${f(c.real)} saat dayanır${BAT[c.B.t].pb&&c.mods>(num(st.a.batMax)||4)?`<br><b class="warn">${c.mods} paralel grup çok fazla (en fazla ${num(st.a.batMax)||4} önerilir) – daha büyük boy seç</b>`:""}</small></dd>
@@ -389,15 +399,6 @@ function cardHtml(r,i){
      <dt>Klima</dt><dd class="${c.acShort?"warn":""}">${acTxt(c)}<small>${c.acRun} çalışan${c.acN>c.acRun?` + ${c.acN-c.acRun} yedek`:""} · ${f(c.acRun*c.acs,0)} ${AC[c.acT].unit} çalışan kapasite<br>gereken ≈ ${f(c.need,0)} ${AC[c.acT].unit}${c.acShort?" – <b>yetersiz</b>":""}${c.acUser?" · elle girildi":""}</small></dd>
      <dt>DC</dt><dd>${c.units}×${kw(c.rSize)} kW<small>yük + şarj ${f(c.dcKW,1)} kW · %${f(c.rLoad*100,0)}</small></dd>
      <dt>Jeneratör</dt><dd class="${c.gen?"":"warn"}">${c.gen?"1x"+c.gen+" kVA":"listedekilerden büyük"}<small>hesaplanan ihtiyaç ${f(c.gNeed)} kVA${c.genMin?" · listedeki en küçük boy":""}</small></dd>
-    </dl>
-    <div class="t" style="margin-top:12px">AC yük (Amp) – normal ve en fazla</div><dl>
-     <dt>Enerji besleme</dt><dd>${besl(c)}<small>${c.tri?`3 faz ${st.a.v3} V, değerler faz başı`:`${st.a.v1} V`}</small></dd>
-     <dt>DC – normal</dt><dd>${f(c.dcAn,1)} A<small>sadece yük: ${f(c.dc,0)} A × ${st.a.dcv} V ÷ ${st.a.eff} = ${f(c.dcWn,0)} W (akü dolu)</small></dd>
-     <dt>DC – şarj sırasında</dt><dd>${f(c.dcA,1)} A<small>yük + akü şarjı ${f(c.chA,0)} A · sadece kesintiden sonra, akü dolana kadar · ${c.dcTri?"DC sistem 3 faz girişli":"DC sistem tek faza da bağlanabilir"}</small></dd>
-     <dt>Klima</dt><dd>${f(c.acAn,1)} A${c.acA>c.acAn+0.05?` → en fazla ${f(c.acA,1)} A`:""}<small>${c.acRun} çalışan klima × ${f(c.unitW,0)} W (${f(c.btu,0)} BTU ÷ ${f(c.eer,1)}) = ${f(c.acWn,0)} W${c.acA>c.acAn+0.05?" · en fazlada yedek klima da sayıldı (Ayarlar)":""}</small></dd>
-     <div class="big" style="display:contents"><dt>Normal (min)</dt><dd>${f(c.totN,1)} A${c.tri?" / faz":""}<small>DC yük + klima · ${f(c.kvaN,1)} kVA</small></dd></div>
-     <dt>En fazla (max)</dt><dd>${f(c.tot,1)} A${c.tri?" / faz":""}<small>kesinti sonrası şarj + klima · ${f(totKW(c),1)} kW · ${f(c.kva,1)} kVA (tüm fazlar)</small></dd>
-     <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.brk} A · ${besl(c)}</dd></div>
     </dl>
     ${(()=>{const Ar=area(c);return `<div class="t" style="margin-top:12px">Salon içi alan ihtiyacı (cm)</div><dl>
      <dt>Klima</dt><dd>${Ar.kl.txt}</dd>
