@@ -189,7 +189,7 @@ const DEF_A={dcv:54,eff:0.95,chg:0.1,chgMax:0,
  dod:1,aging:1,dodPb:1,agingPb:1,liStd:150,liMax:8,pbMin:2,batMax:4,
  liSizes:"50; 100; 150; 200; 300",pb2Sizes:"200; 300; 400; 500; 600; 800; 1000; 1200; 1500; 2000; 2500; 3000",pb12Sizes:"100; 150; 190; 200",
  hSmall:15,hBig:10,hLimit:100,
- roomW:2000,coolM:1.2,splitMin:24000,splitA:20,dxA:33.2,dxStd:38000,dxStdA:54,acAll:1,
+ roomW:2000,coolM:1.2,splitMin:24000,splitA:10,dxA:33.2,dxStd:38000,dxStdA:54,acAll:1,
  rects:"7,2; 72",v1:220,v3:380,monoMax:63,dcMonoMax:10,safety:1.25,gmax:0.8,derate:0.9,gens:"33,45,60,80,100,150,200,250,300,400,500",
  svc:80,manW:60,manH:175,trN:2,trW:70,trD:70,trH:200,dcH:200,rackH:100,dxH:195,dxW:130,dxD:75,dxFront:1,dcBigW:60,dcBigD:60,lineGap:20,cabW:70,cabD:70,cabG:2,rackW:70,rackD:70,rackG:2};
 const A_LABELS=[
@@ -310,9 +310,13 @@ function calc(r){
   if(!tri){acA=acCount*unitA;dcA=dcW/a.v1}
   else{acA=acT==="dx"?acCount*unitA:Math.ceil(acCount/3)*unitA;dcA=dcW/(1.732*a.v3)}
   const tot=acA+dcA,kva=(tri?1.732*a.v3:a.v1)*tot/1000;
+  /* normal (minimum) çekiş: akü dolu, şarj yok – sadece DC yük + klima */
+  const dcWn=dc*a.dcv/a.eff,dcAn=tri?dcWn/(1.732*a.v3):dcWn/a.v1;
+  /* normalde yedek klima çalışmaz: sadece çalışan klimalar */
+  const acAn=!tri?acRun*unitA:(acT==="dx"?acRun*unitA:Math.ceil(acRun/3)*unitA),totN=acAn+dcAn,kvaN=(tri?1.732*a.v3:a.v1)*totN/1000;
   const brk=BREAKERS.find(b=>b>=tot*a.safety-1e-9)||Math.ceil(tot*a.safety);
   const gNeed=kva/(a.gmax*a.derate),gs=String(a.gens).split(/[,; ]+/).map(Number).filter(x=>x>0).sort((x,y)=>x-y),gen=gs.find(x=>x>=gNeed)||null,genMin=gen!=null&&gen===gs[0]&&gNeed<gen*0.8;
-  return{row:r,B,bag,dc,h,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,dcW,heatW,needW,need,acT,acs,acRun,acN,acCount,unitA,tri,acA,dcA,tot,kva,brk,gNeed,gen,genMin,dcTri,autoA,acShort,acUser,autoS,autoN};
+  return{dcWn,dcAn,acAn,totN,kvaN,row:r,B,bag,dc,h,needAh,mod,mods,ah,real,short:real<h-0.05,chA,dcKW,units,rSize,rLoad,dcW,heatW,needW,need,acT,acs,acRun,acN,acCount,unitA,tri,acA,dcA,tot,kva,brk,gNeed,gen,genMin,dcTri,autoA,acShort,acUser,autoS,autoN};
 }
 function rectSizes(){const l=list("rects");return l.length?l:[7.2]}
 const mimari=c=>`DC, ${c.bag?"1+1 ":""}Klima, Akü, Jeneratör`;
@@ -363,11 +367,13 @@ function cardHtml(r,i){
      <dt>DC</dt><dd>${c.units}×${kw(c.rSize)} kW<small>yük + şarj ${f(c.dcKW,1)} kW · %${f(c.rLoad*100,0)}</small></dd>
      <dt>Jeneratör</dt><dd class="${c.gen?"":"warn"}">${c.gen?"1x"+c.gen+" kVA":"listedekilerden büyük"}<small>hesaplanan ihtiyaç ${f(c.gNeed)} kVA${c.genMin?" · listedeki en küçük boy":""}</small></dd>
     </dl>
-    <div class="t" style="margin-top:12px">Max AC yük (Amp)</div><dl>
-     <dt>Klima</dt><dd>${f(c.acA,1)} A</dd>
+    <div class="t" style="margin-top:12px">AC yük (Amp) – normal ve en fazla</div><dl>
      <dt>Enerji besleme</dt><dd>${besl(c)}<small>${c.tri?`3 faz ${st.a.v3} V, değerler faz başı`:`${st.a.v1} V`}</small></dd>
-     <dt>DC</dt><dd>${f(c.dcA,1)} A<small>rectifier girişi (yük + akü şarjı) · ${c.dcTri?"DC sistem 3 faz girişli":"DC sistem tek faza da bağlanabilir"}</small></dd>
-     <dt>Toplam</dt><dd>${f(c.tot,1)} A${c.tri?" / faz":""}<small>${f(totKW(c),1)} kW · ${f(c.kva,1)} kVA (tüm fazlar)</small></dd>
+     <dt>DC – normal</dt><dd>${f(c.dcAn,1)} A<small>sadece yük: ${f(c.dc,0)} A × ${st.a.dcv} V ÷ ${st.a.eff} = ${f(c.dcWn,0)} W (akü dolu)</small></dd>
+     <dt>DC – şarj sırasında</dt><dd>${f(c.dcA,1)} A<small>yük + akü şarjı ${f(c.chA,0)} A · sadece kesintiden sonra, akü dolana kadar · ${c.dcTri?"DC sistem 3 faz girişli":"DC sistem tek faza da bağlanabilir"}</small></dd>
+     <dt>Klima</dt><dd>${f(c.acAn,1)} A${c.acA>c.acAn+0.05?` → en fazla ${f(c.acA,1)} A`:""}<small>${c.acRun} çalışan klima × ${f(c.unitA,1)} A${c.acA>c.acAn+0.05?" · en fazlada yedek klima da sayıldı (Ayarlar)":""}</small></dd>
+     <div class="big" style="display:contents"><dt>Normal (min)</dt><dd>${f(c.totN,1)} A${c.tri?" / faz":""}<small>DC yük + klima · ${f(c.kvaN,1)} kVA</small></dd></div>
+     <dt>En fazla (max)</dt><dd>${f(c.tot,1)} A${c.tri?" / faz":""}<small>kesinti sonrası şarj + klima · ${f(totKW(c),1)} kW · ${f(c.kva,1)} kVA (tüm fazlar)</small></dd>
      <div class="big" style="display:contents"><dt>Talep edilecek</dt><dd>${c.brk} A · ${besl(c)}</dd></div>
     </dl>
     ${(()=>{const Ar=area(c);return `<div class="t" style="margin-top:12px">Salon içi alan ihtiyacı (cm)</div><dl>
@@ -396,10 +402,10 @@ function cardHtml(r,i){
 function teamRows(){const cs=st.rows.map(r=>({r,c:calc(r)}));const v=(fn)=>cs.map(({r,c})=>c?fn(c,r):"");
   return [["Site",cs.map(x=>x.r.name||"")],["Saha Yük Profili",v(c=>`${f(c.dc,0)} ADC`)],["Salon Bilgisi",v(c=>c.bag?"Bağımsız Salon":"Mevcut Salona kurulum")],["Mimari",v(mimari)],
    ["Akü",v(batTxt)],["Akü Backup süresi",v(c=>`${f(c.h,0)} saat`)],["Klima",v(acTxt)],["DC",v(c=>`${c.units}*${kw(c.rSize)} kw`)],["Jeneratör",v(c=>c.gen?`1x${c.gen} kva`:"–")],
-   ["Max AC yük (Amp)",v(()=>"")],["Klima",v(c=>f(c.acA,1))],["Enerji besleme",v(besl)],["DC",v(c=>f(c.dcA,1))],["Toplam",v(c=>f(c.tot,1)+(c.tri?" (faz başı)":""))],["Toplam güç (kW)",v(c=>f(totKW(c),1))],["Toplam görünür güç (kVA)",v(c=>f(c.kva,1))],["Talep edilecek sigorta",v(c=>`${c.brk} A`)],["",v(()=>"")],["Salon içi Alan İhtiyacı",v(()=>"")],["Klima",v(c=>area(c).kl.txt)],["Transmisyon/fiber",v(c=>area(c).tr)],["DC",v(c=>area(c).dc)],["Akü",v(c=>area(c).aku)],["DC+Akü",v(c=>area(c).line)]]}
+   ["AC yük (Amp) – normal / en fazla",v(()=>"")],["Klima",v(c=>f(c.acA,1))],["Enerji besleme",v(besl)],["DC (yük + şarj)",v(c=>f(c.dcA,1))],["Normal (min) – şarjsız",v(c=>f(c.totN,1)+(c.tri?" (faz başı)":""))],["Toplam – en fazla (şarj dahil)",v(c=>f(c.tot,1)+(c.tri?" (faz başı)":""))],["Toplam güç (kW)",v(c=>f(totKW(c),1))],["Toplam görünür güç (kVA)",v(c=>f(c.kva,1))],["Talep edilecek sigorta",v(c=>`${c.brk} A`)],["",v(()=>"")],["Salon içi Alan İhtiyacı",v(()=>"")],["Klima",v(c=>area(c).kl.txt)],["Transmisyon/fiber",v(c=>area(c).tr)],["DC",v(c=>area(c).dc)],["Akü",v(c=>area(c).aku)],["DC+Akü",v(c=>area(c).line)]]}
 function summary(){if(window.onCalcChange)try{onCalcChange()}catch(e){console.error(e)}const R=teamRows();
   document.getElementById("sumH").innerHTML=`<tr><th>${R[0][0]}</th>${R[0][1].map(n=>`<th>${esc(n)}</th>`).join("")}</tr>`;
-  document.getElementById("sumB").innerHTML=R.slice(1).map(([k,vals])=>`<tr class="${k==="Max AC yük (Amp)"||k==="Salon içi Alan İhtiyacı"?"sec":""}${k==="Toplam"||k==="Talep edilecek sigorta"||k.startsWith("Toplam güç")||k.startsWith("Toplam görünür")?" kk":""}"><td>${k}</td>${vals.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join("")}
+  document.getElementById("sumB").innerHTML=R.slice(1).map(([k,vals])=>`<tr class="${k==="AC yük (Amp) – normal / en fazla"||k==="Salon içi Alan İhtiyacı"?"sec":""}${k.startsWith("Toplam –")||k.startsWith("Normal (min)")||k==="Talep edilecek sigorta"||k.startsWith("Toplam güç")||k.startsWith("Toplam görünür")?" kk":""}"><td>${k}</td>${vals.map(x=>`<td>${esc(x)}</td>`).join("")}</tr>`).join("")}
 function renderCard(i){const el=document.querySelector(`.card[data-i="${i}"] .res`);if(!el)return render();const t=document.createElement("div");t.innerHTML=cardHtml(st.rows[i],i);const op=el.querySelector("details.det")?.open;el.innerHTML=t.querySelector(".res").innerHTML;if(op)el.querySelector("details.det").open=true;
   const card=el.closest(".card"),dcn=num(st.rows[i].dc);card.querySelector('[data-k="hours"]').placeholder=dcn>0?defHours(dcn):st.a.hSmall;
   const c=calc(st.rows[i]);if(c){card.querySelector('[data-k="acs"]').placeholder=c.autoS;card.querySelector('[data-k="acn"]').placeholder=c.autoN;card.querySelector(".acl").textContent=`Klima kapasitesi (${AC[c.acT].unit})`;card.querySelector('[data-k="acA"]').placeholder=Math.round(c.autoA*10)/10}summary()}
